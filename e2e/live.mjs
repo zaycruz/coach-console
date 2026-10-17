@@ -123,6 +123,8 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Today API: one queue with rows from C1, C3, C4 and C5", ["c1", "c3", "c4", "c5"].every((m) => qMods.has(m)), [...qMods].join(","));
   ok("Today API: every row has a whole reason, never cut with \"…\"", tq.rows.every((r) => r.reason && !/…/.test(r.reason)), (tq.rows.find((r) => /…/.test(r.reason || "")) || {}).reason || "");
   ok("Today API: C1 rows say real MEPS data, the rest synthetic", tq.rows.every((r) => (r.mod === "c1") === /MEPS/.test(r.data)));
+  // Patients handed off in this test namespace have left Call today; the rest of the week sits behind "Show more", so expand it first.
+  await page.locator("[data-week-more]").click({ timeout: 2000 }).then(() => settle(page)).catch(() => {});
   const todayRows = await page.locator(".queue .q-row").count();
   const domMods = new Set(await page.locator(".queue .q-row").evaluateAll((els) => els.map((e) => e.dataset.mod)));
   const apiMods = new Set(tq.rows.filter((r) => !handedIds.has(r.id)).map((r) => r.mod));
