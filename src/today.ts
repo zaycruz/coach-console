@@ -112,7 +112,12 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     const driver = (String(x.headline).match(/driven by ([^,;]+)/i) || [])[1];
     const now = rf.careTeamToday === true;
     const flag = now ? String(rf.banner || (survey.find((s) => s.urgency === "today") || {}).text || "") : "";
-    const reason = now && flag ? `Red flag: ${flag.replace(/^[^:]*care team today[:.]?\s*/i, "")}`
+    // Each red-flag row names the person and the survey answer itself, so two rows never read the same.
+    const pf = isRec(d.profile) ? d.profile : {};
+    const who = [pf.age && `${pf.age}${String(pf.sex || "").charAt(0).toUpperCase()}`, Array.isArray(pf.cancerTypes) && pf.cancerTypes[0]].filter(Boolean).join(" ");
+    const answers = survey.filter((s) => s.urgency === "today").map((s) => String(s.text).split(":")[0].replace(/^Reported feeling /i, "").replace(/^Serious psychological distress/i, "serious distress").replace(/ of (\d+)\)/, "/$1)").trim()).filter(Boolean);
+    const reason = now && answers.length ? `Red flag${who ? ` (${who})` : ""}: ${answers.join("; ")}`
+      : now && flag ? `Red flag: ${flag.replace(/^[^:]*care team today[:.]?\s*/i, "")}`
       : `ER/hospital risk ${risk}% next year${visits ? `, ${visits.replace(/\(s\)/g, "s").replace(/^1 ER visits/, "1 ER visit").replace(/ 1 hospital stays/, " 1 hospital stay")}` : driver ? `, driven by ${driver}` : ""}`;
     rows.push({ ...base("c1", x), horizon: now ? "today" : "week", rank: now ? 910 + risk / 100 : 500 + risk / 10, reason: cut(reason), riskWords: d.riskWords || "", caveat: d.caveat || "",
       data: "Real survey data (MEPS)", language: "" });
