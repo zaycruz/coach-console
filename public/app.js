@@ -122,9 +122,6 @@
   }
 
   // ------------------------------------------------------------------ Today
-  // Short on purpose: who needs a person today and the one thing to do. The full list lives on Patients.
-  // Every Act-today patient shows (one queue across programs); the cap only guards a flood and is announced.
-  const TODAY_CAP = 20;
   // Status first, then the adapter's rank (urgent ER/hospital risk highest first, then newest call concern), then program.
   const sortRows = (items) => items.sort((a, b) => RANK[a.tri] - RANK[b.tri] || (a.prio ?? 200) - (b.prio ?? 200) || ["c5", "c3", "c1", "c4"].indexOf(a.mod) - ["c5", "c3", "c1", "c4"].indexOf(b.mod));
   const sameDay = (iso) => new Date(iso).toDateString() === new Date().toDateString();
@@ -141,32 +138,40 @@
     return head + (handoffs.length ? `<div class="today-list">${handoffs.map(handoffRow).join("")}</div>` : emptyBox("No hand-offs yet. Escalate from a patient page or hand off from a call flag."));
   }
   function failBanners(failed) { return failed.map((x) => `<div class="banner alert"><span class="b-ico">▲</span><div class="b-body"><b>${MODS[x.mod].challenge} ${MODS[x.mod].name} isn’t answering and has no saved copy.</b> <span class="small">${esc(x.error)}</span></div></div>`).join(""); }
+  // Today = one ranked queue across the four programs (GET /api/today), with this session's overlay on top:
+  // a safety flag on a call saved here joins the top, a hand-off moves the patient to "Handed off today".
+  const COHORTS = `<p class="cohorts"><b>Four programs, four separate cohorts</b> (hospital risk: real MEPS survey data; rough weeks, glucose, coaching calls: synthetic). No patient appears in more than one.</p>`;
+  const langChip = (l) => (!l ? "" : l === "English" ? `<span class="chip-lang" title="Speaks English">EN</span>` : `<span class="chip-lang need" title="Book an interpreter or a ${esc(l)}-speaking coach">Interpreter · ${esc(l)}</span>`);
+  const dataChip = (mod) => (mod === "c1" ? `<span class="chip-data real" title="Real survivor from the MEPS 2017 survey (ID reassigned)">Real · MEPS</span>` : `<span class="chip-data" title="Synthetic hackathon data">Synthetic</span>`);
   async function renderToday() {
-    const head = `<header class="page-head"><div><h1>Today</h1><p class="sub">Who needs a person today, and why. Everyone else is on the Patients list.</p></div></header>`;
+    const head = `<header class="page-head"><div><h1>Today</h1><p class="sub">One queue across the four programs: who needs a person, and why. Worst first.</p></div></header>`;
     const f = forced("today’s list", "No patients are assigned to you yet.");
     if (f) return head + f;
-    const { rows: items, failed, handoffs = [] } = await once("roster", A.roster);
-    sortRows(items);
-    const counts = { today: 0, alert: 0, watch: 0, ok: 0 };
-    items.forEach((i) => counts[i.tri]++);
-    const strip = `<div class="stat-strip">
-      <a href="#patients-today"><span class="n ${counts.today ? "alert" : ""}">${counts.today}</span><span class="l">Need a person today</span></a>
-      <a href="#patients-alert"><span class="n">${counts.alert}</span><span class="l">Alerts to review</span></a>
-      <a href="#patients-watch"><span class="n">${counts.watch}</span><span class="l">Keep an eye on</span></a>
-      <a href="#patients"><span class="n">${items.length}</span><span class="l">All patients</span></a></div>`;
-    // Act today only: the tile count = these rows + the "more" link. Alerts stay on Patients, linked with the tile's own count.
-    const act = items.filter((x) => x.tri === "today");
-    const top = act.slice(0, TODAY_CAP), more = act.length - top.length;
-    const meta = (it) => [it.age, it.lastSaved && `last call ${A.ago(it.lastSaved.at)} by ${it.lastSaved.coach}`].filter(Boolean).join(" · ");
-    const rows = top.map((it) => `<div class="t-row" data-pid="${esc(it.id)}"><span class="sdot ${it.tri}" aria-hidden="true"></span>
-      <div class="who"><a href="#p-${esc(it.id)}">${esc(it.name)}</a><span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span>${statusPill(it.tri)}<span class="why" title="${esc(it.headline)}">${esc(it.reason || it.headline)}</span>${meta(it) ? `<span class="small muted" style="flex-basis:100%">${esc(meta(it))}</span>` : ""}</div>
-      <div class="acts">${it.mod !== "c1" ? `<a class="btn primary" href="#live-${esc(it.id)}">Start call</a>` : `<a class="btn primary" href="#p-${esc(it.id)}.c1">Review risk</a>`}<a class="btn" href="#p-${esc(it.id)}">Open</a></div></div>`).join("");
+    const [q, { rows: roster, failed, handoffs = [] }] = await Promise.all([once("today", A.today).catch(() => null), once("roster", A.roster)]);
+    const byId = new Map(roster.map((r) => [r.id, r]));
+    let queue = q && Array.isArray(q.rows) ? q.rows.map((x) => ({ ...x })) : sortRows(roster.filter((x) => x.tri === "today")).map((r) => ({ ...r, horizon: "today", reason: r.reason || r.headline }));
+    // Fresh safety flags from calls saved here go first; hand-offs leave the queue.
+    const fresh = roster.filter((r) => r.concern && r.concern.fresh && !r.handoff && !queue.some((x) => x.id === r.id)).map((r) => ({ ...r, horizon: "today", reason: r.reason, data: "", language: "" }));
+    queue = [...fresh, ...queue].filter((x) => !(byId.get(x.id) || {}).handoff);
+    const now = queue.filter((x) => x.horizon === "today"), week = queue.filter((x) => x.horizon !== "today");
+    const meta = (it) => { const r = byId.get(it.id) || {}; return [r.concern && r.concern.fresh ? "flagged on a call logged here" : "", r.lastSaved && `last call ${A.ago(r.lastSaved.at)} by ${r.lastSaved.coach}`].filter(Boolean).join(" · "); };
+    const row = (it) => `<div class="t-row" data-pid="${esc(it.id)}" data-mod="${it.mod}"><span class="sdot ${it.horizon === "today" ? "today" : "alert"}" aria-hidden="true"></span>
+      <div class="who"><a href="#p-${esc(it.id)}">${esc(String(it.name).split(" · ")[0])}</a><span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span>${dataChip(it.mod)}${langChip(it.language)}
+        <span class="why" title="${esc(it.headline || it.reason)}">${esc(it.reason || it.headline)}</span>${meta(it) ? `<span class="small muted" style="flex-basis:100%">${esc(meta(it))}</span>` : ""}</div>
+      <div class="acts">${it.mod !== "c1" ? `<a class="btn primary" href="#live-${esc(it.id)}">Start call</a>` : `<a class="btn primary" href="#p-${esc(it.id)}.c1">Review risk</a>`}<a class="btn" href="#p-${esc(it.id)}">Open</a></div></div>`;
+    const per = (rows) => ALL.map((m) => [m, rows.filter((x) => x.mod === m).length]).filter(([, n]) => n).map(([m, n]) => `<span class="r-mod"><span class="dot m-${m}"></span>${MODS[m].name} ${n}</span>`).join(" ");
     const hToday = handoffs.filter((h) => sameDay(h.at));
+    const strip = `<div class="stat-strip">
+      <div><span class="n ${now.length ? "alert" : ""}">${now.length}</span><span class="l">Call today</span></div>
+      <div><span class="n">${week.length}</span><span class="l">This week</span></div>
+      <a href="#inbox"><span class="n">${hToday.length}</span><span class="l">Handed off today</span></a>
+      <a href="#patients"><span class="n">${roster.length}</span><span class="l">All patients</span></a></div>`;
     const handed = hToday.length ? `<details class="more"><summary>Handed off today (${hToday.length})</summary><div class="today-list">${hToday.map(handoffRow).join("")}</div><p class="small" style="margin-top:8px"><a href="#inbox">Care-team inbox, every hand-off →</a></p></details>` : "";
-    return `${head}${failBanners(failed)}${sourceBanner(ALL)}${strip}
-      <section class="stack-s"><h2>Act today · ${act.length}</h2><p class="small muted">Urgent ER or hospital risk (next 7 days) first, then concerns raised on calls, newest first.</p><div class="today-list roster-today" data-count="${top.length}">${rows || `<div class="live-empty">Nobody needs a person today.</div>`}</div>
-      ${more > 0 ? `<a href="#patients-today">${more} more Act today on the Patients list →</a>` : ""}
-      ${counts.alert ? `<p class="small"><a href="#patients-alert">${counts.alert} alerts to review on the Patients list →</a></p>` : ""}</section>${handed}`;
+    return `${head}${failBanners(failed)}${sourceBanner(ALL)}${COHORTS}${strip}
+      <section class="stack-s" id="today-now"><h2>Call today · ${now.length}</h2><p class="small muted">Safety lines from calls, urgent 7-day ER risk, frequent lows or very high sugar. ${per(now)}</p>
+        <div class="today-list roster-today" data-count="${now.length}">${now.map(row).join("") || `<div class="live-empty">Nobody needs a call today.</div>`}</div></section>
+      ${week.length ? `<section class="stack-s" id="today-week"><h2>This week · ${week.length}</h2><p class="small muted">Highest next-year ER/hospital risk, rough weeks ahead, glucose off target. ${per(week)}</p>
+        <div class="today-list">${week.map(row).join("")}</div></section>` : ""}${handed}`;
   }
 
   // ------------------------------------------------------------------ Patients
@@ -189,7 +194,7 @@
         <div class="filters" role="group" aria-label="Filter by program">${modPills}</div><div class="filters" role="group" aria-label="Filter by status">${stPills}</div></div>
       <p class="small muted">${shown.length} of ${items.length} patients</p>
       <div class="ptable-wrap roster" data-count="${items.length}"><table class="ptable"><thead><tr><th>Status</th><th>Patient</th><th class="hide-s">Program</th><th>Why</th><th class="hide-s">Last data</th></tr></thead><tbody>${body || `<tr><td colspan="5" class="live-empty">No patient matches.</td></tr>`}</tbody></table>${more}</div>
-      <p class="footnote">Each program enrols its own synthetic cohort, so today a patient appears in one program. Dates are the last data each program holds.</p>`;
+      ${COHORTS}<p class="footnote">Dates are the last data each program holds.</p>`;
   }
 
   // ------------------------------------------------------------------ Patient 360
@@ -529,7 +534,7 @@
     const fmName = fin && m.metrics[fin] && m.finalModel.name ? String(m.finalModel.name).split(" (")[0].toLowerCase() : "model";
     const range = (t) => (t.riskFrom > 0 && t.riskTo < 1 ? `${num(t.riskFrom * 100)}–${pct(t.riskTo)}` : t.riskFrom > 0 ? `≥${pct(t.riskFrom)}` : `under ${pct(t.riskTo)}`);
     const dev = m && m.data && m.data.devSurvivors;
-    const strip = tiers.length ? `<div class="stat-strip">${tiers.map((t) => `<a href="#patients-${t.status}"><span class="n">${range(t)}</span><span class="l">${GROUP[t.status]}: risk ${range(t)} · ${pct(t.observedRate)} of these had an ER visit or stay (${t.n} people, cross-validated)</span></a>`).join("")}${fm && fm.auroc ? `<div><span class="n">${num(fm.auroc.value, 2)}</span><span class="l">AUROC of the deployed ${esc(fmName)} (0.5 = chance; 95% CI ${num(fm.auroc.ci95[0], 2)}–${num(fm.auroc.ci95[1], 2)})${bm && bm.auroc ? ` · baseline ${num(bm.auroc.value, 2)}` : ""} · cross-validated</span></div>` : ""}</div>${dev ? `<p class="small muted">Tier rates and AUROC: ${dev} development patients, repeated 5-fold cross-validation. The list below: ${list.length} new patients scored by the deployed model.</p>` : ""}` : "";
+    const strip = tiers.length ? `<div class="stat-strip">${tiers.map((t) => `<a href="#patients-${t.status}"><span class="n">${range(t)}</span><span class="l">${GROUP[t.status]}: risk ${range(t)} · ${pct(t.observedRate)} of these had an ER visit or stay (${t.n} of ${dev || "the"} development patients, cross-validated; not the ${list.length} below)</span></a>`).join("")}${fm && fm.auroc ? `<div><span class="n">${num(fm.auroc.value, 2)}</span><span class="l">AUROC of the deployed ${esc(fmName)} (0.5 = chance; 95% CI ${num(fm.auroc.ci95[0], 2)}–${num(fm.auroc.ci95[1], 2)})${bm && bm.auroc ? ` · baseline ${num(bm.auroc.value, 2)}` : ""} · cross-validated</span></div>` : ""}</div>${dev ? `<p class="small muted">Tier rates and AUROC: ${dev} development patients, repeated 5-fold cross-validation. The list below: ${list.length} new patients scored by the deployed model.</p>` : ""}` : "";
     const table = `<div class="ptable-wrap"><table class="ptable">${thead}<tbody>${list.slice(0, ui.limit / 4).map((it) => careRow(it, "c1", c1h(it.headline))).join("")}</tbody></table>${list.length > ui.limit / 4 ? `<button class="r-more" data-more>Show 15 more of ${list.length}</button>` : ""}</div>`;
     const year = `<section class="stack-s"><h2>Next 12 months · survey model (C1) · ${list.length} patients</h2><p class="small muted">“Driven by” names the top driver other than health spending; the model also uses spending, a cost proxy for need. Open a patient to see every driver.</p>${table}</section>`;
     // Factors: a forest-style list, rate with vs without each factor, highest rate ratio first.

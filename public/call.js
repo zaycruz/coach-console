@@ -103,6 +103,26 @@
       <span class="small">Lines go to <b id="mic-spk">${SPK[call.speaker]}</b>. A pause ends the line. <kbd>Space</kbd> ends it and switches speaker.</span>`;
   }
 
+  // One call script in the patient's language (Spanish, Kreyòl), for a coach without an interpreter on the line.
+  // Plain, short sentences; red flags first. Draft wording: have a qualified medical interpreter review before real use.
+  const SCRIPTS = {
+    es: { title: "Guion de llamada · Español", lines: [
+      ["Saludo", "Hola, habla [nombre], su coach de salud del programa. ¿Es buen momento para hablar unos minutos?"],
+      ["Cómo está", "¿Cómo se ha sentido desde nuestra última llamada? ¿Qué ha sido lo más difícil esta semana?"],
+      ["Señales de alarma", "¿Ha tenido fiebre de 38 °C (100.4 °F) o más, escalofríos, dolor de pecho, falta de aire, una caída, una pierna hinchada o se ha sentido sin esperanza? Si dice que sí: llame hoy al equipo de cuidado o vaya a emergencias."],
+      ["Necesidades", "¿Tiene lo que necesita en casa: comida, sus medicinas y cómo llegar a sus citas?"],
+      ["Meta", "¿Qué pequeño paso quiere intentar antes de nuestra próxima llamada?"],
+      ["Confirmar", "Para estar seguros, ¿me puede decir con sus palabras qué va a hacer si tiene fiebre?"],
+      ["Cierre", "Gracias. Lo/la llamo de nuevo el [día]. Si algo cambia, llame al equipo de cuidado."]] },
+    ht: { title: "Script apèl · Kreyòl", lines: [
+      ["Bonjou", "Bonjou, se [non] ki la, coach sante ou nan pwogram nan. Èske ou gen kèk minit pou nou pale?"],
+      ["Siy danje", "Èske ou te gen lafyèv 38 °C (100.4 °F) oswa plis, frison, doulè nan pwatrin, difikilte pou respire, ou te tonbe, yon janm ki anfle, oswa ou santi ou pa gen espwa? Si wi: rele ekip swen an jodi a oswa ale nan ijans."],
+      ["Bezwen", "Èske ou gen sa ou bezwen lakay ou: manje, medikaman, ak transpò pou randevou ou?"],
+      ["Fèmen", "Mèsi. M ap rele ou ankò [jou]. Si yon bagay chanje, rele ekip swen an."]] },
+  };
+  const langOf = (p) => { const l = String((p.facts.find(([k]) => k === "Language") || [])[1] || (p.profile && p.profile.language) || "").toLowerCase(); return /span|espa/.test(l) ? "es" : /creole|kreyòl|kreyol|haiti/.test(l) ? "ht" : ""; };
+  const scriptBox = (code) => { const sc = SCRIPTS[code]; return sc ? `<details class="more call-script" open><summary>${esc(sc.title)} <span class="chip-lang need">Interpreter recommended</span></summary><ol class="script">${sc.lines.map(([k, v]) => `<li><b>${esc(k)}</b> ${esc(v)}</li>`).join("")}</ol><p class="small muted">Draft translation for this demo. Have a qualified medical interpreter review it before use with patients.</p></details>` : ""; };
+
   async function renderLive(id) {
     const back = `<a class="back" href="#p-${esc(id)}">← Patient</a>`;
     const f = P.forced("this call", "No call yet.");
@@ -123,9 +143,10 @@
     const controls = R ? replayBar()
       : `<div class="callbar"><button class="btn primary ${mic ? "rec" : ""}" id="mic">${mic ? "Stop mic" : "Start mic"}</button>
           <div class="seg" id="spk"><button data-s="coach" class="${call.speaker === "coach" ? "on" : ""}">Coach</button><button data-s="participant" class="${call.speaker === "participant" ? "on" : ""}">Patient</button></div>
-          <select id="lang" aria-label="Language spoken"><option value="en">English</option><option value="es">Spanish</option><option value="ht">Haitian Creole</option><option value="">Detect language</option></select>
+          <select id="lang" aria-label="Language spoken">${[["en", "English"], ["es", "Spanish"], ["ht", "Haitian Creole"], ["", "Detect language"]].map(([v, t]) => `<option value="${v}" ${v === (langOf(p) || "en") ? "selected" : ""}>${t}</option>`).join("")}</select>
           <button class="btn" id="nextline" ${mic ? "" : "hidden"}>Next line</button></div>
         <div class="mic-state" id="micstate" aria-live="polite">${micMsg()}</div>
+        ${scriptBox(langOf(p))}
         <form class="type-row" id="typeform"><input id="typed" placeholder="Or type what was said, press Enter" aria-label="Line text" autocomplete="off"><button class="btn" type="submit">Add line</button></form>`;
     const panel = SNAP
       ? `<section class="card stack"><h2>Start a call</h2><p class="muted">This shared copy can’t reach the model. The live site can.</p><a class="btn primary" href="${LIVE_URL}/#live-${esc(id)}" target="_blank" rel="noopener">Open on the live site ↗</a></section>`

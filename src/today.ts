@@ -1,0 +1,100 @@
+/**
+ * GET /api/today -> one ranked work queue across the four programs, for the Today page.
+ *   Each row: { id, mod, name, status, tri, horizon: "today"|"week", rank, reason (<= 90 chars, clinical), data
+ *   ("Real survey data (MEPS)" | "Synthetic"), language, interpreter, headline, updatedAt }.
+ * Who is on it, worst first:
+ *   today: C5 safety lines from labelled calls (medical, distress, social) · C3 urgent 7-day ER/hospital risk ·
+ *          C4 frequent lows (4%+ below 70) or very high sugar (average 250+, or under 10% in range) · C1 care-team-today
+ *   week:  C1 highest next-year ER/hospital risk (alert tier, top 5) · C3 rough-patch alerts · C4 other alerts
+ * The module APIs stay the source; this only picks rows and writes one short reason from their own fields.
+ */
+interface Fetcher { fetch(input: RequestInfo, init?: RequestInit): Promise<Response> }
+type Rec = Record<string, unknown>;
+type TodayEnv = { C1: Fetcher; C3: Fetcher; C4: Fetcher; C5: Fetcher };
+
+const isRec = (x: unknown): x is Rec => !!x && typeof x === "object" && !Array.isArray(x);
+const cut = (s: string, n = 90) => (s.length > n ? s.slice(0, n - 1).replace(/[\s,;:·]+\S*$/, "") + "…" : s);
+const r0 = (v: unknown, d = 0) => (typeof v === "number" ? Number(v.toFixed(d)) : null);
+const LANG: Record<string, string> = { "haitian creole": "Kreyòl", kreyol: "Kreyòl", "kreyòl": "Kreyòl", spanish: "Spanish", español: "Spanish", english: "English" };
+const lang = (s: unknown) => { const t = String(s || "").trim(); return t ? LANG[t.toLowerCase()] || t : ""; };
+
+async function get(f: Fetcher, url: string): Promise<unknown> {
+  const r = await f.fetch(url).catch(() => null);
+  return r && r.ok ? r.json().catch(() => null) : null;
+}
+
+export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
+  const mod = (m: "c1" | "c3" | "c4") => ({ c1: env.C1, c3: env.C3, c4: env.C4 }[m]);
+  const list = (m: "c1" | "c3" | "c4") => get(mod(m), `https://${m}/api/${m}/survivors`).then((x) => (Array.isArray(x) ? (x as Rec[]) : []));
+  const detail = (m: "c1" | "c3" | "c4", id: string) => get(mod(m), `https://${m}/api/${m}/survivors/${encodeURIComponent(id)}`).then((x) => (isRec(x) ? x : null));
+  const [l1, l3, l4, calls] = await Promise.all([list("c1"), list("c3"), list("c4"), c5Calls().catch(() => [])]);
+  const rows: Rec[] = [];
+  const failed: string[] = [];
+  if (!l1.length) failed.push("c1"); if (!l3.length) failed.push("c3"); if (!l4.length) failed.push("c4");
+  const base = (m: string, x: Rec) => ({ id: String(x.survivorId), mod: m, name: String(x.displayName || x.survivorId), status: String(x.status || "ok"), headline: String(x.headline || ""), updatedAt: x.updatedAt || null });
+
+  // C5: the latest call with a needs-a-person line, per patient. Language = the call's language.
+  const callList = (Array.isArray(calls) ? calls : []).filter(isRec);
+  if (!callList.length) failed.push("c5");
+  const byP = new Map<string, Rec>();
+  for (const c of callList) {
+    const pid = String(c.survivorId), prev = byP.get(pid);
+    if (Array.isArray(c.flags) && c.flags.length && (!prev || `${c.date}${c.start}` > `${prev.date}${prev.start}`)) byP.set(pid, c);
+  }
+  const langOf5 = new Map(callList.map((c) => [String(c.survivorId), lang(c.language)]));
+  const KIND: Record<string, [string, number]> = { medical: ["Medical concern", 960], distress: ["Distress", 950], social: ["Social need", 900] };
+  for (const [pid, c] of byP) {
+    const f = (c.flags as Rec[])[0];
+    const [label, rank] = KIND[String(f.kind)] || KIND.medical;
+    const words = String(f.text || "").replace(/\s+/g, " ").replace(/^(oh,?\s+)?before you go,?\s+(and\s+)?/i, "").trim();
+    rows.push({ id: pid, mod: "c5", name: String(c.participantName || pid), status: "alert", headline: `${label} on call ${c.callNumber}`, updatedAt: c.date,
+      horizon: "today", rank, reason: cut(`${label}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: langOf5.get(pid) || "" });
+  }
+
+  // C3: urgent first (7-day ER/hospital risk over its line), then rough-patch alerts.
+  const c3 = l3.filter((x) => x.urgent === true || /^urgent/i.test(String(x.headline || "")) || x.status === "alert");
+  const d3 = await Promise.all(c3.map((x) => detail("c3", String(x.survivorId))));
+  c3.forEach((x, i) => {
+    const d = d3[i] || {}, p = isRec(d.profile) ? d.profile : {};
+    const urgent = x.urgent === true || /^urgent/i.test(String(x.headline || ""));
+    const er = typeof d.urgentRisk === "number" ? Math.round(d.urgentRisk * 100) : Number((String(x.headline).match(/hospital risk (\d+)%/i) || [])[1] || 0);
+    const times = (String(x.headline).match(/about (\d+(?:\.\d+)?)x usual/i) || [])[1];
+    const where = String(p.context || "").replace(/\s*\(.*\)$/, "").replace(/^Day/, "day");
+    const rough = typeof d.risk === "number" ? Math.round(d.risk * 100) : null;
+    const reason = urgent ? `ER/hospital risk ${er}% in 7 days${times ? ` (${times}× usual)` : ""}${where ? `, ${where}` : ""}`
+      : `Rough week ahead: ${rough != null ? rough + "% risk" : "alert"}${where ? `, ${where}` : ""}`;
+    rows.push({ ...base("c3", x), horizon: urgent ? "today" : "week", rank: urgent ? 940 + er / 10 : 400 + (rough || 0) / 10, reason: cut(reason), data: "Synthetic", language: lang(p.language) });
+  });
+
+  // C4: frequent lows or very high sugar = send to the care team today; other alerts this week.
+  const c4 = l4.filter((x) => x.status === "alert");
+  const d4 = await Promise.all(c4.map((x) => detail("c4", String(x.survivorId))));
+  c4.forEach((x, i) => {
+    const ev = new Map(((d4[i] && Array.isArray(d4[i]!.evidence) ? d4[i]!.evidence : []) as Rec[]).map((e) => [String(e.id), e.value as number]));
+    const tbr = r0(ev.get("tbr70"), 1), mg = r0(ev.get("mean_glucose")), tir = r0(ev.get("tir"));
+    const lows = tbr != null && tbr >= 4, high = (mg != null && mg >= 250) || (tir != null && tir < 10);
+    const reason = lows ? `Glucose: ${tbr}% of readings below 70 (target under 4%), risk of lows`
+      : high ? `Glucose: average ${mg} mg/dL, ${tir}% in range (target over 70%)`
+      : `Glucose: ${tir}% in range (target over 70%), average ${mg} mg/dL`;
+    rows.push({ ...base("c4", x), horizon: lows || high ? "today" : "week", rank: lows ? 930 + (tbr || 0) : high ? 920 + (mg || 0) / 100 : 300 + (100 - (tir || 0)) / 10, reason: cut(reason), data: "Synthetic", language: "" });
+  });
+
+  // C1: the alert tier, highest next-year risk first; top 5 this week (or today when the module says so).
+  const c1 = l1.filter((x) => x.status === "alert").map((x) => ({ x, risk: Number((String(x.headline).match(/risk (\d+(?:\.\d+)?)%/i) || [])[1] || 0) }))
+    .sort((a, b) => b.risk - a.risk).slice(0, 5);
+  const d1 = await Promise.all(c1.map(({ x }) => detail("c1", String(x.survivorId))));
+  c1.forEach(({ x, risk }, i) => {
+    const d = d1[i] || {}, rf = isRec(d.redFlags) ? d.redFlags : {};
+    const survey = (Array.isArray(rf.fromSurvey) ? rf.fromSurvey : []).filter(isRec);
+    const visits = survey.map((s) => String(s.text).match(/^(\d+ ER visit\(s\) and \d+ hospital stay\(s\) last year)/)?.[1]).find(Boolean);
+    const driver = (String(x.headline).match(/driven by ([^,;]+)/i) || [])[1];
+    const reason = `ER/hospital risk ${risk}% next year${visits ? `, ${visits.replace(/\(s\)/g, "s").replace(/^1 ER visits/, "1 ER visit").replace(/ 1 hospital stays/, " 1 hospital stay")}` : driver ? `, driven by ${driver}` : ""}`;
+    const now = rf.careTeamToday === true;
+    rows.push({ ...base("c1", x), horizon: now ? "today" : "week", rank: now ? 910 : 500 + risk / 10, reason: cut(reason), riskWords: d.riskWords || "", caveat: d.caveat || "",
+      data: "Real survey data (MEPS)", language: "" });
+  });
+
+  rows.forEach((r) => { const l = String(r.language || ""); r.interpreter = !!l && l !== "English"; r.tri = r.horizon === "today" ? "today" : "alert"; });
+  rows.sort((a, b) => (a.horizon === b.horizon ? 0 : a.horizon === "today" ? -1 : 1) || (b.rank as number) - (a.rank as number));
+  return { rows, failed, at: new Date().toISOString() };
+}

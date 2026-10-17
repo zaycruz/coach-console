@@ -460,3 +460,13 @@ details.more.tech > summary { font-weight: 500; font-size: .8rem; color: var(--i
   .ptable td.live-empty { grid-column: 1 / -1; }
   .ptable tr:hover td { background: transparent; }
 }
+
+/* Today queue: data type and language on every row; one line on the separate cohorts */
+.cohorts { margin: 0 0 12px; padding: 8px 12px; font-size: .82rem; color: var(--ink-2); background: var(--surface-2); border-left: 3px solid var(--line-2); }
+.chip-data, .chip-lang { display: inline-block; font: 500 .7rem var(--font-data); padding: 1px 6px; border: 1px solid var(--line-2); color: var(--ink-3); white-space: nowrap; }
+.chip-data.real { border-color: var(--m-c1); color: var(--ink); }
+.chip-lang.need { border-color: #b8860b; color: var(--ink); background: #fff7e0; }
+.call-script summary { font-weight: 600; }
+.call-script .script { margin: 8px 0 4px 18px; padding: 0; font-size: .86rem; line-height: 1.45; }
+.call-script .script li { margin: 4px 0; }
+.call-script .script b { display: inline-block; min-width: 9em; color: var(--ink-2); font-weight: 600; }

@@ -18,6 +18,7 @@ const calls = (await grab("/api/c5/calls")) || [];
 await pool(calls.map((c) => `/api/c5/calls/${c.callId}`), 8, grab);
 await grab("/api/c3/metrics");
 await grab("/api/c1/metrics");
+await grab("/api/today");
 // Workers AI advice is slow (3-8 s); keep it for the first few glucose patients only.
 const c4 = out["/api/c4/survivors"] || [];
 await pool(c4.slice(0, 6).map((x) => `/api/c4/survivors/${x.survivorId}/advice`), 3, grab);

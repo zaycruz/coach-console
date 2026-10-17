@@ -8,12 +8,14 @@
  *   POST /api/c5/turn|review|cue -> coach-copilot-clef /api/turn|review|cue (the live model)
  *   GET|POST /api/calls/:patientId -> calls started in this app, saved in KV (newest first); GET /api/calls = index of all
  *   GET|POST /api/handoffs    -> hand-offs to the care team (who, when, patient, flagged line, note), KV, newest first
+ *   GET  /api/today           -> one ranked queue across C1/C3/C4/C5 with a short clinical reason, data type and language per row (src/today.ts)
  *   POST /api/recap           -> GLM summary of the last call, for picking the conversation back up
  *   POST /api/ellie           -> Ellie, the clinician assistant: a small GLM tool loop (search/get patient, read page; navigate/open tab/start call)
  *   POST /api/insight         -> Ellie's insight for one patient (headline + up to 3 bullets), cached in KV by patient id + data hash
  * Everything else is the static app in ./public.
  */
 import PEOPLE from "./c5-people.json";
+import { today } from "./today";
 
 interface Fetcher { fetch(input: RequestInfo, init?: RequestInit): Promise<Response> }
 interface ExecutionContext { waitUntil(p: Promise<unknown>): void }
@@ -233,6 +235,15 @@ const ELLIE_SCHEMA = { name: "ellie_step", strict: true, schema: { type: "object
     id: { type: "string" }, route: { type: "string" }, answer: { type: "string" },
     cites: { type: "array", items: { type: "string" } }, kind: { type: "string", enum: ["navigation", "patient", "medical", "other"] } } } };
 
+// Red flags get a fixed, guideline-level answer with no model call: instant, and the same every time.
+const RED_FLAGS: [RegExp, string][] = [
+  [/\b(fever|febrile|chills|temp(erature)?\b[^?]*\b3[89](\.\d)?|10[0-4](\.\d)?\s*°?\s*f)/i, "A temperature of 38°C (100.4°F) or higher during or soon after chemotherapy is an emergency until proven otherwise (possible neutropenic fever). The patient should call the oncology team’s 24-hour line now or go to the ER today, not wait for the next visit. Ask when the last chemo was, and about chills, breathing, confusion or low blood pressure symptoms. Tell the care team and log the hand-off."],
+  [/\b(chest pain|chest pressure|short(ness)? of breath|can'?t breathe|trouble breathing)/i, "New chest pain or shortness of breath is a same-day emergency: the patient should call 911 or go to the ER now (possible clot, heart or lung problem, especially after cancer treatment). Tell the care team and log the hand-off."],
+  [/\b(swollen|swelling)\b[^?]*\b(leg|calf|ankle)|\bcalf pain\b/i, "A new swollen, painful leg can be a blood clot (DVT), which is more common after cancer and its treatment. The patient should be seen today: call the care team now, and go to the ER if there is also chest pain or breathlessness."],
+  [/\b(fell|a fall|falls?\b|hit (my|her|his|their) head)/i, "A fall needs a same-day check, sooner if the patient hit their head, takes blood thinners, or has new pain, confusion or can’t bear weight (ER). Tell the care team today and log the hand-off."],
+  [/\b(hopeless|suicid|kill (my|her|him|them)sel|end (my|it all)|no point (in )?living|self.?harm)/i, "Hopelessness or any thought of self-harm needs a person today. Stay with the patient, ask directly about thoughts of suicide, and connect them now: 988 (call or text, US) or the ER if they are in danger. Tell the care team and psycho-oncology today."],
+];
+const MEDICAL_Q = /\b(what|should|is it|is this|can|do i|does|how|when|chemo|treatment|symptom|patient (has|says|reports))\b|\?/i;
 // Ellie never shows infrastructure text: any failure is a plain "busy" the client retries once.
 const ELLIE_BUSY = "Ellie is busy";
 async function ellie(env: Env, body: Record<string, unknown>) {
@@ -283,6 +294,20 @@ PATIENTS NAMED IN THE QUESTION: ${clip(body.matches, 4_000)}
 ROSTER COUNTS: ${clip(body.counts, 300)} (${rows.length} patients searchable)
 ${memLines ? "RECENT PATIENTS (most recent list first):\n" + memLines + "\n" : ""}${convo ? "CONVERSATION SO FAR:\n" + convo + "\n" : ""}QUESTION: ${question}`;
 
+  // Red flags: a fixed answer, no model (instant, never rate-limited). Commands like "open" or "start a call" skip it.
+  if (!/^\s*(open|show|go|start|begin|take me|pull up|who|which|list)\b/i.test(question) && MEDICAL_Q.test(question)) {
+    const hit = RED_FLAGS.find(([re]) => re.test(question));
+    if (hit) return json({ answer: hit[1], kind: "medical", navigate: "", cites: [], steps: ["red-flag check"], model: "rules" });
+  }
+  // When the model can't answer (rate limit, outage): a plain answer from the roster, never an error.
+  const noModel = () => {
+    const hits = searchPatients(rows, { query: question, sort: "priority" }).patients.slice(0, 3);
+    const named = hits.length && rows.some((r) => question.toLowerCase().includes(first(r).toLowerCase()) || question.toLowerCase().includes(shortId(r.id).toLowerCase()));
+    const answer = named ? `Here is what the record says:\n${hits.map((p, i) => `${i + 1}. ${p.name.split(" · ")[0]} (${p.program}): ${p.headline.slice(0, 120)}`).join("\n")}\nAsk me to open one for the full chart.`
+      : `I can’t reach the language model right now, so here is what works instantly: “who needs a call today”, “who is most at risk of the hospital”, “open <name>”, “start a call with them”. Red-flag questions (fever on chemo, chest pain, a fall) still get an answer.`;
+    return json({ answer, kind: "other", navigate: "", cites: named ? hits.map((p) => p.id) : [], steps: ["roster"], model: "rules" });
+  };
+
   // Fast path: the two ranking questions clinicians ask most are answered straight from the roster, no model
   // call (6 s -> instant). Everything else goes through the tool loop.
   const ql = question.toLowerCase();
@@ -313,7 +338,7 @@ ${memLines ? "RECENT PATIENTS (most recent list first):\n" + memLines + "\n" : "
     const last = i === 3;
     const user = base + (results.length ? "\n\nTOOL RESULTS:\n" + results.join("\n") : "") + (last ? "\n\nYou must finish now: tool \"answer\" (or an action)." : "");
     const r = await glm(env, system, user, ELLIE_SCHEMA, 900);
-    if (!r) return json({ error: ELLIE_BUSY }, 503);
+    if (!r) return noModel();
     const tool = String(r.tool || "answer");
     steps.push(tool);
     if (!last && (tool === "search_patients" || tool === "get_patient" || tool === "read_page")) {
@@ -360,7 +385,7 @@ ${memLines ? "RECENT PATIENTS (most recent list first):\n" + memLines + "\n" : "
     if (navId && !cites.includes(navId)) cites.unshift(navId);
     return json({ answer, kind: String(r.kind || (nav ? "navigation" : "other")), navigate: nav, cites, steps, model: GLM });
   }
-  return json({ error: ELLIE_BUSY }, 503);
+  return noModel();
 }
 
 // ---------------------------------------------------------------- Ellie's insight: one line + up to 3 bullets per patient
@@ -442,6 +467,19 @@ export default {
     const [, mod, ...rest] = parts;
     try {
       if (mod === "health") return json({ ok: true });
+      if (mod === "today" && req.method === "GET") {
+        const key = new Request(url.toString(), { method: "GET" });
+        const hit = await caches.default.match(key).catch(() => undefined);
+        if (hit) return hit;
+        const c5Calls = async () => {
+          const native = await env.C5.fetch("https://coach-copilot/api/c5/calls").catch(() => null);
+          const r = native && native.ok && (native.headers.get("content-type") || "").includes("json") ? native : await c5(env, ["calls"]);
+          return r.json();
+        };
+        const out = json(await today(env, c5Calls));
+        ctx.waitUntil(caches.default.put(key, out.clone()).catch(() => {}));
+        return out;
+      }
       if (mod === "insight" && req.method === "POST") return await insight(env, (await req.json()) as Record<string, unknown>);
       if (mod === "ellie" && req.method === "POST") return await ellie(env, (await req.json()) as Record<string, unknown>);
       if (mod === "recap" && req.method === "POST") return await recap(env, (await req.json()) as Record<string, unknown>);

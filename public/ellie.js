@@ -188,12 +188,15 @@
   }
   // Prefetch: while Today is on screen, warm the insight for the patients it lists (one at a time, idle),
   // so the chart a clinician opens from Today shows its insight at once.
+  const sleep = (ms) => new Promise((ok) => setTimeout(ok, ms));
   async function prefetchToday() {
     if (SNAP || !/^#?(today)?$/.test(location.hash)) return;
     try {
       const { rows } = await once("roster", A.roster);
-      for (const r of rows.filter((x) => x.tri === "today").slice(0, 8)) {
+      // Three, four seconds apart: a burst of insight calls used up the model's per-minute limit.
+      for (const r of rows.filter((x) => x.tri === "today").slice(0, 3)) {
         if (!/^#?(today)?$/.test(location.hash)) return;
+        await sleep(4_000);
         const p = await once("p:" + r.id, () => A.patient(r.id)).catch(() => null);
         if (p) await getInsight(p);
       }

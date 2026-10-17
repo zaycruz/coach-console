@@ -30,7 +30,7 @@ const quiet = l3.filter((x) => x.status === "ok").pop() || l3[l3.length - 1];
 ok("list endpoints answer", total > 0, `c1 ${l1.length}, c3 ${l3.length}, c4 ${l4.length}, c5 ${l5.length}`);
 
 const ROUTES = [
-  ["today", "Act today"], ["patients", "Patients"],
+  ["today", "Call today"], ["patients", "Patients"],
   [`p-${ids.c3}`, "Health chart"], [`p-${ids.c3}.c3`, "What to do"],
   [`p-${ids.c4}`, "Health chart"], [`p-${ids.c4}.c4`, "What to do"],
   [`p-${ids.c5}`, "Health chart"], [`p-${ids.c5}.c5`, "Calls"],
@@ -107,11 +107,19 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   }
   await page.locator(`[data-filter="all"]`).click();
   await page.goto(`${B}/#today`); await settle(page);
-  // Today lists every Act-today patient (capped, with a "n more" link): rows + more = the tile count.
-  const todayRows = await page.locator(".roster-today .t-row").count();
-  const todayTile = Number(await page.locator('.stat-strip a[href="#patients-today"] .n').innerText());
-  const todayMore = Number(((await page.locator('a[href="#patients-today"]', { hasText: "more Act today" }).innerText().catch(() => "0")).match(/\d+/) || [0])[0]);
-  ok("Today: Act-today rows + 'more' link = tile count", todayRows > 0 && todayRows + todayMore === todayTile, `${todayRows} rows + ${todayMore} more vs tile ${todayTile}`);
+  // Today: one ranked queue across programs, each row with a reason, its data type and (when known) language.
+  const tq = await (await fetch(`${B}/api/today`)).json();
+  const qMods = new Set(tq.rows.map((r) => r.mod));
+  ok("Today API: one queue with rows from C1, C3, C4 and C5", ["c1", "c3", "c4", "c5"].every((m) => qMods.has(m)), [...qMods].join(","));
+  ok("Today API: every reason is 90 characters or less", tq.rows.every((r) => r.reason && r.reason.length <= 90), tq.rows.map((r) => r.reason.length).sort((x, y) => y - x)[0]);
+  ok("Today API: C1 rows say real MEPS data, the rest synthetic", tq.rows.every((r) => (r.mod === "c1") === /MEPS/.test(r.data)));
+  const todayRows = await page.locator(".today-list .t-row").count();
+  const domMods = new Set(await page.locator(".today-list .t-row").evaluateAll((els) => els.map((e) => e.dataset.mod)));
+  ok("Today page: rows from all four programs", todayRows >= 4 && domMods.size === 4, `${todayRows} rows, ${[...domMods].join(",")}`);
+  ok("Today page: data-type chip on every row", (await page.locator(".today-list .t-row .chip-data").count()) === todayRows);
+  ok("Today page: interpreter chip for a non-English patient", (await page.locator(".today-list .chip-lang.need").count()) > 0);
+  ok("Today page: separate-cohorts line", /Four programs, four separate cohorts/.test(await page.locator(".cohorts").innerText().catch(() => "")));
+  await shot(page, "today_1280.png");
   await page.locator(".t-row .btn.primary").first().click(); await settle(page);
   ok("Today: first action opens a call or the risk view", /#(live-|p-c1-)/.test(await page.evaluate(() => location.hash)), await page.evaluate(() => location.hash));
 
@@ -168,6 +176,10 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   const ans = await page.locator("#ellie-msgs .m.a").last().innerText();
   ok("Ellie answers from the patient on screen", /range|70|180/i.test(ans) && !/couldn/i.test(ans), ans.slice(0, 160).replace(/\s+/g, " "));
   await shot(page, "ellie_1280.png", false);
+  await page.fill("#ellie-q", "fever 39 on chemo, what should the patient do?"); await page.press("#ellie-q", "Enter");
+  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 30000 }).catch(() => {});
+  const red = await page.locator("#ellie-msgs .m.a").last().innerText();
+  ok("Ellie: red-flag question gets the emergency answer", /emergency|ER today|24-hour/i.test(red) && !/3021|rate limit|error/i.test(red), red.slice(0, 120).replace(/\s+/g, " "));
   manifest.ellie = ans;
 
   // Ellie: follow-ups resolve to the patients she just named; the panel closes

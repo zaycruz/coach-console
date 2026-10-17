@@ -386,6 +386,8 @@
 
   // ------------------------------------------------------------------ calls and advice
   const calls = () => fetchJSON("/api/c5/calls");
+  // One ranked queue across the programs (GET /api/today): reason, data type and language per row.
+  const today = () => fetchJSON("/api/today");
   const call = (id) => fetchJSON(`/api/c5/calls/${encodeURIComponent(id)}`);
   async function advice(id) {
     const mod = id.split("-")[0];
@@ -397,5 +399,5 @@
 
   // Program-level metrics (C1 care-team page, C3 model card). Same live → saved-copy fallback.
   async function metrics(mod) { return fetchJSON(`/api/${mod}/metrics`, []); }
-  window.Adapter = { MODULES, roster, patient, calls, call, advice, metrics, health, missing, triage, demoName, shortName, c1Headline, fairFlag, context, remember, local, ago, savedAsCall, handoffLabel };
+  window.Adapter = { MODULES, today, roster, patient, calls, call, advice, metrics, health, missing, triage, demoName, shortName, c1Headline, fairFlag, context, remember, local, ago, savedAsCall, handoffLabel };
 })();
