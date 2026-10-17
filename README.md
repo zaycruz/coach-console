@@ -65,3 +65,12 @@ What it covers:
 - AI Insight;
 - the Play-as-live demo;
 - fallback to the saved copy when a module is down.
+
+### Reproduce on Cloudflare
+
+`scripts/reproduce-cf/` is a small Worker (`p360-reproduce`). It starts a Cloudflare Container (the managed
+`cloudflare/debian-trixie` image), makes a fresh `git clone` of this repo, then runs `npm ci`,
+`npx playwright install --with-deps chromium` and `node e2e/live.mjs https://patient-360.raava.dev`. It returns
+the output and the run's `manifest.json`. You do not need local Docker. To run it: `cd scripts/reproduce-cf`, then
+follow the header of `src/index.js` (deploy, set `RUN_TOKEN`, run `sh run.sh`, then delete the Worker). Logged runs
+are in `runs/reproduce-*.md`.

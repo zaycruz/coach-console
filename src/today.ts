@@ -79,10 +79,16 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     rows.push({ ...base("c3", x), horizon: urgent ? "today" : "week", rank: urgent ? 940 + er / 10 : 400 + (rough || 0) / 10, reason: cut(reason), data: "Synthetic", language: lang(p.language) });
   });
 
-  // C4: frequent lows or very high sugar = send to the care team today; other alerts this week.
-  const c4 = l4.filter((x) => x.status === "alert");
-  const d4 = await Promise.all(c4.map((x) => detail("c4", String(x.survivorId))));
+  // C4: frequent lows or very high sugar = send to the care team today; other alerts this week. The module now says
+  // so itself on the roster (careTeamToday, todayReason, priority); older rows fall back to our rule on its evidence.
+  const c4 = l4.filter((x) => x.status === "alert" || x.careTeamToday === true);
+  const d4 = await Promise.all(c4.map((x) => (typeof x.careTeamToday === "boolean" && x.todayReason ? Promise.resolve(null) : detail("c4", String(x.survivorId)))));
   c4.forEach((x, i) => {
+    if (typeof x.careTeamToday === "boolean" && x.todayReason) {
+      const now = x.careTeamToday, pr = Number(x.priority ?? 2), tir = Number((String(x.todayReason).match(/(\d+(?:\.\d+)?)% in range/) || [])[1] ?? 50);
+      rows.push({ ...base("c4", x), horizon: now ? "today" : "week", rank: now ? (pr === 0 ? 935 : 920) : 300 + (100 - tir) / 10, reason: cut(String(x.todayReason)), data: "Synthetic", language: "" });
+      return;
+    }
     const ev = new Map(((d4[i] && Array.isArray(d4[i]!.evidence) ? d4[i]!.evidence : []) as Rec[]).map((e) => [String(e.id), e.value as number]));
     const tbr = r0(ev.get("tbr70"), 1), mg = r0(ev.get("mean_glucose")), tir = r0(ev.get("tir"));
     const lows = tbr != null && tbr >= 4, high = (mg != null && mg >= 250) || (tir != null && tir < 10);
