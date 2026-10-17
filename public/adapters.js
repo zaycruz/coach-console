@@ -261,7 +261,9 @@
      The status word is judged against the number's own line, so it never contradicts the number. */
   const NR = "Not recorded";
   const isNum = (v) => typeof v === "number" && isFinite(v);
-  const ST = { red: (w) => ({ tone: "red", glyph: "●", word: w }), redW: (w) => ({ tone: "red", glyph: "▲", word: w }), amber: (w) => ({ tone: "amber", glyph: "▲", word: w }), green: (w) => ({ tone: "green", glyph: "✓", word: w }), none: (w) => ({ tone: "neutral", glyph: "–", word: w || "No reading" }) };
+  // Three status words everywhere (Act today / Watch / On track); the measure's own descriptor follows the word.
+  const tag3 = (base, w) => (!w || w === base ? base : `${base} · ${w}`);
+  const ST = { red: (w) => ({ tone: "red", glyph: "●", word: w && w.startsWith("Act today") ? w : tag3("Act today", w) }), redW: (w) => ({ tone: "amber", glyph: "▲", word: tag3("Watch", w) }), amber: (w) => ({ tone: "amber", glyph: "▲", word: tag3("Watch", w) }), green: (w) => ({ tone: "green", glyph: "✓", word: tag3("On track", w) }), none: (w) => ({ tone: "neutral", glyph: "–", word: w || "No reading" }) };
   const firstSentence = (t) => { const m = String(t || "").match(/^.*?[.!?](?=\s|$)/); return m ? m[0] : String(t || ""); };
   const restOf = (t) => String(t || "").slice(firstSentence(t).length).trim();
   const lastN = (arr, n) => (Array.isArray(arr) ? arr.slice(-n) : []);

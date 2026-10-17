@@ -32,13 +32,13 @@
   const pct = (v, d = 0) => (v == null ? "–" : (v * 100).toFixed(d) + "%");
   const num = (v, d = 0) => (v == null ? "–" : Number(v).toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d }));
   const triage = A.triage;
-  const statusLabel = { ok: "On track", watch: "Keep an eye on", alert: "Alert", today: "Act today" };
+  const statusLabel = { ok: "On track", watch: "Watch", alert: "Watch", today: "Act today" };
   const statusPill = (s) => `<span class="status ${s}">${statusLabel[s] || esc(s)}</span>`;
   const modChip = (m) => `<span class="chip m-${m}"><span class="dot"></span>${MODS[m].challenge} · ${MODS[m].name}</span>`;
   const tagsHtml = (tags) => (tags && tags.length ? `<span class="tags">${tags.map((t) => `<span class="tag t-${esc(t.tone || "info")}">${esc(t.label)}</span>`).join("")}</span>` : "");
   const notWired = (what) => `data-toast="${esc(what)}: not connected to a scheduling or messaging system yet"`;
   const RANK = { today: 0, alert: 1, watch: 2, ok: 3 };
-  const GROUP = { today: "Act today", alert: "Alert", watch: "Keep an eye on", ok: "On track" };
+  const GROUP = { today: "Act today", alert: "Watch", watch: "Watch", ok: "On track" };
 
   // ------------------------------------------------------------------ global states (one skeleton, one error box, one empty box)
   // Skeleton: rows shaped like the content they stand in for. kind "today" adds the hero card on top.
@@ -282,18 +282,19 @@
 
   // ------------------------------------------------------------------ Patients
   async function renderPatients(arg) {
-    const st = ["today", "alert", "watch", "ok"].includes(arg) ? arg : "all";
+    const st = arg === "alert" ? "watch" : ["today", "watch", "ok"].includes(arg) ? arg : "all";
+    const inSt = (x, k) => (k === "watch" ? x.tri === "watch" || x.tri === "alert" : x.tri === k);
     const head = `<header class="page-head"><div><h1>Patients</h1><p class="sub">Everyone across the four programs, who needs a person first.</p></div></header>`;
     const f = forced("patients", "Patients appear here once a program sends its first list.", "No patients yet");
     if (f) return head + f;
     const { rows: items, failed } = await once("roster", A.roster);
     sortRows(items);
     const q = ui.q.trim().toLowerCase();
-    const shown = items.filter((x) => (ui.filter === "all" || x.mod === ui.filter) && (st === "all" || x.tri === st) && (!q || (x.name + " " + x.headline + " " + x.id + " " + x.tags.map((t) => t.label).join(" ")).toLowerCase().includes(q)));
+    const shown = items.filter((x) => (ui.filter === "all" || x.mod === ui.filter) && (st === "all" || inSt(x, st)) && (!q || (x.name + " " + x.headline + " " + x.id + " " + x.tags.map((t) => t.label).join(" ")).toLowerCase().includes(q)));
     const modPills = `<button type="button" class="fpill" aria-pressed="${ui.filter === "all"}" data-filter="all">All <span class="cnt">${items.length}</span></button>` + ALL.map((m) => `<button type="button" class="fpill" aria-pressed="${ui.filter === m}" data-filter="${m}"><span class="dot m-${m}" aria-hidden="true"></span>${MODS[m].name} <span class="cnt">${items.filter((x) => x.mod === m).length}</span></button>`).join("");
-    const stOpts = ["all", "today", "alert", "watch", "ok"].map((k) => `<option value="${k}"${st === k ? " selected" : ""}>${k === "all" ? "Any status" : GROUP[k]} (${k === "all" ? items.length : items.filter((x) => x.tri === k).length})</option>`).join("");
+    const stOpts = ["all", "today", "watch", "ok"].map((k) => `<option value="${k}"${st === k ? " selected" : ""}>${k === "all" ? "Any status" : GROUP[k]} (${k === "all" ? items.length : items.filter((x) => inSt(x, k)).length})</option>`).join("");
     const body = shown.slice(0, ui.limit).map((it) => `<tr data-pid="${esc(it.id)}"><td class="st">${statusPill(it.tri)}</td><td class="nm"><a href="#p-${esc(it.id)}">${esc(it.name || it.id)}</a><div class="pid mono">${esc(it.id)}</div></td>
-      <td class="pg"><span class="r-mod"><span class="dot m-${it.mod}" aria-hidden="true"></span>${MODS[it.mod].name}</span></td><td class="hl">${esc(it.headline || "Not recorded")}${it.tags.length ? `<div class="hl-tags">${tagsHtml(it.tags.slice(0, 2))}</div>` : ""}</td><td class="dt">${it.updatedAt ? esc(fmtDate(it.updatedAt)) : "Not recorded"}</td></tr>`).join("");
+      <td class="pg"><span class="r-mod"><span class="dot m-${it.mod}" aria-hidden="true"></span>${MODS[it.mod].name}</span></td><td class="hl">${esc(it.headline || "Not recorded")}</td><td class="dt">${it.updatedAt ? esc(fmtDate(it.updatedAt)) : "Not recorded"}</td></tr>`).join("");
     const more = shown.length > ui.limit ? `<button type="button" class="r-more" data-more>Show ${Math.min(60, shown.length - ui.limit)} more of ${shown.length - ui.limit}</button>` : "";
     return `${head}${failBanners(failed)}${sourceBanner(ALL)}
       <div class="toolbar"><label class="search"><span class="sr-only">Search patients</span><input id="search" type="search" placeholder="Search name, ID, signal" value="${esc(ui.q)}" autocomplete="off"></label>
@@ -826,7 +827,7 @@
     const c1h = A.c1Headline || ((h) => h);
     // Patient cell: age/sex/cancer first, ID second (module IDs lead the display name).
     const who = (it) => { const d = A.demoName ? A.demoName(it.name) : it.name, p = d.split(" · "); return d !== it.name ? [p.slice(0, -1).join(" · "), p[p.length - 1]] : [it.name, it.id]; };
-    const careRow = (it, tab, hl) => { const [nm, sub] = who(it); return `<tr class="row-link" data-href="#p-${esc(it.id)}.${tab}" role="link" tabindex="0" aria-label="${esc(nm)}: open ${tab === "c3" ? "rough weeks" : "hospital risk"}"><td>${statusPill(it.tri)}</td><td class="nm"><b>${esc(nm)}</b><div class="small muted mono">${esc(sub)}</div></td><td class="hl">${esc(hl)}${it.tags && it.tags.length ? `<div style="margin-top:6px">${tagsHtml(it.tags)}</div>` : ""}</td></tr>`; };
+    const careRow = (it, tab, hl) => { const [nm, sub] = who(it); return `<tr class="row-link" data-href="#p-${esc(it.id)}.${tab}" role="link" tabindex="0" aria-label="${esc(nm)}: open ${tab === "c3" ? "rough weeks" : "hospital risk"}"><td>${statusPill(it.tri)}</td><td class="nm"><b>${esc(nm)}</b><div class="small muted mono">${esc(sub)}</div></td><td class="hl">${esc(hl)}</td></tr>`; };
     const thead = `<thead><tr><th>Status</th><th>Patient</th><th>Why</th></tr></thead>`;
     // Next 7 days (C3 wearables) above the 12-month C1 list: same outcome, different horizon.
     const soon = rows.filter((x) => x.mod === "c3" && /ER or hospital risk/i.test(x.headline || "")).sort((a, b) => (a.prio ?? 0) - (b.prio ?? 0) || RANK[a.tri] - RANK[b.tri]);

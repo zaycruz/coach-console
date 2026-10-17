@@ -112,7 +112,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("C1, C3, C4, C5 chips say live", src.length === 4 && src.every((c) => c.includes("s-live")), src.join(" | "));
   for (const m of ["c3", "c4", "c1"]) {
     await page.locator(`[data-filter="${m}"]`).click(); await settle(page);
-    ok(`${m} rows carry tags on Patients`, (await page.locator(`tr[data-pid^="${m}-"] .tag`).count()) > 0);
+    ok(`${m} rows carry a reason and no repeated tag chips on Patients`, (await page.locator(`tr[data-pid^="${m}-"] td.hl`).first().innerText()).trim().length > 0 && (await page.locator(`tr[data-pid^="${m}-"] .tag`).count()) === 0);
   }
   await page.locator(`[data-filter="all"]`).click();
   await page.goto(`${B}/#today`); await settle(page);
