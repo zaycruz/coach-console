@@ -150,7 +150,9 @@
   function rosterRow(mod, x) {
     let tags = Array.isArray(x.tags) ? x.tags : null;
     if (!tags) { tags = deriveTags(mod, x); if (mod === "c3" || mod === "c1") note(mod, "tags[] on roster rows (derived from the headline)"); }
-    return { id: x.survivorId, mod, name: patientName(x.displayName), status: x.status || "ok", tri: triage(mod, x.status, mod === "c3" && c3Urgent(x)), headline: x.headline || "", tags: tags.slice(0, 4), updatedAt: x.updatedAt };
+    // A C5 call flag older than 30 days is an alert to review, not a same-day call.
+    const stale = mod === "c5" && !(Date.now() - Date.parse(x.updatedAt) < 30 * 864e5);
+    return { id: x.survivorId, mod, name: patientName(x.displayName), status: x.status || "ok", tri: stale && x.status === "alert" ? "alert" : triage(mod, x.status, mod === "c3" && c3Urgent(x)), headline: x.headline || "", tags: tags.slice(0, 4), updatedAt: x.updatedAt };
   }
   const patientName = (n) => n || "Unnamed patient";
 

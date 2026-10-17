@@ -3,7 +3,7 @@
  *   Each row: { id, mod, name, status, tri, horizon: "today"|"week", rank, reason (<= 90 chars, clinical), data
  *   ("Real survey data (MEPS)" | "Synthetic"), language, interpreter, headline, updatedAt }.
  * Who is on it, worst first:
- *   today: C5 safety lines from labelled calls (medical, distress, social) · C3 urgent 7-day ER/hospital risk ·
+ *   today: C5 safety lines under 30 days old (medical, distress, social), incl. Clef's demo call replayed today · C3 urgent 7-day ER/hospital risk ·
  *          C4 frequent lows (4%+ below 70) or very high sugar (average 250+, or under 10% in range) · C1 care-team-today
  *   week:  C1 highest next-year ER/hospital risk (alert tier, top 5) · C3 rough-patch alerts · C4 other alerts
  * The module APIs stay the source; this only picks rows and writes one short reason from their own fields.
@@ -27,7 +27,7 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
   const mod = (m: "c1" | "c3" | "c4") => ({ c1: env.C1, c3: env.C3, c4: env.C4 }[m]);
   const list = (m: "c1" | "c3" | "c4") => get(mod(m), `https://${m}/api/${m}/survivors`).then((x) => (Array.isArray(x) ? (x as Rec[]) : []));
   const detail = (m: "c1" | "c3" | "c4", id: string) => get(mod(m), `https://${m}/api/${m}/survivors/${encodeURIComponent(id)}`).then((x) => (isRec(x) ? x : null));
-  const [l1, l3, l4, calls] = await Promise.all([list("c1"), list("c3"), list("c4"), c5Calls().catch(() => [])]);
+  const [l1, l3, l4, calls, demo] = await Promise.all([list("c1"), list("c3"), list("c4"), c5Calls().catch(() => []), get(env.C5, "https://coach-copilot/api/c5/demo")]);
   const rows: Rec[] = [];
   const failed: string[] = [];
   if (!l1.length) failed.push("c1"); if (!l3.length) failed.push("c3"); if (!l4.length) failed.push("c4");
@@ -43,7 +43,20 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
   }
   const langOf5 = new Map(callList.map((c) => [String(c.survivorId), lang(c.language)]));
   const KIND: Record<string, [string, number]> = { medical: ["Medical concern", 960], distress: ["Distress", 950], social: ["Social need", 900] };
+  // A call flag is today's work only while it is fresh (30 days). Older flags stay on Patients as alerts, not here.
+  // Clef's demo safety call is replayed through the live engine today, so its red banner counts as today's.
+  const FRESH_MS = 30 * 864e5, now = Date.now();
+  const dm = isRec(demo) ? demo : null, dBanner = dm && Array.isArray(dm.banners) ? (dm.banners as Rec[]).find((b) => b.level === "red") : null;
+  if (dm && dBanner) {
+    const pid = String(dm.survivorId), kind = String(dBanner.flag || "medical"), [label, rank] = KIND[kind] || KIND.medical;
+    const words = String(dBanner.quote || "").replace(/\s+/g, " ").replace(/^(oh,?\s+)?before you go,?\s+(and\s+)?/i, "").trim();
+    const c = callList.find((x) => x.callId === dm.callId) || {};
+    rows.push({ id: pid, mod: "c5", name: String(c.participantName || pid), status: "alert", headline: `${label} on call ${c.callNumber || ""}, replayed through Clef today`, updatedAt: dm.playedAt,
+      horizon: "today", rank, reason: cut(`${label}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: lang(dm.language) || langOf5.get(pid) || "", flaggedAt: dm.playedAt });
+  }
   for (const [pid, c] of byP) {
+    if (dm && pid === String(dm.survivorId)) continue;
+    if (!(now - Date.parse(String(c.date)) < FRESH_MS)) continue;
     const f = (c.flags as Rec[])[0];
     const [label, rank] = KIND[String(f.kind)] || KIND.medical;
     const words = String(f.text || "").replace(/\s+/g, " ").replace(/^(oh,?\s+)?before you go,?\s+(and\s+)?/i, "").trim();

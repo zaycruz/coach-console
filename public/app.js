@@ -153,7 +153,9 @@
     // Fresh safety flags from calls saved here go first; hand-offs leave the queue.
     const fresh = roster.filter((r) => r.concern && r.concern.fresh && !r.handoff && !queue.some((x) => x.id === r.id)).map((r) => ({ ...r, horizon: "today", reason: r.reason, data: "", language: "" }));
     queue = [...fresh, ...queue].filter((x) => !(byId.get(x.id) || {}).handoff);
-    const now = queue.filter((x) => x.horizon === "today"), week = queue.filter((x) => x.horizon !== "today");
+    // At most 8 on Call today (worst first); the rest are one click away on Patients.
+    const TODAY_MAX = 8;
+    const nowAll = queue.filter((x) => x.horizon === "today"), now = nowAll.slice(0, TODAY_MAX), week = queue.filter((x) => x.horizon !== "today");
     const meta = (it) => { const r = byId.get(it.id) || {}; return [r.concern && r.concern.fresh ? "flagged on a call logged here" : "", r.lastSaved && `last call ${A.ago(r.lastSaved.at)} by ${r.lastSaved.coach}`].filter(Boolean).join(" · "); };
     const row = (it) => `<div class="t-row" data-pid="${esc(it.id)}" data-mod="${it.mod}"><span class="sdot ${it.horizon === "today" ? "today" : "alert"}" aria-hidden="true"></span>
       <div class="who"><a href="#p-${esc(it.id)}">${esc(String(it.name).split(" · ")[0])}</a><span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span>${dataChip(it.mod)}${langChip(it.language)}
@@ -162,14 +164,15 @@
     const per = (rows) => ALL.map((m) => [m, rows.filter((x) => x.mod === m).length]).filter(([, n]) => n).map(([m, n]) => `<span class="r-mod"><span class="dot m-${m}"></span>${MODS[m].name} ${n}</span>`).join(" ");
     const hToday = handoffs.filter((h) => sameDay(h.at));
     const strip = `<div class="stat-strip">
-      <div><span class="n ${now.length ? "alert" : ""}">${now.length}</span><span class="l">Call today</span></div>
+      <div><span class="n ${nowAll.length ? "alert" : ""}">${nowAll.length}</span><span class="l">Call today</span></div>
       <div><span class="n">${week.length}</span><span class="l">This week</span></div>
       <a href="#inbox"><span class="n">${hToday.length}</span><span class="l">Handed off today</span></a>
       <a href="#patients"><span class="n">${roster.length}</span><span class="l">All patients</span></a></div>`;
     const handed = hToday.length ? `<details class="more"><summary>Handed off today (${hToday.length})</summary><div class="today-list">${hToday.map(handoffRow).join("")}</div><p class="small" style="margin-top:8px"><a href="#inbox">Care-team inbox, every hand-off →</a></p></details>` : "";
     return `${head}${failBanners(failed)}${sourceBanner(ALL)}${COHORTS}${strip}
-      <section class="stack-s" id="today-now"><h2>Call today · ${now.length}</h2><p class="small muted">Safety lines from calls, urgent 7-day ER risk, frequent lows or very high sugar. ${per(now)}</p>
-        <div class="today-list roster-today" data-count="${now.length}">${now.map(row).join("") || `<div class="live-empty">Nobody needs a call today.</div>`}</div></section>
+      <section class="stack-s" id="today-now"><h2>Call today · ${nowAll.length}</h2><p class="small muted">Safety lines from calls, urgent 7-day ER risk, frequent lows or very high sugar. ${per(now)}</p>
+        <div class="today-list roster-today" data-count="${now.length}">${now.map(row).join("") || `<div class="live-empty">Nobody needs a call today.</div>`}</div>
+        ${nowAll.length > now.length ? `<a href="#patients">${nowAll.length - now.length} more on the Patients list →</a>` : ""}</section>
       ${week.length ? `<section class="stack-s" id="today-week"><h2>This week · ${week.length}</h2><p class="small muted">Highest next-year ER/hospital risk, rough weeks ahead, glucose off target. ${per(week)}</p>
         <div class="today-list">${week.map(row).join("")}</div></section>` : ""}${handed}`;
   }
