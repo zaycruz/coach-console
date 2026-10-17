@@ -970,3 +970,8 @@ button.more-link { align-self: flex-start; padding-left: 0; }
 .chart .hover-guide[hidden] { display: none; }
 .chart .hg-line { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 2 3; pointer-events: none; }
 .chart .hg-dot { stroke: var(--surface); stroke-width: 2; pointer-events: none; }
+/* phone: the single-program tile stacks without wrapping, so it never grows sideways */
+@media (max-width: 760px) {
+  .tiles.one .tile { flex-wrap: nowrap; }
+  .tiles.one .tile > * { flex: 0 0 auto; max-width: none; }
+}
