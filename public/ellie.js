@@ -173,7 +173,7 @@
   }
   function paintInsight(el, x) {
     const top = x.fallback ? `<span class="ei-src">From the program’s own summary</span>` : `<span class="ai-label">AI · check before acting</span>`;
-    el.innerHTML = `<div class="ei-top"><b>Ellie’s insight</b>${top}</div><p class="ei-line">${esc(x.headline)}</p>${x.bullets && x.bullets.length ? `<ul class="ei-list">${x.bullets.map((b) => `<li>${esc(b)}</li>`).join("")}</ul>` : ""}`;
+    el.innerHTML = `<div class="ei-top"><b>AI Insight</b>${top}</div><p class="ei-line">${esc(x.headline)}</p>${x.bullets && x.bullets.length ? `<ul class="ei-list">${x.bullets.map((b) => `<li>${esc(b)}</li>`).join("")}</ul>` : ""}`;
   }
   // One request per patient+data version, shared by the chart and the prefetch below.
   const inflight = new Map();
@@ -204,7 +204,7 @@
   async function fillInsight(el) {
     const pid = el.dataset.pid;
     el.dataset.state = "loading";
-    el.innerHTML = `<div class="ei-top"><b>Ellie’s insight</b><span class="ei-src">reading the chart…</span></div><div class="ei-skel" aria-hidden="true"><i></i><i></i><i></i></div>`;
+    el.innerHTML = `<div class="ei-top"><b>AI Insight</b><span class="ei-src">reading the chart…</span></div><div class="ei-skel" aria-hidden="true"><i></i><i></i><i></i></div>`;
     let p = null;
     try { const cur = P.current(); p = cur && cur.id === pid ? cur : await once("p:" + pid, () => A.patient(pid)); }
     catch (e) { el.dataset.state = "error"; el.innerHTML = ""; return; }

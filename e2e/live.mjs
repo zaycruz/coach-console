@@ -191,7 +191,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await page.goto(`${B}/#p-${ids.c3}`); await settle(page);
   await page.waitForFunction(() => { const e = document.querySelector(".ellie-insight"); return e && /check before acting|program’s own (summary|record)/i.test(e.textContent); }, null, { timeout: 60000 }).catch(() => {});
   const ins = await page.locator(".ellie-insight").innerText().catch(() => "");
-  ok("Health chart shows Ellie's Insight, short and labelled", /check before acting|own (summary|record)/i.test(ins) && ins.split(/\s+/).length < 90, ins.replace(/\s+/g, " ").slice(0, 200));
+  ok("Health chart shows AI Insight, short and labelled", /^AI Insight/.test(ins.trim()) && /check before acting|own (summary|record)/i.test(ins) && ins.split(/\s+/).length < 90, ins.replace(/\s+/g, " ").slice(0, 200));
   ok("Health chart has no raw dump (that lives in the program tab)", (await page.locator("details#raw").count()) === 0);
   await shot(page, "health-chart-insight_1280.png");
 
