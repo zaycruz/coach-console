@@ -175,6 +175,32 @@
     const top = x.fallback ? `<span class="ei-src">From the program’s own summary</span>` : `<span class="ai-label">AI · check before acting</span>`;
     el.innerHTML = `<div class="ei-top"><b>Ellie’s insight</b>${top}</div><p class="ei-line">${esc(x.headline)}</p>${x.bullets && x.bullets.length ? `<ul class="ei-list">${x.bullets.map((b) => `<li>${esc(b)}</li>`).join("")}</ul>` : ""}`;
   }
+  // One request per patient+data version, shared by the chart and the prefetch below.
+  const inflight = new Map();
+  function getInsight(p) {
+    const cp = compactPatient(p), key = `ellie-insight:${p.id}:${hash(JSON.stringify(cp))}`;
+    const have = insights.get(key) || lsGet(key);
+    if (have) return Promise.resolve(have);
+    if (!inflight.has(key)) inflight.set(key, P.post("/api/insight", { patient: cp })
+      .then((r) => { const x = { headline: r.headline, bullets: r.bullets || [] }; lsSet(key, x); insights.set(key, x); return x; })
+      .catch(() => fallbackInsight(p)).finally(() => inflight.delete(key)));
+    return inflight.get(key);
+  }
+  // Prefetch: while Today is on screen, warm the insight for the patients it lists (one at a time, idle),
+  // so the chart a clinician opens from Today shows its insight at once.
+  async function prefetchToday() {
+    if (SNAP || !/^#?(today)?$/.test(location.hash)) return;
+    try {
+      const { rows } = await once("roster", A.roster);
+      for (const r of rows.filter((x) => x.tri === "today").slice(0, 8)) {
+        if (!/^#?(today)?$/.test(location.hash)) return;
+        const p = await once("p:" + r.id, () => A.patient(r.id)).catch(() => null);
+        if (p) await getInsight(p);
+      }
+    } catch (e) { /* best effort */ }
+  }
+  setTimeout(prefetchToday, 2500);
+  window.addEventListener("hashchange", () => setTimeout(prefetchToday, 2500));
   async function fillInsight(el) {
     const pid = el.dataset.pid;
     el.dataset.state = "loading";
@@ -183,13 +209,7 @@
     try { const cur = P.current(); p = cur && cur.id === pid ? cur : await once("p:" + pid, () => A.patient(pid)); }
     catch (e) { el.dataset.state = "error"; el.innerHTML = ""; return; }
     if (SNAP) { paintInsight(el, fallbackInsight(p)); el.dataset.state = "fallback"; return; }
-    const cp = compactPatient(p), key = `ellie-insight:${pid}:${hash(JSON.stringify(cp))}`;
-    let x = insights.get(key) || lsGet(key);
-    if (!x) {
-      try { const r = await P.post("/api/insight", { patient: cp }); x = { headline: r.headline, bullets: r.bullets || [] }; lsSet(key, x); }
-      catch (e) { x = fallbackInsight(p); }
-    }
-    insights.set(key, x);
+    const x = await getInsight(p);
     if (!el.isConnected) return;
     paintInsight(el, x); el.dataset.state = x.fallback ? "fallback" : "ai";
   }

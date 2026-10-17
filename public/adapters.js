@@ -254,19 +254,19 @@
     };
   }
 
-  // ---- C5 Coach's Copilot
+  // ---- C5 Coach's Clef
   function c5View(d) {
     const calls = (d.charts && d.charts.calls) || [];
     const flagLines = calls.reduce((s, c) => s + (c.flags ? c.flags.length : 0), 0);
     const scored = [...calls].reverse().filter((c) => c.score != null);
     const recs = (d.recommendations || []).map((r) => ({ title: r.action, text: r.why || "", tag: r.urgency, tone: r.urgency === "today" ? "risk" : "info" }));
-    const panels = [{ id: "calls", title: "Calls", lead: "Supervisor-labelled. Open a call to run the live Copilot on it.", calls, charts: scored.length > 1 ? [{ x: scored.map((c) => "Call " + c.callNumber), series: [{ values: scored.map((c) => c.score), color: "var(--m-c5)", label: "Coach score", dots: true }], refs: [{ y: 60, label: "target 60" }], min: 0, max: 100, h: 150, title: "Coach score by call", note: "out of 100" }] : [], advice: recs }];
+    const panels = [{ id: "calls", title: "Calls", lead: "Supervisor-labelled. Open a call to run Clef on it.", calls, charts: scored.length > 1 ? [{ x: scored.map((c) => "Call " + c.callNumber), series: [{ values: scored.map((c) => c.score), color: "var(--m-c5)", label: "Coach score", dots: true }], refs: [{ y: 60, label: "target 60" }], min: 0, max: 100, h: 150, title: "Coach score by call", note: "out of 100" }] : [], advice: recs }];
     const flags = (d.evidence || []).filter((e) => String(e.kind || "").startsWith("flag"));
     if (flags.length) panels.push({ id: "concerns", title: "Lines that need a person", lead: "From the supervisor’s labels.", list: flags.map((e) => e.text), charts: [], advice: [] });
     return {
       tags: Array.isArray(d.tags) ? d.tags : [flagLines ? { label: flagLines === 1 ? "1 line needs a person" : `${flagLines} lines need a person`, tone: "risk" } : null, calls[0] && calls[0].score != null ? { label: `Score ${calls[0].score}`, tone: calls[0].score < 60 ? "warn" : "good" } : null, { label: `${calls.length} call${calls.length === 1 ? "" : "s"}`, tone: "info" }].filter(Boolean),
       kpis: [calls[0] && { value: `${calls[0].score ?? "–"}`, label: "Coach score, latest call", sub: "target 60 or more", good: calls[0].score == null ? null : calls[0].score >= 60 }, { value: String(flagLines), label: "Lines that need a person", sub: "supervisor labels", good: flagLines === 0 }, { value: String(calls.length), label: "Calls on file", sub: "", good: null }].filter(Boolean),
-      panels, evidence: null, footnote: "Calls and labels from the Copilot’s supervisor-labelled set. Synthetic patients.",
+      panels, evidence: null, footnote: "Calls and labels from Clef’s supervisor-labelled set. Synthetic patients.",
     };
   }
 

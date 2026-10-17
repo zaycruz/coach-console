@@ -266,8 +266,8 @@
 
   // ------------------------------------------------------------------ Calls
   async function renderCalls() {
-    const head = `<header class="page-head"><div><h1>Calls</h1><p class="sub">Supervisor-labelled coaching calls, concerns first. Open one to run the live Copilot and compare it with the supervisor.</p></div>
-      <a class="btn" href="${COPILOT_URL}" target="_blank" rel="noopener">Live Copilot ↗</a></header>`;
+    const head = `<header class="page-head"><div><h1>Calls</h1><p class="sub">Supervisor-labelled coaching calls, concerns first. Open one to run Clef and compare it with the supervisor.</p></div>
+      <a class="btn" href="${COPILOT_URL}" target="_blank" rel="noopener">Clef app ↗</a></header>`;
     const f = forced("calls", "No calls reviewed yet.");
     if (f) return head + f;
     let calls;
@@ -277,15 +277,15 @@
     const demos = [flagged.find((c) => c.language === "English"), flagged.find((c) => c.language === "Spanish"), [...calls].filter((c) => !c.flags.length && c.score != null).sort((a, b) => b.score - a.score)[0]]
       .filter((c, i, a) => c && a.indexOf(c) === i);
     const why = (c) => c.flags.length ? `${c.flags[0].kind} concern at ${c.flags[0].t}` : `coach score ${c.score}/100, no concerns`;
-    const demo = demos.length ? `<section class="card stack demo-calls"><div class="sec-head"><h2>Play a call as if live</h2><p class="small muted">Replays a recorded call one line every 1.5 s through the live-call screen. The Copilot tags each line, and cues and alerts appear as they would on a real call.</p></div>
+    const demo = demos.length ? `<section class="card stack demo-calls"><div class="sec-head"><h2>Play a call as if live</h2><p class="small muted">Replays a recorded call one line every 1.5 s through the live-call screen. Clef tags each line, and cues and alerts appear as they would on a real call.</p></div>
       ${demos.map((c) => `<div class="demo-row"><span><b>${esc(c.participantName)}</b> · call ${c.callNumber} · ${esc(c.language)}<span class="small muted" style="display:block">${esc(why(c))} · ${c.lines} lines · coach ${esc(c.coach.name)}</span></span>
         ${SNAP ? `<a class="btn" href="${LIVE_URL}/#call-${esc(c.callId)}" target="_blank" rel="noopener">Open on the live site ↗</a>` : `<button class="btn primary" data-play="${esc(c.callId)}">▶ Play as live</button>`}<a class="btn" href="#call-${esc(c.callId)}">Call record</a></div>`).join("")}</section>` : "";
     return `${head}${sourceBanner(["c5"])}${demo}<div class="calls-list">${calls.map((c) => callRow(c, true)).join("")}</div>`;
   }
 
-  /* Call review: supervisor labels first; "Run live Copilot" sends each line through /api/c5/turn
+  /* Call review: supervisor labels first; "Run Clef" sends each line through /api/c5/turn
      (Clef), low-confidence lines through /api/c5/review (GLM), and cue triggers through /api/c5/cue,
-     using the same rules as the Copilot's own screen. */
+     using the same rules as Clef's own screen. */
   const FAMILY = { "open question": "q", "closed question": "q", "simple reflection": "r", "complex reflection": "r", affirm: "s", "seek collaboration": "s", "emphasize autonomy": "s", "ask permission": "s", "give information": "i", persuade: "x", confront: "x", other: "o" };
   const FLAG_TEXT = { medical: "Medical concern: tell the care team today", distress: "Emotional distress: check in and connect to support today", social: "Unmet basic need: connect to a navigator today", missed_concern: "Coach did not route a concern the patient raised", medical_advice: "Coach gave medical advice outside their role" };
   let live = null;
@@ -315,14 +315,14 @@
     const supTag = sup ? `<span class="tag sup" title="Supervisor label">${esc(sup)}</span>` : "";
     const needs = l.supervisor.needsHuman ? `<span class="tag flag" title="Supervisor label">▲ needs a person</span>` : "";
     let liveTag = "";
-    if (l.pending) liveTag = `<span class="tag pending">Copilot…</span>`;
+    if (l.pending) liveTag = `<span class="tag pending">Clef…</span>`;
     else if (l.live && l.live.error) liveTag = `<span class="tag bad" title="${esc(l.live.error)}">model error</span>`;
     else if (l.live && l.live.tag) {
       const want = l.speaker === "coach" ? l.supervisor.move : l.supervisor.talk;
       const ok = want ? l.live.tag === want : null;
-      liveTag = `<span class="tag live ${ok === false ? "miss" : ""}" title="Copilot, confidence ${Math.round((l.live.confidence || 0) * 100)}%">${ok === true ? "✓ " : ok === false ? "≠ " : ""}Copilot: ${esc(l.live.tag)}${l.speaker === "participant" ? " talk" : ""}${l.live.reviewed ? " · GLM-checked" : ""}</span>`;
+      liveTag = `<span class="tag live ${ok === false ? "miss" : ""}" title="Clef, confidence ${Math.round((l.live.confidence || 0) * 100)}%">${ok === true ? "✓ " : ok === false ? "≠ " : ""}Clef: ${esc(l.live.tag)}${l.speaker === "participant" ? " talk" : ""}${l.live.reviewed ? " · GLM-checked" : ""}</span>`;
     }
-    const lf = l.live && l.live.flag && l.live.flag !== "none" ? `<span class="tag flag live-flag">▲ Copilot: ${esc(l.live.flag.replace("_", " "))}</span>` : "";
+    const lf = l.live && l.live.flag && l.live.flag !== "none" ? `<span class="tag flag live-flag">▲ Clef: ${esc(l.live.flag.replace("_", " "))}</span>` : "";
     const cue = l.cue ? `<p class="cue"><b>Cue:</b> ${esc(l.cue.cue)}${l.cue.say ? ` <q>${esc(l.cue.say)}</q>` : ""}<span class="why">${esc(l.cue.trigger)}</span></p>` : "";
     const flagged = l.supervisor.needsHuman || lf;
     return `<div class="line ${l.speaker} ${flagged ? "flagged" : ""}" id="line-${l.n}"><span class="t">${esc(l.t)}</span><div><span class="who">${l.speaker === "coach" ? "Coach " + esc(coachName) : "Patient"}</span><p>${esc(l.text)}</p><div class="tags">${supTag}${needs}${liveTag}${lf}</div>${cue}</div></div>`;
@@ -336,21 +336,34 @@
     const done = mine ? live.done : 0;
     const names = { reflectionsPerQuestion: "Reflections per question", complexReflectionPct: "Complex reflections %", openQuestionPct: "Open questions %", miConsistent: "Supportive vs persuade/confront" };
     const parts = Object.entries(c.scoreParts).map(([k, p]) => `<div class="part"><span>${names[k]} <span class="muted mono">${esc(p.value ?? "–")} · target ${esc(p.target)}</span></span><span class="mono">${p.points}/${p.max}</span><span class="track"><span class="fill" style="width:${(100 * p.points) / p.max}%"></span></span></div>`).join("");
-    const liveBtn = SNAP ? `<a class="btn primary" href="${LIVE_URL}/#call-${esc(c.callId)}" target="_blank" rel="noopener">Run live Copilot ↗</a><p class="small muted">This shared copy can’t call the model. The live console can.</p>`
-      : `<button class="btn primary" data-run ${mine && live.running ? "disabled" : ""}>${mine && live.running ? `Tagging ${done} of ${c.lines.length}…` : mine && done ? "Run again" : "Run live Copilot"}</button>`;
+    const liveBtn = SNAP ? `<a class="btn primary" href="${LIVE_URL}/#call-${esc(c.callId)}" target="_blank" rel="noopener">Run Clef ↗</a><p class="small muted">This shared copy can’t call the model. The live console can.</p>`
+      : `<button class="btn primary" data-run ${mine && live.running ? "disabled" : ""}>${mine && live.running ? `Tagging ${done} of ${c.lines.length}…` : mine && done ? "Run again" : "Run Clef"}</button>`;
     return `<aside class="call-side">
       <div class="card stack"><p class="eyebrow">Coach score</p>
-        <div class="score-pair"><div><span class="n">${c.score ?? "–"}</span><span class="l">from supervisor labels</span></div><div><span class="n" id="live-score">${ls ?? "–"}</span><span class="l">from Copilot tags</span></div></div>${parts}
-        <p class="small muted">MITI-style targets, same arithmetic as the Copilot screen.</p></div>
-      <div class="card stack"><p class="eyebrow">Copilot vs supervisor</p>${liveBtn}
+        <div class="score-pair"><div><span class="n">${c.score ?? "–"}</span><span class="l">from supervisor labels</span></div><div><span class="n" id="live-score">${ls ?? "–"}</span><span class="l">from Clef tags</span></div></div>${parts}
+        <p class="small muted">MITI-style targets, same arithmetic as Clef screen.</p></div>
+      <div class="card stack"><p class="eyebrow">Clef vs supervisor</p>${liveBtn}
         ${a.mn || a.tn ? `<div class="agree" id="agree"><span><b>${pct(a.move)}</b> coach moves (${a.mn} lines)</span><span><b>${pct(a.talk)}</b> patient talk (${a.tn})</span><span><b>${pct(a.flag)}</b> needs-a-person calls (${a.fn})</span></div><p class="small muted">Experts agree with each other about 84% of the time on AnnoMI.</p>` : `<p class="small muted">Run the model to see how closely it matches the supervisor, line by line.</p>`}
-        <a class="small" href="${COPILOT_URL}" target="_blank" rel="noopener">Tag a spoken call in the live Copilot ↗</a></div>
+        <a class="small" href="${COPILOT_URL}" target="_blank" rel="noopener">Tag a spoken call in Clef ↗</a></div>
     </aside>`;
   }
 
+  // Flags are compact rows. Patient safety (medical, distress, basic need) is red and says what to do;
+  // coaching quality (missed concern, advice out of role) is amber: it is feedback for the coach, not an emergency.
+  const FLAG_KIND = { medical: ["safety", "Medical"], distress: ["safety", "Distress"], social: ["safety", "Basic need"], missed_concern: ["coaching", "Missed concern"], medical_advice: ["coaching", "Out of role"] };
   function flagBanner(x) {
-    return `<div class="banner alert" role="alert"><span class="b-ico">▲</span><div class="b-body"><b>${esc(FLAG_TEXT[x.kind] || "A person must follow up today")}</b> <span class="small">· ${x.src} · ${esc(x.t)}</span><p class="small">“${esc(x.text)}”</p>
-      <div class="b-actions"><button class="btn danger" ${notWired("Hand off to care team")}>Hand off to care team</button><a class="btn" href="#line-${x.line}">Jump to line ${x.line}</a></div></div></div>`;
+    const [cls, chip] = FLAG_KIND[x.kind] || ["safety", "Needs a person"];
+    return `<div class="flag-row f-${cls}" role="${cls === "safety" ? "alert" : "status"}" data-kind="${esc(x.kind || "")}"><span class="f-chip">${cls === "safety" ? "▲" : "◆"} ${chip}</span>
+      <div class="f-body"><b>${esc(FLAG_TEXT[x.kind] || "A person must follow up today")}</b><q>${esc(x.text)}</q></div>
+      <div class="f-act"><a href="#line-${x.line}" title="Jump to the line">Line ${x.line} · ${esc(x.t)}</a>${cls === "safety" ? `<button class="btn danger sm" ${notWired("Hand off to care team")}>Hand off</button>` : ""}<span class="f-src">${esc(x.src)}</span></div></div>`;
+  }
+  // Safety flags first, then coaching notes; one heading with the count.
+  function flagList(items) {
+    if (!items.length) return "";
+    const rank = (b) => (b.includes("f-safety") ? 0 : 1);
+    const html = items.sort((a, b) => rank(a) - rank(b));
+    const safe = html.filter((h) => h.includes("f-safety")).length;
+    return `<section class="flags" aria-label="Flags"><p class="eyebrow">${safe ? `${safe} need${safe === 1 ? "s" : ""} a person today` : ""}${safe && html.length > safe ? " · " : ""}${html.length > safe ? `${html.length - safe} coaching note${html.length - safe === 1 ? "" : "s"}` : ""}</p>${html.join("")}</section>`;
   }
 
   async function renderCall(id) {
@@ -362,13 +375,13 @@
     const lines = live && live.callId === c.callId ? live.lines : c.lines;
     const untagged = lines.filter((l) => !(l.speaker === "coach" ? l.supervisor.move : l.supervisor.talk) && !(l.live && l.live.tag)).length;
     // Supervisor labels say only "needs a person"; the kind comes from the live model when it has run.
-    const banners = c.flags.map((x) => flagBanner({ ...x, kind: null, src: "Supervisor" }))
-      .concat(lines.filter((l) => l.live && l.live.flag && l.live.flag !== "none").map((l) => flagBanner({ t: l.t, line: l.n, kind: l.live.flag, text: l.text, src: "Copilot" }))).join("");
+    const banners = flagList(c.flags.map((x) => flagBanner({ ...x, kind: null, src: "Supervisor" }))
+      .concat(lines.filter((l) => l.live && l.live.flag && l.live.flag !== "none").map((l) => flagBanner({ t: l.t, line: l.n, kind: l.live.flag, text: l.text, src: "Clef" }))));
     return `${back}<header class="page-head"><div><p class="eyebrow">${modChip("c5")}</p><h1>${esc(c.participantName)} · call ${c.callNumber}</h1>
       <div class="facts"><span>Coach <b>${esc(c.coach.name)}</b> (${esc(c.coach.role)})</span><span>Week <b>${c.week}</b></span><span><b>${fmtDate(c.date)}</b> ${esc(c.start)}</span><span>${esc(c.language)}</span><span>Goal <b>${esc(c.goalTopic)}</b></span><span><b>${c.durationMin}</b> min</span></div></div>
       <div class="row">${SNAP ? "" : `<button class="btn primary" data-play="${esc(c.callId)}">▶ Play as live</button>`}<a class="btn" href="#p-${esc(c.survivorId)}">Patient page</a></div></header>
       <div id="flagbox" class="stack">${banners}</div>
-      <div class="call-layout"><section class="card"><div class="sec-head"><h2>Transcript</h2><p class="small muted">${untagged ? `${untagged} of ${lines.length} lines have no tag yet: press Run live Copilot to fill them.` : `Every line is already tagged from the call record (grey tag).`} Run live Copilot to add the model’s tag beside it (outlined: ✓ agrees, ≠ differs).</p></div><div class="transcript scroll" id="transcript">${lines.map((l) => lineHtml(l, c.coach.name)).join("")}</div></section>
+      <div class="call-layout"><section class="card"><div class="sec-head"><h2>Transcript</h2><p class="small muted">${untagged ? `${untagged} of ${lines.length} lines have no tag yet: press Run Clef to fill them.` : `Every line is already tagged from the call record (grey tag).`} Run Clef to add the model’s tag beside it (outlined: ✓ agrees, ≠ differs).</p></div><div class="transcript scroll" id="transcript">${lines.map((l) => lineHtml(l, c.coach.name)).join("")}</div></section>
       <div id="side">${sidePanel(c)}</div></div>`;
   }
 
@@ -395,14 +408,14 @@
       L.done = i + 1;
       cueCheck(L, i, coachName);
       repaint(l);
-      if (l.live.flag && l.live.flag !== "none") { const box = document.getElementById("flagbox"); if (box && live === L) box.insertAdjacentHTML("beforeend", flagBanner({ t: l.t, line: l.n, kind: l.live.flag, text: l.text, src: "Copilot" })); }
+      if (l.live.flag && l.live.flag !== "none") { const box = document.getElementById("flagbox"); if (box && live === L) box.insertAdjacentHTML("beforeend", flagBanner({ t: l.t, line: l.n, kind: l.live.flag, text: l.text, src: "Clef" })); }
       side();
     }
     L.running = false;
     side();
   }
 
-  // Same trigger rules as the Copilot's own screen. Pure: used by call review and by live calls.
+  // Same trigger rules as Clef's own screen. Pure: used by call review and by live calls.
   function cueTrigger(lines, i, lastCueAt) {
     const l = lines[i];
     if (!l.live || !l.live.tag) return null;

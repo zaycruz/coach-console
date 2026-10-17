@@ -15,6 +15,8 @@
 import PEOPLE from "./c5-people.json";
 
 interface Fetcher { fetch(input: RequestInfo, init?: RequestInit): Promise<Response> }
+interface ExecutionContext { waitUntil(p: Promise<unknown>): void }
+declare const caches: { default: Cache };
 interface KV { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<void> }
 interface Ai { run(model: string, input: unknown): Promise<unknown> }
 interface Env { ASSETS: Fetcher; C1: Fetcher; C3: Fetcher; C4: Fetcher; C5: Fetcher; AI: Ai; CALLS: KV }
@@ -141,13 +143,20 @@ const C5_POST = new Set(["turn", "review", "cue"]);
 // ---------------------------------------------------------------- GLM (same model and call shape as coach-copilot)
 const GLM = "@cf/zai-org/glm-5.3-flash";
 const isRec = (x: unknown): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x);
+const FALLBACK_LLM = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 async function glm(env: Env, system: string, user: string, schema: Record<string, unknown>, maxTokens = 1_200) {
   const call = () => env.AI.run(GLM, {
     messages: [{ role: "system", content: system }, { role: "user", content: user }],
     max_completion_tokens: maxTokens, reasoning_effort: "low",
     response_format: { type: "json_schema", json_schema: schema },
   });
-  const raw = await call().catch(() => call());
+  // Workers AI rate-limits GLM per minute (error 3021) when the room is busy. Retry once after a pause, then
+  // fall back to Llama 3.3 70B with the same JSON schema, so Ellie, insights and recaps keep answering.
+  const fallback = () => env.AI.run(FALLBACK_LLM, {
+    messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: maxTokens,
+    response_format: { type: "json_schema", json_schema: (schema as { schema: unknown }).schema },
+  });
+  const raw = await call().catch(async (e) => { if (/3021|rate limit/i.test(String(e))) await new Promise((ok) => setTimeout(ok, 1_200)); return call(); }).catch(() => fallback()).catch(() => null);
   if (!isRec(raw)) return null;
   const choice = Array.isArray(raw.choices) && isRec(raw.choices[0]) ? raw.choices[0] : null;
   const text = choice && isRec(choice.message) ? choice.message.content : raw.response;
@@ -250,6 +259,21 @@ PATIENT ON SCREEN: ${clip(onScreen, 5_000)}
 PATIENTS NAMED IN THE QUESTION: ${clip(body.matches, 4_000)}
 ROSTER COUNTS: ${clip(body.counts, 300)} (${rows.length} patients searchable)
 ${memLines ? "RECENT PATIENTS (most recent list first):\n" + memLines + "\n" : ""}${convo ? "CONVERSATION SO FAR:\n" + convo + "\n" : ""}QUESTION: ${question}`;
+
+  // Fast path: the two ranking questions clinicians ask most are answered straight from the roster, no model
+  // call (6 s -> instant). Everything else goes through the tool loop.
+  const ql = question.toLowerCase();
+  const rank = /\b(who|which|top|most|highest|list|show)\b/.test(ql) && !/\b(why|what does|explain|mean)\b/.test(ql)
+    ? /hospital|\ber\b|admission|acute/.test(ql) ? "hospital" : /\b(call|attention|urgent|today|priorit)/.test(ql) && !/\bstart\b/.test(ql) ? "priority" : "" : "";
+  if (rank && rows.length) {
+    const res = searchPatients(rows, { sort: rank, ...(rank === "priority" ? { status: "alert" } : {}) });
+    const top = res.patients.slice(0, 5);
+    if (top.length) {
+      const lines = top.map((p, i) => `${i + 1}. ${shortId(p.id)} (${p.program}${p.hospitalRiskPct != null ? `, ${p.hospitalRiskPct}% ER/hospital` : ""}): ${p.headline.replace(/\s+/g, " ").slice(0, 90)}`);
+      const answer = (rank === "hospital" ? `Highest ER/hospital risk first (${res.total} patients have a score):\n` : `Who needs a person first (${res.total} flagged today or on alert):\n`) + lines.join("\n") + `\nSay "open the first one" or "start a call with them".`;
+      return json({ answer, kind: "patient", navigate: "", cites: top.map((p) => p.id), steps: ["search_patients"], model: "roster" });
+    }
+  }
 
   const results: string[] = [];
   const steps: string[] = [];
@@ -356,7 +380,7 @@ async function savedCalls(env: Env, req: Request, pid: string) {
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
     const parts = url.pathname.split("/").filter(Boolean);
     if (parts[0] !== "api") return env.ASSETS.fetch(req);
@@ -369,8 +393,14 @@ export default {
       if (mod === "stt" && req.method === "POST") return await (await import("./stt")).stt(env, req);
       if (mod === "calls" && rest.length === 1 && (req.method === "GET" || req.method === "POST")) return await savedCalls(env, req, rest[0]);
       if ((mod === "c1" || mod === "c3" || mod === "c4") && req.method === "GET") {
+        // Module data changes rarely: serve from this colo's edge cache for 60 s (first paint ~0.5 s faster).
+        const key = new Request(url.toString(), { method: "GET" });
+        const hit = await caches.default.match(key).catch(() => undefined);
+        if (hit) return hit;
         const r = await ({ c1: env.C1, c3: env.C3, c4: env.C4 }[mod] as Fetcher).fetch(`https://${mod}${url.pathname}${url.search}`);
-        return new Response(r.body, { status: r.status, headers: { "content-type": "application/json", "cache-control": "public, max-age=60" } });
+        const out = new Response(r.body, { status: r.status, headers: { "content-type": "application/json", "cache-control": "public, max-age=60" } });
+        if (r.ok) ctx.waitUntil(caches.default.put(key, out.clone()).catch(() => {}));
+        return out;
       }
       if (mod === "c5" && req.method === "POST" && C5_POST.has(rest[0]) && rest.length === 1) {
         // The Copilot rate-limits bursts (429): back off and retry twice so a replay or "Run live Copilot" doesn't drop tags.

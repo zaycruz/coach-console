@@ -421,3 +421,20 @@ kbd { font-family: var(--font-data); font-size: .76rem; padding: 0 5px; border: 
 .demo-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
 .demo-row > span:first-child { flex: 1; min-width: 200px; }
 @media (max-width: 640px) { .transcript.scroll { max-height: 55vh; } .mic-state .lvl { width: 80px; } }
+
+/* flags: compact rows; red = patient safety, amber = coaching note */
+.flags { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--line); background: var(--surface); }
+.flags > .eyebrow { margin: 0; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.flag-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 10px 14px; border-left: 4px solid var(--alert); background: var(--alert-soft); }
+.flag-row + .flag-row { border-top: 1px solid var(--line); }
+.flag-row.f-coaching { border-left-color: var(--watch); background: var(--watch-soft); }
+.flag-row .f-chip { font-size: .72rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; padding: 2px 8px; border: 1px solid currentColor; color: var(--alert-ink); white-space: nowrap; }
+.flag-row.f-coaching .f-chip { color: #7a4f0e; }
+.flag-row .f-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.flag-row .f-body b { font-size: .92rem; color: var(--ink); }
+.flag-row .f-body q { font-size: .85rem; color: var(--ink-2); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flag-row .f-act { display: flex; gap: 10px; align-items: center; font-size: .8rem; white-space: nowrap; }
+.flag-row .f-src { color: var(--ink-3); font-size: .72rem; }
+.btn.sm { padding: 4px 10px; font-size: .78rem; }
+@media (max-width: 760px) { .flag-row { grid-template-columns: 1fr; gap: 6px; } .flag-row .f-body q { white-space: normal; } }
+.flags:empty { display: none; }

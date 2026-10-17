@@ -1,4 +1,4 @@
-/* Live call for one patient (#live-<id>). Same model path as the Copilot's own screen: each line goes
+/* Live call for one patient (#live-<id>). Same model path as Clef's own screen: each line goes
    through /api/c5/turn (Clef), low-confidence lines through /api/c5/review (GLM), cue triggers through
    /api/c5/cue. Speech: the browser records short clips (MediaRecorder, any current browser), each clip
    goes to /api/stt (Workers AI Whisper) and comes back as one line for the current speaker. Typing works too.
@@ -83,14 +83,14 @@
     const s = call ? P.liveScore(call.lines) : null;
     const flags = call ? call.lines.filter((l) => l.live && l.live.flag && l.live.flag !== "none").length : 0;
     return `<div class="card stack"><p class="eyebrow">This call</p><div class="score-pair"><div><span class="n">${s ?? "–"}</span><span class="l">coach score (after 4 coach lines)</span></div><div><span class="n">${flags}</span><span class="l">lines need a person</span></div></div>
-      <p class="small muted">MITI-style targets, same arithmetic as the Copilot.</p></div>`;
+      <p class="small muted">MITI-style targets, same arithmetic as Clef.</p></div>`;
   }
 
   function replayBar() {
     const R = call.replay, c = R.c;
     const state = R.running ? `Line <b>${R.i}</b> of ${c.lines.length}` : R.i >= c.lines.length ? "Replay finished." : `Stopped at line ${R.i} of ${c.lines.length}.`;
     return `<div class="replay-bar" id="replaybar"><span class="rec-dot ${R.running ? "" : "off"}"></span><div class="stack-s" style="flex:1;min-width:0"><b>Replaying call ${c.callNumber} with ${esc(c.participantName)} (${esc(fmtDate(c.date))}, ${esc(c.language)}) as if live</b>
-      <span class="small">${state} · one line every 1.5 s · grey tag = supervisor label, outlined = Copilot now</span></div>
+      <span class="small">${state} · one line every 1.5 s · grey tag = supervisor label, outlined = Clef now</span></div>
       ${R.running ? `<button class="btn" id="replaystop">Stop replay</button>` : `<button class="btn primary" data-play="${esc(c.callId)}">Play again</button>`}<a class="btn" href="#call-${esc(c.callId)}">Call record</a></div>`;
   }
   const paintReplay = () => { const b = document.getElementById("replaybar"); if (b && call && call.replay) b.outerHTML = replayBar(); };
@@ -127,9 +127,9 @@
         <form class="type-row" id="typeform"><input id="typed" placeholder="Or type what was said, press Enter" aria-label="Line text" autocomplete="off"><button class="btn" type="submit">Add line</button></form>`;
     const panel = SNAP
       ? `<section class="card stack"><h2>Start a call</h2><p class="muted">This shared copy can’t reach the model. The live site can.</p><a class="btn primary" href="${LIVE_URL}/#live-${esc(id)}" target="_blank" rel="noopener">Open on the live site ↗</a></section>`
-      : `<section class="card stack"><div class="sec-head"><h2>${R ? "Call replay" : "Today’s call"}</h2><p class="small muted">${R ? "A recorded call, sent line by line through the live Copilot exactly as a live call would be." : "Use the mic or type each line. The Copilot tags each line as it arrives. A concern raises a banner. A cue appears only when the coach needs one."}</p></div>
+      : `<section class="card stack"><div class="sec-head"><h2>${R ? "Call replay" : "Today’s call"}</h2><p class="small muted">${R ? "A recorded call, sent line by line through Clef exactly as a live call would be." : "Use the mic or type each line. Clef tags each line as it arrives. A concern raises a banner. A cue appears only when the coach needs one."}</p></div>
         ${controls}
-        <div id="flagbox2" class="stack"></div>
+        <div id="flagbox2" class="flags"></div>
         <div class="transcript scroll" id="live-lines">${call.lines.length ? call.lines.map((l) => P.lineHtml(l, call.coach)).join("") : `<div class="live-empty" id="live-empty">${R ? "Starting the replay…" : "No lines yet. Start the mic, or type the first line."}</div>`}</div>
         ${R ? "" : `<div class="row"><button class="btn" id="endcall" ${call.lines.length ? "" : "disabled"}>End and save call</button><span class="small muted" id="savestate"></span></div>`}</section>`;
     return `${head}${R ? "" : recapFacts(p, last)}<div class="call-layout">${panel}<aside class="call-side" id="live-side">${scoreBox()}<div class="card stack"><p class="eyebrow">Cues</p><div id="cues"><p class="small muted">Quiet. Cues appear only when the coach needs one.</p></div></div></aside></div>`;
@@ -165,7 +165,7 @@
     l.pending = false;
     if (call !== C) return;
     paint(l); side();
-    if (l.live.flag && l.live.flag !== "none") document.getElementById("flagbox2")?.insertAdjacentHTML("afterbegin", P.flagBanner({ t: l.t, line: l.n, kind: l.live.flag, text: l.text, src: "Copilot" }));
+    if (l.live.flag && l.live.flag !== "none") document.getElementById("flagbox2")?.insertAdjacentHTML("afterbegin", P.flagBanner({ t: l.t, line: l.n, kind: l.live.flag, text: l.text, src: "Clef" }));
     const hit = P.cueTrigger(C.lines, i, C.lastCueAt);
     if (!hit) return;
     C.lastCueAt = hit.coachCount;
