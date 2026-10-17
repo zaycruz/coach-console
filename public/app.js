@@ -140,7 +140,7 @@
   function failBanners(failed) { return failed.map((x) => `<div class="banner alert"><span class="b-ico">▲</span><div class="b-body"><b>${MODS[x.mod].challenge} ${MODS[x.mod].name} isn’t answering and has no saved copy.</b> <span class="small">${esc(x.error)}</span></div></div>`).join(""); }
   // Today = one ranked queue across the four programs (GET /api/today), with this session's overlay on top:
   // a safety flag on a call saved here joins the top, a hand-off moves the patient to "Handed off today".
-  const COHORTS = `<p class="cohorts"><b>Four programs, four separate cohorts</b> (hospital risk: real MEPS survey data; rough weeks, glucose, coaching calls: synthetic). No patient appears in more than one.</p>`;
+  const COHORTS = `<p class="cohorts"><b>Four programs, four separate cohorts</b> (hospital risk: real MEPS survey data; rough weeks, glucose, coaching calls: synthetic). No patient appears in more than one. The 5 linked demo records join one record from each program to show the full view.</p>`;
   const langChip = (l) => (!l ? "" : l === "English" ? `<span class="chip-lang" title="Speaks English">EN</span>` : `<span class="chip-lang need" title="Book an interpreter or a ${esc(l)}-speaking coach">Interpreter · ${esc(l)}</span>`);
   const dataChip = (mod) => (mod === "c1" ? `<span class="chip-data real" title="Real survivor from the MEPS 2017 survey (ID reassigned)">Real · MEPS</span>` : `<span class="chip-data" title="Synthetic hackathon data">Synthetic</span>`);
   async function renderToday() {
@@ -195,21 +195,74 @@
     return `${head}${failBanners(failed)}${sourceBanner(ALL)}
       <div class="toolbar"><input id="search" type="search" placeholder="Search name, ID or signal" value="${esc(ui.q)}" aria-label="Search patients">
         <div class="filters" role="group" aria-label="Filter by program">${modPills}</div><div class="filters" role="group" aria-label="Filter by status">${stPills}</div></div>
+      ${linkedRow(items)}
       <p class="small muted">${shown.length} of ${items.length} patients</p>
       <div class="ptable-wrap roster" data-count="${items.length}"><table class="ptable"><thead><tr><th>Status</th><th>Patient</th><th class="hide-s">Program</th><th>Why</th><th class="hide-s">Last data</th></tr></thead><tbody>${body || `<tr><td colspan="5" class="live-empty">No patient matches.</td></tr>`}</tbody></table>${more}</div>
       ${COHORTS}<p class="footnote">Dates are the last data each program holds.</p>`;
   }
 
   // ------------------------------------------------------------------ Patient 360
+  /* Patient page (Whoop pattern): header = name, one identity line, status pill, actions; other facts under "Profile".
+     Health chart = one hero card (number, status word + glyph, what it means, what to do, sparkline, source), then
+     Ellie's AI Insight, up to 3 KPI tiles, then Do next. Program tabs open with the same hero; depth sits in expanders.
+     Linked demo records (x-L1..x-L5) join one record from each program; every tab renders that program's member. */
   const PILLS = [["overview", "Health chart"], ["c1", "Hospital risk"], ["c3", "Rough weeks"], ["c4", "Glucose"], ["c5", "Coaching calls"]];
+  const NR = "Not recorded";
+  const LINK_NOTE = `<p class="cohorts linked-note"><b>Linked demo record:</b> four programs’ separate cohorts, joined here by matching sex, cancer type and age (within about 10 years) to show the full view. Not one real person.</p>`;
+  const getP = (pid) => once("p:" + pid, () => A.patient(pid, getP));
+  const TONE_GLYPH = { red: "●", amber: "▲", green: "✓", neutral: "–" };
+
+  // Tiny inline sparkline: a line over the last points, an optional band (usual or target range) and a dashed reference line.
+  function spark(o) {
+    if (!o || !Array.isArray(o.values)) return "";
+    const v = o.values, pts = v.map((y, i) => [i, y]).filter(([, y]) => typeof y === "number" && isFinite(y));
+    if (pts.length < 2) return "";
+    const W = 160, H = 40, P = 4, all = pts.map((x) => x[1]);
+    if (o.band) all.push(...o.band); if (o.ref) all.push(o.ref.y);
+    let lo = Math.min(...all), hi = Math.max(...all); if (hi === lo) { hi += 1; lo -= 1; }
+    const X = (i) => P + (i * (W - 2 * P)) / Math.max(1, v.length - 1), Y = (y) => H - P - ((y - lo) / (hi - lo)) * (H - 2 * P);
+    let d = "", pen = false; v.forEach((y, i) => { if (typeof y !== "number" || !isFinite(y)) { pen = false; return; } d += (pen ? "L" : "M") + X(i).toFixed(1) + "," + Y(y).toFixed(1); pen = true; });
+    const [li, ly] = pts[pts.length - 1];
+    const f = (y) => (o.pct ? pct(y) : num(y, o.d ?? 0));
+    const band = o.band ? `<rect class="sp-band" x="${P}" width="${W - 2 * P}" y="${Y(o.band[1]).toFixed(1)}" height="${Math.max(1, Y(o.band[0]) - Y(o.band[1])).toFixed(1)}"/>` : "";
+    const ref = o.ref ? `<line class="sp-ref" x1="${P}" x2="${W - P}" y1="${Y(o.ref.y).toFixed(1)}" y2="${Y(o.ref.y).toFixed(1)}"/>` : "";
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${o.note || "Trend"}. Latest ${f(ly)}${o.ref ? `, line at ${f(o.ref.y)}` : ""}.`)}">${band}${ref}<path class="sp-line" d="${d}"/><circle class="sp-end" cx="${X(li).toFixed(1)}" cy="${Y(ly).toFixed(1)}" r="3"/></svg>`;
+  }
+  const stBadge = (st) => `<span class="hero-st tone-${esc(st.tone)}"><span class="g" aria-hidden="true">${esc(st.glyph)}</span>${esc(st.word)}</span>`;
+  function tirBar(segs) {
+    return `<div class="tir"><div class="tir-bar" role="img" aria-label="${esc(segs.map((s) => `${s.label} mg/dL ${num(s.v, 1)}%`).join(", "))}">${segs.map((s) => `<span class="tir-seg tone-${s.tone}${/Below/.test(s.label) ? " low" : ""}" style="width:${Math.max(s.v > 0 ? 0.8 : 0, s.v)}%"></span>`).join("")}</div>
+      <ul class="tir-key">${segs.map((s) => `<li><span class="sw tone-${s.tone}${/Below/.test(s.label) ? " low" : ""}" aria-hidden="true"></span>${esc(s.label)} <b>${s.v === 0 ? "0" : num(s.v, s.v < 10 ? 1 : 0)}%</b></li>`).join("")}<li class="tir-t">Target: 70–180 over 70%, lows under 4%</li></ul></div>`;
+  }
+  // The hero card: one number with its status word, its comparison, what it means, what to do and where it comes from.
+  function heroCard(h, mod, noTop) {
+    if (!h) return "";
+    const top = h.top && !noTop ? `<p class="hero-top tone-${esc(h.top.tone)}" role="${h.top.tone === "red" ? "alert" : "status"}"><span class="g" aria-hidden="true">${TONE_GLYPH[h.top.tone] || "▲"}</span><span>${esc(h.top.text)}</span></p>` : "";
+    const sp = h.spark ? spark(h.spark) : "";
+    return `<section class="hero-card tone-${esc(h.st.tone)}" aria-label="${esc(h.label)}">${top}
+      <div class="hero-grid"><div class="hero-fig"><p class="eyebrow">${mod ? `<span class="dot m-${mod}"></span>${esc(MODS[mod].challenge)} ${esc(MODS[mod].name)} · ` : ""}${esc(h.label)}</p>
+        <p class="hero-num"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${stBadge(h.st)}${h.compare ? `<p class="hero-cmp">${esc(h.compare)}</p>` : ""}</div>
+        ${sp ? `<figure class="hero-spark">${sp}<figcaption>${esc(h.spark.note || "")}</figcaption></figure>` : ""}</div>
+      ${h.bar && h.bar.length ? tirBar(h.bar) : ""}
+      <dl class="hero-wm"><div><dt>What it means</dt><dd>${esc(h.means || NR)}${h.caveat ? `<span class="hero-cav">${esc(h.caveat)}</span>` : ""}</dd></div><div><dt>What to do</dt><dd>${esc(h.todo || "No action from this program right now.")}</dd></div></dl>
+      <p class="hero-src"><span>Source</span>${esc(h.source || "")}</p></section>`;
+  }
+  // One line on how well the program works for people like this patient. Never blank.
+  const fitLine = (p) => (p.fit ? `<p class="fit tone-${esc(p.fit.tone)}"><span class="g" aria-hidden="true">${TONE_GLYPH[p.fit.tone] || "–"}</span><span><b>For people like this patient:</b> ${esc(p.fit.text)}</span></p>` : "");
+  const identityLine = (idn) => [idn && idn.age && `${idn.age} years`, idn && idn.sex, idn && idn.cancer, idn && idn.language].filter(Boolean).join(" · ");
+  function profileBox(p) {
+    const keys = A.IDENTITY_KEYS || [];
+    const rest = (p.facts || []).filter(([k]) => !keys.includes(k));
+    return rest.length ? `<details class="profile"><summary>Profile · ${rest.length} more fact${rest.length === 1 ? "" : "s"}</summary><dl>${rest.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v == null || v === "" ? NR : v)}</dd></div>`).join("")}</dl></details>` : "";
+  }
 
   async function renderPatient360(arg) {
     const [id, tab = "overview"] = arg.split(".");
     const back = `<a class="back" href="#patients">← Patients</a>`;
     const f = forced("this patient", "No data for this patient yet. The page fills in after the first synced day.");
     if (f) return back + f;
+    if (/^x-/.test(id)) return renderLinked(id, tab, back);
     let p;
-    try { p = await once("p:" + id, () => A.patient(id)); } catch (e) { return back + errorBox("this patient", e.message); }
+    try { p = await getP(id); } catch (e) { return back + errorBox("this patient", e.message); }
     current = p;
     const pills = PILLS.map(([k, label]) => {
       const mine = k === "overview" || k === p.mod;
@@ -217,19 +270,80 @@
       const dot = k !== "overview" ? `<span class="dot m-${k}"></span>` : "";
       return `<a class="${cls}" href="#p-${esc(id)}${k === "overview" ? "" : "." + k}" ${k === tab ? 'aria-current="page"' : ""} ${mine ? "" : 'title="Not enrolled in this program’s data"'}>${dot}${label}</a>`;
     }).join("");
-    const factsLine = p.facts.slice(0, 7).map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join("");
-    const head = `${back}<header class="p-head"><div class="stack-s"><div class="row"><h1>${esc(p.name)}</h1>${statusPill(p.tri)}</div><div class="facts">${factsLine}</div>
-      ${p.lastSaved ?`<p class="small muted">Last call logged ${esc(A.ago(p.lastSaved.at))} by ${esc(p.lastSaved.coach)}${p.lastSaved.flags && p.lastSaved.flags.length ? ` · ${p.lastSaved.flags.length} line${p.lastSaved.flags.length === 1 ? "" : "s"} flagged` : ""} · <a href="#live-${esc(id)}">recap</a></p>` : ""}</div>
-      <div class="row">${p.handoff ? `<span class="tag t-good" title="${esc(p.handoff.note || "")}">✓ ${esc(p.handoff.label)}</span>` : p.tri === "today" ? `<button class="btn danger" data-handoff data-pid="${esc(id)}" data-name="${esc(p.name)}" data-flag="${esc(p.concern ? p.concern.text : p.headline)}">Escalate to care team</button>` : ""}<a class="btn primary" href="#live-${esc(id)}">Start call</a></div></header>
-      <nav class="pills" aria-label="Patient views">${pills}</nav>${sourceBanner([p.mod])}`;
+    const head = `${back}${headHtml(p, id, id)}<nav class="pills" aria-label="Patient views">${pills}</nav>${sourceBanner([p.mod])}`;
     const body = tab === "overview" ? overview(p) : tab === p.mod ? moduleView(p) : notEnrolled(tab);
-    const miss = p.missing && p.missing.length ? `<details class="more tech"><summary>Technical details</summary><p class="footnote">Fields this program does not send yet: ${esc(p.missing.join("; "))}.</p></details>` : "";
-    return head + body + miss;
+    return head + body + techDetails(p);
+  }
+  const techDetails = (p) => (p && p.missing && p.missing.length ? `<details class="more tech"><summary>Technical details</summary><p class="footnote">Fields this program does not send yet: ${esc(p.missing.join("; "))}.</p></details>` : "");
+  function actionsHtml(p, callId) {
+    return `${p.handoff ? `<span class="tag t-good" title="${esc(p.handoff.note || "")}">✓ ${esc(p.handoff.label)}</span>` : p.tri === "today" ? `<button class="btn danger" data-handoff data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(p.concern ? p.concern.text : p.headline)}">Escalate to care team</button>` : ""}<a class="btn primary" href="#live-${esc(callId)}">Start call</a>`;
+  }
+  function headHtml(p, id, callId) {
+    const idn = identityLine(p.identity);
+    return `<header class="p-head pp-head"><div class="pp-id"><h1>${esc(p.name)}</h1>${idn ? `<p class="pp-ident">${esc(idn)}</p>` : ""}
+      <div class="row pp-st"><span data-lk-status>${statusPill(p.tri)}</span>${p.lastSaved ? `<span class="small muted">Last call logged ${esc(A.ago(p.lastSaved.at))} by ${esc(p.lastSaved.coach)}${p.lastSaved.flags && p.lastSaved.flags.length ? ` · ${p.lastSaved.flags.length} line${p.lastSaved.flags.length === 1 ? "" : "s"} flagged` : ""} · <a href="#live-${esc(callId)}">recap</a></span>` : ""}</div></div>
+      <div class="row pp-acts" data-lk-acts>${actionsHtml(p, callId)}</div></header>${profileBox(p)}`;
   }
 
+  // ---- linked demo records: the header and the chosen tab render as soon as their own data is in; the rest fills in.
+  function whenMounted(sel, fn, tries = 40) {
+    const el = document.querySelector(sel);
+    if (el) return fn(el);
+    if (tries > 0) setTimeout(() => whenMounted(sel, fn, tries - 1), 50);
+  }
+  async function renderLinked(id, tab, back) {
+    const L = (A.linked ? A.linked() : []).find((x) => x.id === id);
+    if (!L) return back + errorBox("this linked record", "There is no linked demo record with this ID.");
+    const seq = renderSeq; // the render() call that will paint this page (render() bumps it before calling us)
+    const [age, sexCancer] = [L.who.match(/^\d+/)[0], L.who.replace(/^\d+/, "")];
+    const stub = { id, name: L.name, tri: "", identity: { age, sex: /^M/.test(sexCancer) ? "Male" : "Female", cancer: sexCancer.split(" · ")[1].replace(/^./, (c) => c.toUpperCase()) + " cancer" }, facts: [] };
+    const full = getP(id);
+    const pills = PILLS.map(([k, label]) => `<a class="pill${k === tab ? " on" : ""}" href="#p-${esc(id)}${k === "overview" ? "" : "." + k}" ${k === tab ? 'aria-current="page"' : ""}>${k !== "overview" ? `<span class="dot m-${k}"></span>` : ""}${label}</a>`).join("");
+    const headStub = `<header class="p-head pp-head"><div class="pp-id"><h1>${esc(L.name)}</h1><p class="pp-ident">${esc(identityLine(stub.identity))}</p><div class="row pp-st"><span data-lk-status><span class="sk" style="display:inline-block;width:90px;height:22px"></span></span></div></div><div class="row pp-acts" data-lk-acts><a class="btn primary" href="#live-${esc(L.c5)}">Start call</a></div></header><div data-lk-profile></div>`;
+    // Header status, actions and profile fill in when all four programs have answered.
+    full.then((p) => setTimeout(() => {
+      if (seq !== renderSeq) return;
+      whenMounted("[data-lk-status]", (el) => { el.innerHTML = statusPill(p.tri); });
+      whenMounted("[data-lk-acts]", (el) => { el.innerHTML = actionsHtml(p, p.callId); });
+      whenMounted("[data-lk-profile]", (el) => { el.outerHTML = profileBox(p); });
+      const sb = sourceBanner(ALL.filter((m) => p.members[m] && !p.members[m].error)); if (sb) whenMounted("[data-lk-src]", (el) => { el.innerHTML = sb; });
+    }, 0)).catch((e) => setTimeout(() => whenMounted("[data-lk-status]", (el) => { el.innerHTML = `<span class="small muted">${esc(e.message)}</span>`; }), 0));
+    const head = `${back}${headStub}${LINK_NOTE}<nav class="pills" aria-label="Patient views">${pills}</nav><div data-lk-src></div>`;
+    if (tab === "overview") {
+      full.then((p) => { if (seq === renderSeq) current = p; }).catch(() => {});
+      ALL.forEach((m) => getP(L.members[m]).then((v) => v, (e) => ({ id: L.members[m], mod: m, error: e.message })).then((v) => setTimeout(() => { if (seq === renderSeq) whenMounted(`[data-lk-tile="${m}"]`, (el) => { el.outerHTML = linkedTile(id, m, v); }); }, 0)));
+      full.then((p) => setTimeout(() => { if (seq === renderSeq) whenMounted("[data-lk-rest]", (el) => { el.outerHTML = linkedRest(p); }); }, 0)).catch((e) => setTimeout(() => whenMounted("[data-lk-rest]", (el) => { el.outerHTML = errorBox("this linked record", e.message); }), 0));
+      const tiles = ALL.map((m) => `<div class="l-tile is-loading" data-lk-tile="${m}" aria-busy="true"><p class="eyebrow"><span class="dot m-${m}"></span>${esc(MODS[m].challenge)} ${esc(MODS[m].name)}</p><div class="sk" style="height:40px;width:60%"></div><div class="sk" style="height:14px;width:80%"></div></div>`).join("");
+      return `${head}<section class="stack-s"><h2 class="sec-t">Health chart · one number per program</h2><div class="l-tiles">${tiles}</div></section><div data-lk-rest>${loadingBox("the rest of the chart")}</div>`;
+    }
+    let mem;
+    try { mem = await getP(L.members[tab]); } catch (e) { return `${head}${errorBox(MODS[tab].name + " for this record", e.message)}`; }
+    current = mem;
+    return `${head}${sourceBanner([tab])}${moduleView(mem, { lang: "English" })}${techDetails(mem)}`;
+  }
+  function linkedTile(id, m, v) {
+    const href = `#p-${id}.${m}`;
+    if (!v || v.error) return `<a class="l-tile tone-neutral" href="${esc(href)}"><p class="eyebrow"><span class="dot m-${m}"></span>${esc(MODS[m].challenge)} ${esc(MODS[m].name)}</p><p class="lt-label">Couldn’t load this program</p><p class="lt-means">${esc((v && v.error) || "No answer")}</p><span class="lt-open">Try the tab →</span></a>`;
+    const h = v.hero || {};
+    const label = { c1: "12-month ER or hospital risk", c3: "7-day rough-week risk", c4: "Time in range (70–180 mg/dL)", c5: "Last call score" }[m];
+    return `<a class="l-tile tone-${esc(h.st ? h.st.tone : "neutral")}" href="${esc(href)}"><p class="eyebrow"><span class="dot m-${m}"></span>${esc(MODS[m].challenge)} ${esc(MODS[m].name)}</p><p class="lt-label">${esc(label)}</p>
+      <p class="hero-num sm"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${h.st ? stBadge(h.st) : ""}${h.compare ? `<p class="lt-cmp">${esc(h.compare.split(" · ")[0])}</p>` : ""}
+      ${h.top ? `<p class="lt-top tone-${esc(h.top.tone)}"><span class="g" aria-hidden="true">${TONE_GLYPH[h.top.tone] || "▲"}</span>${esc(h.top.text)}</p>` : `<p class="lt-means">${esc(h.means || "")}</p>`}<span class="lt-open">Open →</span></a>`;
+  }
+  // Below the tiles: Ellie's insight across all four programs, then one next step per program, worst first.
+  function linkedRest(p) {
+    const RANKT = { today: 0, alert: 1, watch: 2, ok: 3 };
+    const ok = ALL.map((m) => p.members[m]).filter((v) => v && !v.error).sort((a, b) => RANKT[a.tri] - RANKT[b.tri]);
+    const steps = ok.map((v) => [v, v.panels.flatMap((pn) => (pn.id === "redflags" ? [] : pn.advice || []))[0]]).filter(([, a]) => a).slice(0, 3);
+    return `<div class="ellie-insight" data-pid="${esc(p.id)}"></div>
+      ${steps.length ? `<section class="stack-s"><h2 class="sec-t">Do next</h2><div class="next-acts">${steps.map(([v, a], i) => `<section class="card"><p class="eyebrow"><span class="dot m-${v.mod}"></span>${esc(MODS[v.mod].name)}</p>${adviceCard(a, i + 1)}<a class="small" href="#p-${esc(p.id)}.${v.mod}">See the chart behind it →</a></section>`).join("")}</div></section>` : ""}
+      <p class="footnote">${esc(p.footnote)}</p>`;
+  }
+
+  // KPI tiles: label, number, its comparison line, and a sparkline where the program sends a series.
   function kpiCards(kpis, href, compact) {
     const tag = href ? "a" : "div";
-    return kpis.length ? `<div class="kpis${compact ? " compact" : ""}">${kpis.map((k) => `<${tag} class="kpi ${k.good == null ? "" : k.good ? "k-ok" : "k-bad"}" ${href ? `href="${esc(href)}"` : ""}><div class="kl">${esc(k.label)}</div><div class="kv">${esc(k.value)}</div>${k.sub || href ? `<div class="ks">${esc(k.sub || "")}</div>` : ""}</${tag}>`).join("")}</div>` : "";
+    return kpis.length ? `<div class="kpis${compact ? " compact" : ""}">${kpis.map((k) => `<${tag} class="kpi ${k.good == null ? "" : k.good ? "k-ok" : "k-bad"}" ${href ? `href="${esc(href)}"` : ""}><div class="kl">${esc(k.label)}</div><div class="kv">${esc(k.value == null || k.value === "" || /undefined|NaN|null/.test(String(k.value)) ? NR : k.value)}</div>${k.sub || href ? `<div class="ks">${esc(k.sub || "")}</div>` : ""}${k.spark ? `<div class="k-spark">${spark(k.spark)}</div>` : ""}</${tag}>`).join("")}</div>` : "";
   }
   // The last layer of every program view: every field the program sent, so the summary never hides data.
   function flatten(o, path = "", out = []) {
@@ -245,6 +359,8 @@
   }
   function adviceCard(a, n) {
     return `<div class="a-text"><p class="basis t-${esc(a.tone || "info")}">${n ? n + " · " : ""}${esc(a.tag || "")}</p><h3>${esc(a.title)}</h3>${a.text ? `<p>${esc(a.text)}</p>` : ""}
+      ${a.caution ? `<p class="a-caution" role="note"><span class="g" aria-hidden="true">▲</span><span><b>Caution:</b> ${esc(a.caution)}</span></p>` : ""}
+      ${a.more ? `<details class="a-more"><summary>Why</summary><p>${esc(a.more)}</p></details>` : ""}
       ${a.evidence && a.evidence.some((e) => e.value != null) ? `<p class="ev-chips">${a.evidence.filter((e) => e.value != null).map((e) => `<span class="echip" title="${esc(e.method || "")}">${esc(e.label)}: <b>${e.value == null ? "–" : num(e.value, 1)}${e.unit === "%" ? "%" : " " + esc(e.unit || "")}</b></span>`).join("")}</p>` : ""}</div>`;
   }
   function panelVisual(pn) {
@@ -252,40 +368,104 @@
     if (pn.lead) h += `<p class="muted small">${esc(pn.lead)}</p>`;
     h += (pn.charts || []).filter(Boolean).map((c) => chart(c)).join("");
     for (const b of [pn.bars, pn.bars2]) if (b) h += `<div class="stack-s"><p class="fig-t">${esc(b.title)}</p><p class="muted small">${esc(b.note)}</p>${hbars(b.rows)}</div>`;
-    if (pn.table) h += `<table class="tbl"><thead><tr>${pn.table.head.map((x) => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${pn.table.rows.map((r) => `<tr>${r.map((x, i) => `<td class="${i ? "mono" : ""}">${esc(x)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    if (pn.table) h += `<div class="tbl-wrap"><table class="tbl"><thead><tr>${pn.table.head.map((x) => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${pn.table.rows.map((r) => `<tr>${r.map((x, i) => `<td class="${i ? "mono" : ""}">${esc(x == null ? NR : x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
     if (pn.list) h += `<ul class="evidence">${pn.list.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>`;
     if (pn.calls) h += `<div class="calls-list">${pn.calls.map((c) => callRow(c, false)).join("")}</div>`;
     return h;
   }
   // Numbered "what to do" cards, advice left and its chart right; panels without advice fold into "More detail".
+  // The red-flag panel is never here: it always renders first, on its own (redFlagsCard).
   function doCards(p, limit) {
     let n = 0;
-    const withAdvice = p.panels.filter((pn) => pn.advice && pn.advice.length);
-    const cards = withAdvice.slice(0, limit || 99).map((pn) => `<section class="card do ${pn.small ? "small" : ""}" id="pn-${esc(pn.id)}"><div class="do-text">${pn.advice.map((a) => adviceCard(a, ++n)).join("")}</div><div class="do-visual">${panelVisual(pn)}</div></section>`).join("");
-    return cards;
+    const withAdvice = p.panels.filter((pn) => pn.id !== "redflags" && pn.advice && pn.advice.length);
+    return withAdvice.slice(0, limit || 99).map((pn) => `<section class="card do ${pn.small ? "small" : ""}" id="pn-${esc(pn.id)}"><div class="do-text">${pn.advice.map((a) => adviceCard(a, ++n)).join("")}</div><div class="do-visual">${panelVisual(pn)}</div></section>`).join("");
   }
-  /* Health chart = the summary: headline, status, Ellie's insight, one compact KPI strip, the top two
-     actions. Charts, detail panels, evidence and the raw response live on the program pill (moduleView). */
+  // C1 red flags: the symptoms that mean "call today" whatever the tier, then the survey follow-ups. Always first.
+  function redFlagsCard(p) {
+    const pn = p.panels.find((x) => x.id === "redflags");
+    if (!pn) return "";
+    const today = p.raw && p.raw.redFlags && p.raw.redFlags.careTeamToday;
+    return `<section class="card rf-card${today ? " is-today" : ""}" id="pn-redflags"><div class="rf-head"><span class="g" aria-hidden="true">${today ? "●" : "▲"}</span><h2>${esc(pn.title)}</h2></div>
+      ${pn.lead ? `<p class="muted small">${esc(pn.lead)}</p>` : ""}${pn.list && pn.list.length ? `<ul class="rf-list">${pn.list.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}
+      ${pn.advice && pn.advice.length ? `<div class="rf-adv">${pn.advice.map((a) => `<p><span class="tag ${a.tag === "Today" ? "t-risk" : "t-info"}">${esc(a.tag)}</span> ${esc(a.title)}</p>`).join("")}</div>` : ""}</section>`;
+  }
+  // C4 safety: care-team-today banner and the low-sugar card (glyph + words, translation when the patient reads it).
+  function c4Safety(p, lang) {
+    let h = "";
+    if (p.careFlag) h += `<div class="banner alert c4-flag" role="alert"><span class="b-ico">●</span><div class="b-body"><b>Send to the care team today.</b> ${esc(p.careFlag.reasons.join("; "))}.${p.careFlag.rule ? `<span class="small" style="display:block">${esc(p.careFlag.rule)}</span>` : ""}</div></div>`;
+    if (p.hypo) {
+      const code = /span/i.test(lang || "") ? "es" : /creole|kreyòl|kreyol|haitian/i.test(lang || "") ? "ht" : "";
+      h += `<section class="hypo-card" role="alert"><p class="hypo-t"><span class="g" aria-hidden="true">▲</span>Low blood sugar risk: frequent readings below 70 mg/dL</p><p>${esc(p.hypo.text)}</p>${code && p.hypo.tr[code] ? `<p class="hypo-tr" lang="${code}"><b>${code === "es" ? "Español" : "Kreyòl"}:</b> ${esc(p.hypo.tr[code])}</p>` : ""}</section>`;
+    }
+    return h;
+  }
+  // Patient handout: EN / Español / Kreyòl toggle (CSS radio group, no script), defaulting to the patient's language.
+  function handout(p, lang) {
+    const ho = p.handout;
+    if (!ho || !ho.langs.length) return "";
+    const want = /span/i.test(lang || "") ? "es" : /creole|kreyòl|kreyol|haitian/i.test(lang || "") ? "ht" : "en";
+    const def = ho.langs.some((l) => l.lang === want) ? want : ho.langs[0].lang, nm = "pv-" + p.id.replace(/[^a-z0-9]/gi, "");
+    const short = { en: "EN", es: "Español", ht: "Kreyòl" };
+    return `<section class="card handout"><div class="ho-head"><h2>Patient handout</h2><p class="small muted">What to tell the patient, in their language. Translation not yet reviewed by a medical interpreter.</p></div>
+      <div class="pv">${ho.langs.map((l) => `<input type="radio" class="pv-in l-${l.lang}" name="${nm}" id="${nm}-${l.lang}" ${l.lang === def ? "checked" : ""}><label for="${nm}-${l.lang}">${short[l.lang]}</label>`).join("")}
+        <div class="pv-panels">${ho.langs.map((l) => `<div class="pv-p pv-${l.lang}" lang="${l.lang}">${l.careTeam ? `<p><b>${esc(l.careTeam)}</b></p>` : ""}${l.lowSugarWarning ? `<p class="hypo-tr"><span class="g" aria-hidden="true">▲</span> ${esc(l.lowSugarWarning)}</p>` : ""}${(l.actions || []).length ? `<ol>${l.actions.map((x) => `<li>${esc(x.text)}</li>`).join("")}</ol>` : ""}${l.help ? `<p class="small muted">${esc(l.help)}</p>` : ""}</div>`).join("")}</div></div>
+      ${ho.note ? `<p class="small muted">${esc(ho.note)}</p>` : ""}</section>`;
+  }
+  // C3 health-monitor rows: each signal against the patient's own usual range (band), this week's average (dot), and the change in words.
+  function signalRows(sigs) {
+    if (!sigs || !sigs.length) return "";
+    const row = (s) => {
+      if (s.missing) return `<div class="sig"><div class="sig-n"><b>${esc(s.title)}</b><span class="small muted">${NR}</span></div></div>`;
+      const lo = Math.min(s.lo, s.now), hi = Math.max(s.hi, s.now), pad = (hi - lo) * 0.25 || 1, a = lo - pad, b = hi + pad, P = (v) => ((v - a) / (b - a)) * 100;
+      const u = s.unit === "a day" ? "steps a day" : s.unit;
+      return `<div class="sig tone-${esc(s.st.tone)}"><div class="sig-n"><b>${esc(s.title)}</b><span class="small muted">usual ${num(s.lo, s.dp)}–${num(s.hi, s.dp)} ${esc(u)}</span></div>
+        <div class="sig-track" role="img" aria-label="${esc(`${s.title}: this week ${num(s.now, s.dp)} ${u}, usual range ${num(s.lo, s.dp)} to ${num(s.hi, s.dp)}`)}"><span class="sig-band" style="left:${P(s.lo).toFixed(1)}%;width:${Math.max(1, P(s.hi) - P(s.lo)).toFixed(1)}%"></span><span class="sig-dot" style="left:${P(s.now).toFixed(1)}%"></span></div>
+        <div class="sig-v"><b>${esc(s.text)}</b>${stBadge(s.st)}</div><div class="sig-sp">${spark({ values: s.values, band: [s.lo, s.hi], d: s.dp, note: `${s.title}, last 14 days, band = usual range` })}</div></div>`;
+    };
+    return `<section class="card sigs"><div class="sec-head"><h2>Signals against their own usual</h2><p class="small muted">Band = their usual range (middle 80% of days in the 5 weeks before). Dot = this week’s average. ▲ marks a signal that moves this week’s forecast.</p></div>${sigs.map(row).join("")}</section>`;
+  }
+
+  /* Health chart = the summary: hero card, Ellie's insight, at most 3 KPI tiles, the top two actions.
+     Charts, detail panels, evidence and the raw response live on the program pill (moduleView). */
   function overview(p) {
     const href = `#p-${p.id}.${p.mod}`;
-    const allAdvice = p.panels.flatMap((pn) => pn.advice || []);
+    const allAdvice = p.panels.flatMap((pn) => (pn.id === "redflags" ? [] : pn.advice || []));
     const top = allAdvice.slice(0, 2);
     const acts = top.length ? `<section class="stack-s"><h2 class="sec-t">Do next</h2><div class="next-acts">${top.map((a, i) => `<section class="card">${adviceCard(a, i + 1)}</section>`).join("")}</div>
       <a href="${esc(href)}">${allAdvice.length > 2 ? `All ${allAdvice.length} next steps, each with the chart behind it →` : `See the chart behind ${top.length > 1 ? "each" : "it"} →`}</a></section>` : `<p class="muted">No actions from this program right now.</p>`;
-    return `<p class="big-hl">${esc(p.headline)}</p>${tagsHtml(p.tags)}
-      ${p.reasons && p.reasons.length ? `<p class="muted small">Status set because ${esc(p.reasons.join("; "))}.</p>` : ""}
+    const kp = (p.kpis || []).filter((k) => !k.hero).slice(0, 3);
+    return `${p.mod === "c4" ? c4Safety(p, p.identity && p.identity.language) : ""}${heroCard(p.hero, p.mod, p.mod === "c4" && !!p.careFlag)}
       <div class="ellie-insight" data-pid="${esc(p.id)}"></div>
-      <section class="stack-s"><p class="eyebrow">Key numbers · ${esc(MODS[p.mod].challenge)} ${esc(MODS[p.mod].name)}</p>${kpiCards(p.kpis, href, true) || `<p class="small muted">No headline numbers from this program.</p>`}</section>
+      ${kp.length ? `<section class="stack-s"><p class="eyebrow">More numbers · ${esc(MODS[p.mod].challenge)} ${esc(MODS[p.mod].name)}</p>${kpiCards(kp, href, true)}</section>` : ""}
       ${acts}<p class="small"><a href="${esc(href)}">Full ${esc(MODS[p.mod].name)} detail: charts, evidence and every field the program sent →</a></p>`;
   }
-  function moduleView(p) {
-    const more = p.panels.filter((pn) => !pn.advice || !pn.advice.length);
+  function moduleView(p, o = {}) {
+    const lang = o.lang || (p.identity && p.identity.language);
+    const more = p.panels.filter((pn) => pn.id !== "redflags" && (!pn.advice || !pn.advice.length));
     const moreHtml = more.length ? `<details class="more"><summary>More detail · ${more.map((pn) => esc(pn.title)).join(", ")}</summary>${more.map((pn) => `<section class="card stack"><h2>${esc(pn.title)}</h2><div class="${pn.small ? "multiples" : ""}">${panelVisual(pn)}</div></section>`).join("")}</details>` : "";
-    const ev = p.evidence && p.evidence.length ? `<details class="more" id="ev"><summary>Evidence behind every number</summary>${p.evidence.map((g) => `<details ${g.open ? "open" : ""} class="ev-g"><summary>${esc(g.group)} <span class="muted">(${g.rows.length})</span></summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Measure</th><th>Value</th><th>95% CI</th><th>n</th></tr></thead><tbody>${g.rows.map((r) => `<tr><td>${esc(r.label)}${r.caveat ? `<span class="cav">${esc(r.caveat)}</span>` : ""}</td><td class="mono">${esc(r.value)}</td><td class="mono">${esc(r.ci)}</td><td class="mono">${esc(r.n)}</td></tr>`).join("")}</tbody></table></div></details>`).join("")}</details>` : "";
-    return `<div class="mod-head">${modChip(p.mod)}<p class="big-hl">${esc(p.headline)}</p>${tagsHtml(p.tags)}</div>${kpiCards(p.kpis)}<h2 class="sec-t">What to do</h2>${doCards(p) || `<p class="muted">No actions from this program right now.</p>`}${moreHtml}${ev}${rawData(p)}${p.footnote ? `<p class="footnote">${esc(p.footnote)}</p>` : ""}`;
+    const grp = (g) => `<details ${g.open ? "open" : ""} class="ev-g"><summary>${esc(g.group)} <span class="muted">(${g.rows.length})</span></summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Measure</th><th>Value</th><th>95% CI</th><th>n</th></tr></thead><tbody>${g.rows.map((r) => `<tr><td>${esc(r.label)}${r.caveat ? `<span class="cav">${esc(r.caveat)}</span>` : ""}</td><td class="mono">${esc(r.value)}</td><td class="mono">${esc(r.ci || "–")}</td><td class="mono">${esc(r.n === "" ? "–" : r.n)}</td></tr>`).join("")}</tbody></table></div></details>`;
+    const evs = p.evidence || [], mine = evs.filter((g) => !g.scientists), sci = evs.filter((g) => g.scientists);
+    const ev = mine.length ? `<details class="more" id="ev"><summary>Evidence behind every number</summary><p class="small muted">95% CI: the range the true value likely sits in. n: how many readings or people it rests on.</p>${mine.map(grp).join("")}</details>` : "";
+    const sciHtml = sci.length ? `<details class="more" id="sci"><summary>For scientists · program-wide, trial and real-data results</summary><p class="small muted">Whole-program effects (same person, with and without), the randomized trial, and checks on real data (CGMacros, NHANES). They back the advice above; they are not this patient’s numbers.</p>${sci.map((g) => grp({ ...g, open: false })).join("")}</details>` : "";
+    const kp = (p.kpis || []).filter((k) => !k.hero);
+    return `${p.mod === "c1" ? redFlagsCard(p) : ""}${p.mod === "c4" ? c4Safety(p, lang) : ""}${heroCard(p.hero, p.mod, p.mod === "c4" && !!p.careFlag)}${fitLine(p)}
+      ${p.mod === "c3" ? signalRows(p.signals) : ""}${kp.length ? kpiCards(kp) : ""}
+      ${p.mod === "c4" ? handout(p, lang) : ""}
+      <h2 class="sec-t">What to do</h2>${doCards(p) || `<p class="muted">No actions from this program right now.</p>`}${moreHtml}${ev}${sciHtml}${rawData(p)}${p.footnote ? `<p class="footnote">${esc(p.footnote)}</p>` : ""}`;
   }
   function notEnrolled(tab) {
-    return `<div class="state-box"><h2>Not enrolled in ${esc(MODS[tab] ? MODS[tab].name : tab)}</h2><p class="muted">Each program uses its own cohort today, so this patient has no ${esc(MODS[tab] ? MODS[tab].short.toLowerCase() : "")} data. When the programs share one patient ID, this pill fills in.</p></div>`;
+    return `<div class="state-box"><h2>Not enrolled in ${esc(MODS[tab] ? MODS[tab].name : tab)}</h2><p class="muted">Each program uses its own cohort today, so this patient has no ${esc(MODS[tab] ? MODS[tab].short.toLowerCase() : "")} data. When the programs share one patient ID, this pill fills in. The <a href="#patients">linked demo records</a> show all four programs together.</p></div>`;
+  }
+  // Patients page: the 5 linked demo records as a small card row above the table, each with its worst status.
+  function linkedRow(items) {
+    const L = A.linked ? A.linked() : [];
+    if (!L.length) return "";
+    const byId = new Map(items.map((r) => [r.id, r]));
+    const card = (l) => {
+      const w = Object.values(l.members).map((id) => byId.get(id)).filter(Boolean).sort((a, b) => RANK[a.tri] - RANK[b.tri])[0];
+      return `<a class="lr-card" href="#p-${esc(l.id)}"><span class="lr-name"><b>${esc(l.first)}</b><span class="small muted">${esc(l.who)} · 4 programs</span></span>${w ? statusPill(w.tri) : ""}</a>`;
+    };
+    return `<section class="linked-row" aria-label="Linked demo records"><div class="lr-head"><h2>Linked demo records</h2><p class="small muted">One record from each program, joined by sex, cancer type and age to show the full view. Not real people.</p></div><div class="lr-cards">${L.map(card).join("")}</div></section>`;
   }
 
   function callRow(c, withName) {
@@ -669,7 +849,7 @@
       send.disabled = true; dlg.querySelector("#ho-state").textContent = "Sending…";
       try {
         const h = await post("/api/handoffs", { patientId: pid, name, coach: P360.coach(), flag, note: dlg.querySelector("#ho-note").value.trim() });
-        A.remember.handoff(h); memo.delete("roster"); memo.delete("p:" + pid);
+        A.remember.handoff(h); memo.delete("roster"); memo.delete("p:" + pid); if (route === "p") memo.delete("p:" + arg.split(".")[0]);
         dlg.close();
         showToast(`${A.handoffLabel(h)} to the care team. ${A.shortName(name)} moves off Act today.`);
         if (btn.isConnected) btn.outerHTML = `<span class="tag t-good">✓ ${esc(A.handoffLabel(h))}</span>`;

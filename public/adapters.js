@@ -61,6 +61,8 @@
     c3: { name: "Rough weeks", challenge: "C3", short: "Wearables", color: "var(--m-c3)", live: true },
     c4: { name: "Glucose", challenge: "C4", short: "Meals & glucose", color: "var(--m-c4)", live: true },
     c5: { name: "Coaching calls", challenge: "C5", short: "Calls", color: "var(--m-c5)", live: true },
+    // Linked demo records (x-L1..x-L5): one record from each program joined for the demo. Not a program; never in ALL.
+    x: { name: "All four programs", challenge: "Linked", short: "Linked", color: "var(--ink-3)", live: false },
   };
   // Triage: a "needs a person" line on a call is a same-day hand-off, so C5 alerts rank first.
   // C3 "urgent" (ER or hospital risk over its line) is also a same-day call.
@@ -152,7 +154,7 @@
     if (!tags) { tags = deriveTags(mod, x); if (mod === "c3" || mod === "c1") note(mod, "tags[] on roster rows (derived from the headline)"); }
     // A C5 call flag older than 30 days is an alert to review, not a same-day call.
     const stale = mod === "c5" && !(Date.now() - Date.parse(x.updatedAt) < 30 * 864e5);
-    return { id: x.survivorId, mod, name: patientName(x.displayName), status: x.status || "ok", tri: stale && x.status === "alert" ? "alert" : triage(mod, x.status, mod === "c3" && c3Urgent(x)), headline: x.headline || "", tags: tags.slice(0, 4), updatedAt: x.updatedAt };
+    return { id: x.survivorId, mod, name: patientName(x.displayName), status: x.status || "ok", tri: x.careTeamToday === true ? "today" : stale && x.status === "alert" ? "alert" : triage(mod, x.status, mod === "c3" && c3Urgent(x)), headline: x.headline || "", tags: tags.slice(0, 4), updatedAt: x.updatedAt };
   }
   const patientName = (n) => n || "Unnamed patient";
 
@@ -173,14 +175,19 @@
   // ------------------------------------------------------------------ patient
   const REQUIRED = { c1: ["status", "headline", "evidence", "recommendations", "charts", "caveat"], c3: ["status", "headline", "evidence", "recommendations", "charts"], c4: ["status", "headline", "evidence", "recommendations", "charts"], c5: ["status", "headline", "recommendations", "charts"] };
 
-  async function patient(id) {
+  // get(memberId): how a linked record loads its members (the app passes its memo so members are fetched once).
+  async function patient(id, get) {
     const mod = id.split("-")[0];
+    if (mod === "x") return linkedPatient(id, get);
     if (!MODULES[mod] || !MODULES[mod].live) throw new Error("Unknown module in this link.");
-    const d = await fetchJSON(`/api/${mod}/survivors/${encodeURIComponent(id)}`, REQUIRED[mod]);
-    const base = { id, mod, name: patientName(d.displayName), status: d.status || "ok", tri: triage(mod, d.status, mod === "c3" && c3Urgent(d)), headline: d.headline || "", summary: d.summary || "", updatedAt: d.updatedAt, facts: facts(d.profile || {}), source: health[mod] && health[mod].source };
+    // The record, the program's model card and the call overlay load in parallel.
+    const [d, m, ctx] = await Promise.all([fetchJSON(`/api/${mod}/survivors/${encodeURIComponent(id)}`, REQUIRED[mod]), mod === "c1" ? c1Metrics() : mod === "c3" ? c3Metrics() : null, context()]);
+    // Same-day care-team flags outrank the tier: C1 red flags from the survey, C4 frequent lows or very high average.
+    const careToday = (mod === "c1" && d.redFlags && d.redFlags.careTeamToday === true) || (mod === "c4" && d.careTeamFlag && d.careTeamFlag.today === true);
+    const base = { id, mod, name: patientName(d.displayName), status: d.status || "ok", tri: careToday ? "today" : triage(mod, d.status, mod === "c3" && c3Urgent(d)), headline: d.headline || "", summary: d.summary || "", updatedAt: d.updatedAt, facts: facts(d.profile || {}), identity: identity(d.profile || {}), source: health[mod] && health[mod].source };
     if (!d.profile) note(mod, "profile (not provided)");
-    const v = mod === "c1" ? c1View(d, await c1Metrics()) : mod === "c3" ? c3View(d) : mod === "c4" ? c4View(d) : c5View(d);
-    const ctx = await context();
+    const v = mod === "c1" ? c1View(d, m) : mod === "c3" ? c3View(d, m) : mod === "c4" ? c4View(d) : c5View(d);
+    v.fit = v.fit || { tone: "neutral", text: mod === "c4" ? "Subgroup performance not yet measured for the glucose program." : "No split by language yet; Kreyòl (Haitian Creole) calls are not supported." };
     const out = overlay({ ...base, ...v, raw: d, missing: [...(missing[mod] || [])] }, ctx);
     // Calls saved in Patient 360 join the labelled calls on the Coaching calls tab, newest first.
     const mine = ctx.saved.filter((s) => s.pid === id);
@@ -193,12 +200,34 @@
     return out;
   }
 
+  // One identity line: age, sex, cancer, language. Missing parts are left out, never "undefined".
+  function identity(p) {
+    const cap = (v) => (v == null || v === "" ? null : String(v)[0].toUpperCase() + String(v).slice(1));
+    const cancer = p.cancerType || (Array.isArray(p.cancerTypes) ? p.cancerTypes.join(", ") : null);
+    return { age: p.age != null ? String(p.age) : null, sex: cap(p.sex), cancer: cancer ? cap(cancer) + " cancer" : null, language: p.language || null };
+  }
+  const IDENTITY_KEYS = ["Age", "Sex", "Cancer", "Cancer types", "Language"];
+
   function facts(p) {
     const yes = (v) => (v === true ? "yes" : v === false ? "no" : v);
     return [["Age", p.age], ["Sex", p.sex], ["Cancer", p.cancerType], ["Stage", p.stage], ["Treatment", p.treatmentPlan], ["Where in treatment", p.context], ["Language", p.language], ["Lives alone", yes(p.livesAlone)], ["Device", p.device],
       ["Race/ethnicity", p.raceEthnicity], ["Insurance", p.insurance2017], ["Cancer types", Array.isArray(p.cancerTypes) ? p.cancerTypes.join(", ") : null], ["In treatment", p.currentTreatment], ["Region", p.region], ["Years since treatment", p.yearsSinceTreatment], ["Blood sugar at start", p.bloodSugarGroup], ["Trial arm", p.group], ["Work", p.workSchedule], ["Program focus", p.focus], ["Coach", p.coach]]
       .filter(([, v]) => v != null && v !== "");
   }
+
+  // ------------------------------------------------------------------ hero: the view's one number (Whoop pattern)
+  /* Every program view returns one `hero`, rendered the same way on its tab, on the Health chart and on a linked tile:
+     { label, value, unit, st: {tone: red|amber|green|neutral, glyph, word}, compare, means, todo, source, caveat?,
+       top?: {tone, text} (a same-day driver that outranks the number), spark?: {values, band?, ref?, pct?, d?, note}, bar? }.
+     The status word is judged against the number's own line, so it never contradicts the number. */
+  const NR = "Not recorded";
+  const isNum = (v) => typeof v === "number" && isFinite(v);
+  const ST = { red: (w) => ({ tone: "red", glyph: "●", word: w }), redW: (w) => ({ tone: "red", glyph: "▲", word: w }), amber: (w) => ({ tone: "amber", glyph: "▲", word: w }), green: (w) => ({ tone: "green", glyph: "✓", word: w }), none: (w) => ({ tone: "neutral", glyph: "–", word: w || "No reading" }) };
+  const firstSentence = (t) => { const m = String(t || "").match(/^.*?[.!?](?=\s|$)/); return m ? m[0] : String(t || ""); };
+  const restOf = (t) => String(t || "").slice(firstSentence(t).length).trim();
+  const lastN = (arr, n) => (Array.isArray(arr) ? arr.slice(-n) : []);
+  const quant = (vals, q) => { const a = vals.filter(isNum).sort((x, y) => x - y); if (!a.length) return null; const i = (a.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return a[lo] + (a[hi] - a[lo]) * (i - lo); };
+  const mean = (vals) => { const a = vals.filter(isNum); return a.length ? a.reduce((x, y) => x + y, 0) / a.length : null; };
 
   // ---- C1 Care Team Risk
   // "S71188550 · 85M · prostate" → "85M · prostate · S71188550": who the person is first, the ID second. Real names are left alone.
@@ -209,6 +238,8 @@
   const fairFlag = (g) => !!g && ((g.auroc != null && g.auroc < 0.6) || (Array.isArray(g.oeCi95) && (g.oeCi95[0] > 1 || g.oeCi95[1] < 1)));
   let c1m = null;
   const c1Metrics = () => (c1m = c1m || metrics("c1").catch(() => (c1m = null)));
+  let c3m = null;
+  const c3Metrics = () => (c3m = c3m || metrics("c3").catch(() => (c3m = null)));
   function c1Groups(p, m) {
     if (!p || !m || !Array.isArray(m.fairness)) return [];
     const lc = (s) => String(s ?? "").toLowerCase(), a = p.age;
@@ -263,10 +294,28 @@
         advice: [...(rf.fromSurvey || []).map((x) => ({ title: x.text, text: "", tag: x.urgency === "today" ? "Today" : x.urgency === "this-week" ? "This week" : "From the survey" })), ...sn],
         asOf: rf.asOf || "" });
     }
+    const fin = m && m.finalModel ? m.finalModel.key : null, fm = m && m.metrics ? (fin && m.metrics[fin]) || m.metrics.logistic : null;
+    const dev = m && m.data ? m.data.devSurvivors : null;
+    const rv = isNum(d.risk) ? d.risk : r.value, alertAt = r.alertFrom ?? (d.thresholds && d.thresholds.alert), watchAt = r.watchFrom ?? (d.thresholds && d.thresholds.watch);
+    const careTeam = recs.find((x) => x.audience === "care-team") || recs[0];
+    const hero = {
+      label: "ER or hospital stay, next 12 months", value: isNum(rv) ? pct(rv) : NR,
+      st: !isNum(rv) ? ST.none() : isNum(alertAt) && rv >= alertAt ? ST.redW("High tier") : isNum(watchAt) && rv >= watchAt ? ST.amber("Middle tier") : ST.green("Low tier"),
+      compare: isNum(r.baseRate) ? `Average patient ${pct(r.baseRate)}${isNum(alertAt) ? ` · high tier (top of three risk groups) from ${pct(alertAt)}` : ""}` : "",
+      means: d.riskWords ? `${sentence(d.riskWords)}.`.replace(/\.\.$/, ".") + (pos.length ? ` Driven most by ${low(pos[0].label)}${cost(pos[0]) ? " (a cost proxy for need)" : ""}.` : "") : "No plain-words reading from this program.",
+      todo: careTeam ? careTeam.text : "No action from this program right now.",
+      caveat: d.caveat || "",
+      top: rf && rf.careTeamToday ? { tone: "red", text: rf.banner || "Call the care team today." } : caution && !caution.soft ? { tone: "amber", text: `${caution.label}. ${caution.text}.` } : null,
+      source: `Real survivor (MEPS 2017 survey), scored by the deployed model as an unseen patient${fm && fm.auroc ? `. Model AUROC ${num(fm.auroc.value, 2)} (how well it ranks who ends up in hospital; 0.5 = chance, 1 = perfect), 95% CI ${num(fm.auroc.ci95[0], 2)}–${num(fm.auroc.ci95[1], 2)} (the range the true value likely sits in), cross-validated${dev ? ` on ${dev} patients` : ""}` : ""}.`,
+    };
+    const fit = caution && !caution.soft ? { tone: "amber", text: `Less reliable for ${caution.groups.join(", ")}: check this score by hand. ${caution.text}.` }
+      : caution ? { tone: "neutral", text: `${caution.label}: wide uncertainty for this group. ${caution.text}.` }
+      : m && Array.isArray(m.fairness) ? { tone: "green", text: "No reliability gap found for this patient's age, sex, race, insurance or cancer groups (cross-validated: tested on patients held back from training, in turns)." }
+      : { tone: "neutral", text: "Subgroup check not available right now (the model card did not load)." };
     return {
-      name: demoName(d.displayName), headline, caution, forEllie: d.forEllie || "",
+      name: demoName(d.displayName), headline, caution, forEllie: d.forEllie || "", hero, fit,
       tags: [caution && { label: caution.label, tone: caution.soft ? "info" : "warn" }, { label: `ER/hospital ${pct(d.risk)} · 12 months`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...pos.slice(0, 3).map((x) => ({ label: x.label + (cost(x) ? " (cost proxy)" : ""), tone: "warn" }))].filter(Boolean),
-      kpis: [{ value: pct(d.risk), label: "ER or hospital stay, next 12 months", sub: d.riskWords || (r.baseRate != null ? `average patient ${pct(r.baseRate)}` : ""), good: d.status === "alert" ? false : d.status === "ok" ? true : null }, use.erVisits != null && { value: String(use.erVisits), label: "ER visits, data year 2017", sub: "most survivors had none", good: use.erVisits === 0 ? true : null }, use.hospitalStays != null && { value: String(use.hospitalStays), label: "Hospital stays, data year 2017", sub: "most survivors had none", good: use.hospitalStays === 0 ? true : null }].filter(Boolean),
+      kpis: [{ hero: true, value: isNum(d.risk) ? pct(d.risk) : NR, label: "ER or hospital stay, next 12 months", sub: d.riskWords || (r.baseRate != null ? `average patient ${pct(r.baseRate)}` : ""), good: d.status === "alert" ? false : d.status === "ok" ? true : null }, use.erVisits != null && { value: String(use.erVisits), label: "ER visits, data year 2017", sub: "most survivors had none · real MEPS", good: use.erVisits === 0 ? true : null }, use.hospitalStays != null && { value: String(use.hospitalStays), label: "Hospital stays, data year 2017", sub: "most survivors had none · real MEPS", good: use.hospitalStays === 0 ? true : null }].filter(Boolean),
       panels, evidence: null,
       footnote: (d.profile && d.profile.dataSource ? d.profile.dataSource + ". " : "") + (d.caveat || ""),
     };
@@ -280,7 +329,20 @@
     hrv_rmssd_ms: { key: "hrv", title: "Heart rate variability", unit: "ms", d: 0, words: /variability|hrv/i },
     skin_temp: { key: "skinTempChange", title: "Skin temperature", unit: "°C vs usual", d: 1, words: /fever|temperature|infection/i },
   };
-  function c3View(d) {
+  function c3Fit(d, m) {
+    const f = m && m.fairness, p = d.profile || {};
+    if (!f || !Array.isArray(f.dimensions)) return { tone: "neutral", text: "Subgroup check not available right now (the model card did not load)." };
+    const a = p.age, band = a == null ? null : a < 50 ? "under 50" : a < 65 ? "50-64" : "65+";
+    const want = { preferred_language: p.language, cancer_type: p.cancerType, sex: p.sex, age_group: band, lives_alone: p.livesAlone, device: p.device };
+    const rows = f.dimensions.flatMap((dm) => (dm.rows || []).filter((r) => want[dm.dimension] != null && String(r.group).toLowerCase() === String(want[dm.dimension]).toLowerCase()).map((r) => ({ ...r, label: dm.label })));
+    const rc = (r) => `${pct(r.recall)} of rough weeks caught, 95% CI ${pct(r.recallCi95 && r.recallCi95[0])}–${pct(r.recallCi95 && r.recallCi95[1])}, vs ${pct(f.overallRecall)} overall`;
+    const below = rows.filter((r) => r.belowOverall), unsure = rows.filter((r) => r.lowerButUncertain), few = rows.filter((r) => r.tooFewToJudge);
+    if (below.length) return { tone: "amber", text: `Less reliable for ${below.map((r) => `${r.label.toLowerCase()} ${r.group}`).join(", ")} (${rc(below[0])}): check by hand.` };
+    if (unsure.length) return { tone: "amber", text: `Possibly less reliable for ${unsure.map((r) => `${r.label.toLowerCase()} ${r.group}`).join(", ")} (${rc(unsure[0])}); too few patients to be sure.` };
+    if (few.length) return { tone: "neutral", text: `Too few ${few.map((r) => `${r.label.toLowerCase()} ${r.group}`).join(", ")} patients in the test set to judge. No gap found for their other groups.` };
+    return rows.length ? { tone: "green", text: `No gap found for this patient's ${rows.map((r) => r.label.toLowerCase()).join(", ")} (held-out test patients: kept back from training).` } : { tone: "neutral", text: "No subgroup in the model card matches this patient." };
+  }
+  function c3View(d, m) {
     const c = d.charts || {}, ev = d.evidence || [], recs = (d.recommendations || []).map((r) => ({ title: r.action, text: r.why, tag: r.urgency, tone: r.urgency === "today" ? "risk" : r.urgency === "within 2 days" ? "warn" : "info" }));
     const x = (c.dates || []).map((t) => String(t).slice(5));
     const doses = (c.doseDays || []).map((v, i) => (v ? i : -1)).filter((i) => i >= 0);
@@ -306,10 +368,37 @@
     const panels = [risk, ...signalPanels];
     if (rest.length) panels.push({ id: "other", title: "Other signals", lead: "Near their usual, or not used in this forecast.", charts: rest, small: true, advice: [] });
     const lastWear = (c.watchWornHours || []).slice(-7).filter((v) => v != null);
+    const th = d.thresholds || {};
+    const firstRec = (d.recommendations || [])[0];
+    const hero = {
+      label: "Rough week, next 7 days", value: isNum(d.risk) ? pct(d.risk) : NR,
+      st: !isNum(d.risk) ? ST.none() : isNum(th.alert) && d.risk >= th.alert ? ST.redW("Above alert line") : isNum(th.watch) && d.risk >= th.watch ? ST.amber("Near alert line") : ST.green("Below alert line"),
+      compare: [isNum(th.alert) && `Alert line ${pct(th.alert)}`, isNum(d.scheduleRisk) && `treatment calendar alone ${pct(d.scheduleRisk)}`].filter(Boolean).join(" · "),
+      means: "Chance a rough patch starts within 7 days, from watch signals against their own usual plus the treatment calendar.",
+      todo: firstRec ? firstRec.action + (firstRec.urgency && !new RegExp(firstRec.urgency.replace(/^this /i, ""), "i").test(firstRec.action) ? ` (${firstRec.urgency})` : "") : "No action from this program right now.",
+      top: c3Urgent(d) ? { tone: "red", text: `Act today: ${String(d.headline || "").replace(/^urgent:\s*/i, "")}${isNum(th.urgent) ? ` (urgent line ${pct(th.urgent, 1)})` : ""}.` } : null,
+      spark: c.risk ? { values: lastN(c.risk, 14), ref: isNum(th.alert) ? { y: th.alert, label: "alert" } : null, pct: true, note: "Last 14 days · dashed = alert line" } : null,
+      source: "Synthetic wearable cohort. Accuracy measured on a held-out test split (25% of patients kept back from training).",
+    };
+    // Health-monitor rows: each signal against the patient's own usual range (middle 80% of the days before the last week).
+    const evBy = Object.fromEntries(ev.map((e) => [e.signal, e]));
+    const signals = [["sleep", "sleepHours", "Sleep", "h a night", 1], ["steps", "steps", "Steps", "a day", 0], ["resting_heart_rate", "restingHeartRate", "Resting heart rate", "bpm", 1], ["hrv_rmssd_ms", "hrv", "Heart rate variability", "ms", 0]].filter(([, k]) => Array.isArray(c[k]) && c[k].some(isNum)).map(([sig, k, title, unit, dp]) => {
+      const vals = c[k], before = vals.slice(0, -7), recent = vals.slice(-7);
+      const lo = quant(before, 0.1), hi = quant(before, 0.9), usual = quant(before, 0.5), now = mean(recent), e = evBy[sig];
+      if (!isNum(now) || !isNum(usual)) return { title, unit, missing: true };
+      const delta = now - usual, inBand = isNum(lo) && isNum(hi) && now >= lo && now <= hi;
+      const sameUnit = e && e.unit === unit && e.change;
+      const dTxt = `${delta >= 0 ? "+" : "−"}${num(Math.abs(delta), dp)} ${unit === "a day" ? "steps" : unit === "h a night" ? "h" : unit}`;
+      return { sig, title, unit, dp, lo, hi, usual, now, values: lastN(vals, 14), drives: !!e,
+        text: sameUnit ? `${e.change} ${String(e.change).trim().startsWith("-") ? "below" : "above"} usual`.replace(/^([+-])/, (x) => (x === "-" ? "−" : x))
+          : e && isNum(e.value) && isNum(e.baseline) ? `${e.unit && /efficiency/.test(e.unit) ? "Efficiency " : ""}${num(e.value)}${/%/.test(e.unit || "") ? "%" : ""} vs usual ${num(e.baseline)}${/%/.test(e.unit || "") ? "%" : ""}` : Math.abs(delta) < (hi - lo) * 0.05 || !isNum(hi) ? "At their usual" : `${dTxt} ${delta >= 0 ? "above" : "below"} usual`,
+        st: e ? ST.amber("Moves the forecast") : inBand ? ST.green("Within usual range") : ST.none("Outside usual, not driving it"),
+        why: e ? e.text : "" };
+    });
     return {
-      name: demoName(d.displayName),
+      name: demoName(d.displayName), hero, signals, fit: c3Fit(d, m),
       tags: [c3Urgent(d) && { label: `ER/hospital ${pct(d.urgentRisk)} · 7 days`, tone: "risk" }, { label: `Rough week ${pct(d.risk)}`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...ev.filter((e) => e.signal !== "schedule").slice(0, 3).map((e) => ({ label: `${e.label} ${e.change || ""}`.trim(), tone: "warn" }))].filter(Boolean),
-      kpis: [d.urgentRisk != null && { value: pct(d.urgentRisk), label: "ER or hospital risk, 7 days", sub: d.thresholds && d.thresholds.urgent != null ? `urgent line ${pct(d.thresholds.urgent, 1)}` : "", good: d.urgent ? false : null }, { value: pct(d.risk), label: "Rough-patch risk, 7 days", sub: d.thresholds ? `alert line ${pct(d.thresholds.alert, 1)}` : "", good: d.thresholds && d.risk != null ? (d.risk >= d.thresholds.alert ? false : d.risk < d.thresholds.watch ? true : null) : null }, { value: pct(d.scheduleRisk), label: "From treatment calendar alone", sub: "what the schedule predicts", good: null }, lastWear.length && { value: num(lastWear.reduce((a, b) => a + b, 0) / lastWear.length, 1) + " h", label: "Watch worn a day", sub: "last 7 days; forecast needs ~12 h", good: lastWear.reduce((a, b) => a + b, 0) / lastWear.length >= 12 }].filter(Boolean),
+      kpis: [d.urgentRisk != null && { value: pct(d.urgentRisk), label: "ER or hospital risk, 7 days", sub: d.thresholds && d.thresholds.urgent != null ? `urgent line ${pct(d.thresholds.urgent, 1)}` : "", good: d.urgent ? false : null, spark: c.urgentRisk ? { values: lastN(c.urgentRisk, 14), ref: isNum(th.urgent) ? { y: th.urgent } : null, pct: true } : null }, { hero: true, value: pct(d.risk), label: "Rough-patch risk, 7 days", sub: d.thresholds ? `alert line ${pct(d.thresholds.alert, 1)}` : "", good: d.thresholds && d.risk != null ? (d.risk >= d.thresholds.alert ? false : d.risk < d.thresholds.watch ? true : null) : null }, { value: isNum(d.scheduleRisk) ? pct(d.scheduleRisk) : NR, label: "From treatment calendar alone", sub: "what the schedule alone predicts", good: null }, lastWear.length && { value: num(lastWear.reduce((a, b) => a + b, 0) / lastWear.length, 1) + " h", label: "Watch worn a day", sub: "last 7 days; forecast needs ~12 h", good: lastWear.reduce((a, b) => a + b, 0) / lastWear.length >= 12, spark: { values: lastN(c.watchWornHours, 14), ref: { y: 12 }, d: 1 } }].filter(Boolean),
       panels, evidence: null,
       footnote: "Forecast from wearable signals against the person’s own usual plus the treatment calendar. No self-reports. Synthetic cohort.",
     };
@@ -349,7 +438,8 @@
       let keys = C4_CHART_FOR[r.id];
       if (!keys) { const k = (r.evidenceIds || []).map((id) => (C4_CHART_BY_EVIDENCE.find(([re]) => re.test(id)) || [])[1]).find(Boolean); keys = k ? [k] : []; }
       keys = keys.filter((k) => charts[k]);
-      const adv = { title: r.title, text: r.text, tag: basisName[r.basis] || r.basis, tone: r.basis === "rule" ? "risk" : "info", evidence: (r.evidenceIds || []).map((id) => evById[id]).filter(Boolean).slice(0, 3) };
+      // Meaning + action only: the first sentence stays, the rest folds under "Why" on the card.
+      const adv = { title: r.title, text: firstSentence(r.text), more: restOf(r.text), caution: r.caution || "", tag: basisName[r.basis] || r.basis, tone: r.basis === "rule" ? "risk" : "info", evidence: (r.evidenceIds || []).map((id) => evById[id]).filter(Boolean).slice(0, 3) };
       const existing = panels.find((p) => keys.length && p.keys.join() === keys.join());
       if (existing) { existing.advice.push(adv); continue; }
       keys.forEach((k) => placed.add(k));
@@ -363,7 +453,7 @@
     }
     const kp = (id, label, sub, goodFn, dp = 0) => { const e = evById[id]; return e && e.value != null ? { value: num(e.value, dp) + (e.unit === "%" ? "%" : ""), label, sub, good: goodFn ? goodFn(e.value) : null } : null; };
     const scopeName = { person: "Their data", cohort: "Whole program", trial: "Randomized trial", real: "Real people (CGMacros, NHANES)" };
-    const evidence = ["person", "cohort", "trial", "real"].map((s) => ({ group: scopeName[s], open: s === "person", rows: (d.evidence || []).filter((e) => e.scope === s).map((e) => ({ label: e.label, caveat: e.caveat, value: e.value == null ? "–" : `${num(e.value, 1)} ${e.unit || ""}`, ci: e.ci ? `${num(e.ci[0], 1)} to ${num(e.ci[1], 1)}` : "", n: e.n ?? "" })) })).filter((g) => g.rows.length);
+    const evidence = ["person", "cohort", "trial", "real"].map((s) => ({ group: scopeName[s], scientists: s !== "person", open: s === "person", rows: (d.evidence || []).filter((e) => e.scope === s).map((e) => ({ label: e.label, caveat: e.caveat, value: e.value == null ? "–" : `${num(e.value, 1)} ${e.unit || ""}`, ci: e.ci ? `${num(e.ci[0], 1)} to ${num(e.ci[1], 1)}` : "", n: e.n ?? "" })) })).filter((g) => g.rows.length);
     let tags = d.tags;
     if (!Array.isArray(tags)) { note("c4", "tags[] (not provided)"); tags = []; }
     // Severe: extreme highs (average 250+ or under 10% in range) or frequent lows (4%+ below 70). Stale: last reading over 60 days old.
@@ -372,10 +462,27 @@
     const last = Date.parse(d.updatedAt || ""), staleDays = isNaN(last) ? null : Math.floor((Date.now() - last) / 864e5);
     const stale = staleDays != null && staleDays > 60 ? `No data for ${Math.round(staleDays / 30.4)} months` : null;
     tags = [...severe.map((x) => ({ label: `Severe: ${x.split(" (")[0]}`, tone: "risk" })), stale && { label: stale, tone: "warn" }, ...tags].filter(Boolean);
+    const ctf = d.careTeamFlag && d.careTeamFlag.today ? { reasons: (d.careTeamFlag.reasons || []).map((x) => x.reason).filter(Boolean), rule: d.careTeamFlag.rule || "" } : null;
+    const hypo = d.hypoglycaemiaWarning && d.hypoglycaemiaWarning.text ? { level: d.hypoglycaemiaWarning.level, text: d.hypoglycaemiaWarning.text, tr: d.hypoglycaemiaWarning.translations || {} } : null;
+    const window_ = ((evById.tir && evById.tir.label) || "").match(/\(([^)]+)\)/);
+    const dp = c.dailyProfile && Array.isArray(c.dailyProfile.series) ? [...c.dailyProfile.series].reverse().find((x) => Array.isArray(x.values) && x.values.some(isNum)) : null;
+    const tar250 = val("tar250"), tar180 = val("tar180");
+    const hero = {
+      label: "Time in range (70–180 mg/dL, the target band)", value: isNum(tir) ? `${num(tir)}%` : NR,
+      st: !isNum(tir) ? ST.none() : tir < 10 ? ST.redW("Far off target") : tir >= 70 ? ST.green(tir >= 90 ? "At ideal" : "On target") : ST.amber("Below target"),
+      compare: `Target over 70%, ideal 90%+${isNum(mg) ? ` · average ${num(mg)} mg/dL (milligrams per decilitre, the blood-sugar unit)` : ""}${window_ ? ` · ${window_[1]}` : ""}`,
+      means: isNum(tir) ? `${num(tir)} of every 100 readings were in the target band${isNum(tbr) && tbr > 0 ? `, ${num(tbr, 1)} below 70` : ", none below 70"}${isNum(tar180) && tar180 > 0 ? `, ${num(tar180, 1)} above 180` : ", none above 180"}.` : "No readings in this window.",
+      todo: d.plainSummary ? firstSentence(d.plainSummary) + (restOf(d.plainSummary) ? " " + firstSentence(restOf(d.plainSummary)) : "") : ((d.recommendations || [])[0] || {}).title || "No action from this program right now.",
+      top: ctf ? { tone: "red", text: `Send to the care team today: ${ctf.reasons.join("; ") || "glucose over the care-team line"}.` } : null,
+      bar: isNum(tir) ? [["Below 70", tbr, "red"], ["70–180", tir, "green"], ["181–250", isNum(tar180) && isNum(tar250) ? Math.max(0, tar180 - tar250) : null, "amber"], ["Above 250", tar250, "red"]].filter(([, v]) => isNum(v)).map(([label, v, tone]) => ({ label, v, tone })) : null,
+      spark: dp ? { values: dp.values, band: (c.dailyProfile.targetRange || [70, 180]), note: `Blood sugar by hour of day, ${String(dp.label || "").replace(/^weeks/i, "weeks")} · band = 70–180` } : null,
+      source: "Synthetic CGM data (Crane Lab set), this person's readings. Program-wide and real-data (CGMacros, NHANES) checks sit under For scientists.",
+    };
+    const pv = d.patientView && typeof d.patientView === "object" ? ["en", "es", "ht"].filter((k) => d.patientView[k]).map((k) => ({ lang: k, name: { en: "English", es: "Español", ht: "Kreyòl" }[k], ...d.patientView[k] })) : [];
     return {
-      name: demoName(d.displayName), severe, staleDays,
+      name: demoName(d.displayName), severe, staleDays, hero, careFlag: ctf, hypo, handout: pv.length ? { langs: pv, note: d.patientView.note || "" } : null,
       tags, reasons: [...severe.map((x) => "severe: " + x), ...(d.statusReasons || []), ...(stale ? [`${stale.toLowerCase()} (last reading ${new Date(last).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})`] : [])],
-      kpis: [kp("tir", "Time in range", "target over 70%, ideal 90%+", (v) => (v >= 90 ? true : v < 70 ? false : null)), kp("tbr70", "Lows (below 70)", "target under 4%", (v) => v <= 4, 1), kp("mean_glucose", "Average sugar", "mg/dL, target 154 or less", (v) => v <= 154), kp("late_share", "Late dinners", "share at 8 pm or later", null), kp("fast_avg", "Overnight fast", "hours, average", null, 1)].filter(Boolean),
+      kpis: [kp("tir", "Time in range", "target over 70%, ideal 90%+", (v) => (v >= 90 ? true : v < 70 ? false : null)) && { ...kp("tir", "Time in range", "target over 70%, ideal 90%+", (v) => (v >= 90 ? true : v < 70 ? false : null)), hero: true }, kp("tbr70", "Lows (below 70)", "target under 4%", (v) => v <= 4, 1), kp("mean_glucose", "Average sugar", "mg/dL, target 154 or less", (v) => v <= 154), kp("late_share", "Late dinners", "share at 8 pm or later", null), kp("fast_avg", "Overnight fast", "hours, average", null, 1)].filter(Boolean),
       panels, evidence, footnote: d.dataNote || "",
     };
   }
@@ -389,10 +496,60 @@
     const panels = [{ id: "calls", title: "Calls", lead: "Supervisor-labelled. Open a call to run Clef on it.", calls, charts: scored.length > 1 ? [{ x: scored.map((c) => "Call " + c.callNumber), series: [{ values: scored.map((c) => c.score), color: "var(--m-c5)", label: "Coach score", dots: true }], refs: [{ y: 60, label: "target 60" }], min: 0, max: 100, h: 150, title: "Coach score by call", note: "out of 100" }] : [], advice: recs }];
     const flags = (d.evidence || []).filter((e) => String(e.kind || "").startsWith("flag"));
     if (flags.length) panels.push({ id: "concerns", title: "Lines that need a person", lead: "From the supervisor’s labels.", list: flags.map((e) => e.text), charts: [], advice: [] });
+    const last = calls[0], fl = flags[0], callFlag = calls.find((c) => c.flags && c.flags.length);
+    const lastScore = last && isNum(last.score) ? last.score : null;
+    const hero = {
+      label: "Coach score, latest call", value: isNum(lastScore) ? String(lastScore) : NR, unit: isNum(lastScore) ? "/100" : "",
+      st: !isNum(lastScore) ? ST.none() : lastScore >= 60 ? ST.green("On target") : ST.amber("Below target"),
+      compare: `Target 60 or more${scored.length > 1 ? ` · ${scored.length} scored calls` : ""}`,
+      means: "How closely the coach followed motivational-interviewing targets (reflections, open questions, no persuading), from the supervisor's labels.",
+      todo: recs[0] ? recs[0].title : "No action from this program right now.",
+      top: callFlag ? { tone: d.status === "alert" ? "red" : "amber", text: `Flagged line, call ${callFlag.callNumber} at ${callFlag.flags[0].t}: “${String(callFlag.flags[0].text).replace(/^(oh,?\s+)?before you go,?\s*/i, "")}”${d.status === "alert" ? " Tell the care team today." : ""}` } : fl ? { tone: "red", text: fl.text } : null,
+      spark: scored.length > 1 ? { values: scored.map((c) => c.score), ref: { y: 60, label: "target" }, d: 0, note: "Score by call, oldest first · dashed = target 60" } : null,
+      source: "Synthetic coaching calls, supervisor-labelled.",
+    };
     return {
+      hero,
       tags: Array.isArray(d.tags) ? d.tags : [flagLines ? { label: flagLines === 1 ? "1 line needs a person" : `${flagLines} lines need a person`, tone: "risk" } : null, calls[0] && calls[0].score != null ? { label: `Score ${calls[0].score}`, tone: calls[0].score < 60 ? "warn" : "good" } : null, { label: `${calls.length} call${calls.length === 1 ? "" : "s"}`, tone: "info" }].filter(Boolean),
-      kpis: [calls[0] && { value: `${calls[0].score ?? "–"}`, label: "Coach score, latest call", sub: "target 60 or more", good: calls[0].score == null ? null : calls[0].score >= 60 }, { value: String(flagLines), label: "Lines that need a person", sub: "supervisor labels", good: flagLines === 0 }, { value: String(calls.length), label: "Calls on file", sub: "", good: null }].filter(Boolean),
+      kpis: [calls[0] && { hero: true, value: `${calls[0].score ?? NR}`, label: "Coach score, latest call", sub: "target 60 or more", good: calls[0].score == null ? null : calls[0].score >= 60 }, { value: String(flagLines), label: "Lines that need a person", sub: "supervisor labels, all calls", good: flagLines === 0 }, { value: String(calls.length), label: "Calls on file", sub: "supervisor-labelled set", good: null }].filter(Boolean),
       panels, evidence: null, footnote: "Calls and labels from Clef’s supervisor-labelled set. Synthetic patients.",
+    };
+  }
+
+  // ------------------------------------------------------------------ linked demo records
+  /* The four programs use separate cohorts. For the demo, each linked record joins one real record from each program,
+     matched by sex and cancer type with ages within about 10 years. Not one real person; the page says so. */
+  const LINKED = [
+    { id: "x-L1", c5: "c5-P0975", c1: "c1-SC4BAD40B", c3: "c3-P02859", c4: "c4-N1530", first: "Donna", who: "65F · colorectal" },
+    { id: "x-L2", c5: "c5-P0002", c1: "c1-SFDB6493A", c3: "c3-P01011", c4: "c4-N1706", first: "María", who: "52F · colorectal" },
+    { id: "x-L3", c5: "c5-P0540", c1: "c1-S10BB1CA4", c3: "c3-P02440", c4: "c4-N1944", first: "Rosa", who: "57F · endometrial" },
+    { id: "x-L4", c5: "c5-P0420", c1: "c1-S6A875359", c3: "c3-P00718", c4: "c4-N0950", first: "Michael", who: "59M · prostate" },
+    { id: "x-L5", c5: "c5-P0998", c1: "c1-SE3556D56", c3: "c3-P01389", c4: "c4-N0920", first: "Karen", who: "58F · breast" },
+  ];
+  const LMODS = ["c1", "c3", "c4", "c5"], TRI_RANK = { today: 0, alert: 1, watch: 2, ok: 3 };
+  const linked = () => LINKED.map((l) => ({ ...l, name: `${l.first} · linked demo record`, members: Object.fromEntries(LMODS.map((m) => [m, l[m]])) }));
+  async function linkedPatient(id, get) {
+    get = get || ((mid) => patient(mid));
+    const L = LINKED.find((x) => x.id === id);
+    if (!L) { const e = new Error("There is no linked demo record with this ID."); e.notFound = true; throw e; }
+    // Each member loads with its own program's logic; one failing program shows its own error, the rest still render.
+    const got = await Promise.all(LMODS.map((m) => get(L[m]).then((v) => [m, v]).catch((e) => [m, { id: L[m], mod: m, error: e.message || "No answer" }])));
+    const members = Object.fromEntries(got), ok = LMODS.map((m) => members[m]).filter((m) => !m.error);
+    if (!ok.length) throw new Error("None of the four programs answered for this linked record. Try again in a minute.");
+    const worst = ok.reduce((a, b) => (TRI_RANK[b.tri] < TRI_RANK[a.tri] ? b : a));
+    const c5 = members.c5.error ? null : members.c5;
+    const facts = c5 ? c5.facts : [["Age", L.who.split("·")[0].trim()]];
+    return {
+      id, mod: "x", linked: true, name: `${L.first} · linked demo record`, first: L.first, members, status: worst.status, tri: worst.tri,
+      identity: c5 ? c5.identity : { age: null, sex: null, cancer: L.who.split(" · ")[1] + " cancer", language: null },
+      facts: [...facts, ["Linked records", LMODS.map((m) => L[m]).join(", ")]],
+      callId: L.c5, headline: worst.hero && worst.hero.top ? worst.hero.top.text : worst.headline,
+      forEllie: (members.c1 && members.c1.forEllie) || "",
+      tags: ok.map((m) => ({ label: `${MODULES[m.mod].name}: ${m.hero ? m.hero.value + " · " + m.hero.st.word : m.tri}`, tone: m.tri === "today" || m.tri === "alert" ? "risk" : m.tri === "watch" ? "warn" : "info" })),
+      kpis: ok.filter((m) => m.hero).map((m) => ({ value: m.hero.value + (m.hero.unit || ""), label: `${MODULES[m.mod].name}: ${m.hero.label}`, sub: m.hero.compare, good: null })),
+      panels: ok.map((m) => ({ id: m.mod, title: `${MODULES[m.mod].name}: ${m.headline}`, advice: m.panels.flatMap((pn) => pn.advice || []).slice(0, 2) })),
+      handoff: c5 && c5.handoff, lastSaved: c5 && c5.lastSaved, concern: c5 && c5.concern,
+      missing: [], footnote: "Linked demo record: four programs' separate cohorts joined by matching sex, cancer type and age (within about 10 years). Not one real person.",
     };
   }
 
@@ -411,5 +568,5 @@
 
   // Program-level metrics (C1 care-team page, C3 model card). Same live → saved-copy fallback.
   async function metrics(mod) { return fetchJSON(`/api/${mod}/metrics`, []); }
-  window.Adapter = { MODULES, today, roster, patient, calls, call, advice, metrics, health, missing, triage, demoName, shortName, c1Headline, fairFlag, context, remember, local, ago, savedAsCall, handoffLabel };
+  window.Adapter = { MODULES, linked, IDENTITY_KEYS, today, roster, patient, calls, call, advice, metrics, health, missing, triage, demoName, shortName, c1Headline, fairFlag, context, remember, local, ago, savedAsCall, handoffLabel };
 })();
