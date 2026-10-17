@@ -504,14 +504,14 @@
     }
     return h;
   }
-  // Patient handout: EN / Español / Kreyòl toggle (CSS radio group, no script), defaulting to the patient's language.
+  // Call script for the coach: EN / Español / Kreyòl (CSS radio group, no script), defaulting to the survivor's language.
   function handout(p, lang) {
     const ho = p.handout;
     if (!ho || !ho.langs.length) return "";
     const want = /span/i.test(lang || "") ? "es" : /creole|kreyòl|kreyol|haitian/i.test(lang || "") ? "ht" : "en";
     const def = ho.langs.some((l) => l.lang === want) ? want : ho.langs[0].lang, nm = "pv-" + p.id.replace(/[^a-z0-9]/gi, "");
-    const short = { en: "EN", es: "Español", ht: "Kreyòl" };
-    return `<section class="card handout"><div class="ho-head"><h2>Patient handout</h2><p class="small muted">What to tell the patient, in their language. Translation not yet reviewed by a medical interpreter.</p></div>
+    const short = { en: "English (source)", es: "Español", ht: "Kreyòl" };
+    return `<section class="card handout"><div class="ho-head"><h2>Call script · Spanish / Kreyòl</h2><p class="small muted">For the coach to read on the call, in the survivor's language. Machine-translated: review before use.</p></div>
       <div class="pv">${ho.langs.map((l) => `<input type="radio" class="pv-in l-${l.lang}" name="${nm}" id="${nm}-${l.lang}" ${l.lang === def ? "checked" : ""}><label for="${nm}-${l.lang}">${short[l.lang]}</label>`).join("")}
         <div class="pv-panels">${ho.langs.map((l) => `<div class="pv-p pv-${l.lang}" lang="${l.lang}">${l.careTeam ? `<p><b>${esc(l.careTeam)}</b></p>` : ""}${l.lowSugarWarning ? `<p class="hypo-tr"><span class="g" aria-hidden="true">▲</span> ${esc(l.lowSugarWarning)}</p>` : ""}${(l.actions || []).length ? `<ol>${l.actions.map((x) => `<li>${esc(x.text)}</li>`).join("")}</ol>` : ""}${l.help ? `<p class="small muted">${esc(l.help)}</p>` : ""}</div>`).join("")}</div></div>
       ${ho.note ? `<p class="small muted">${esc(ho.note)}</p>` : ""}</section>`;

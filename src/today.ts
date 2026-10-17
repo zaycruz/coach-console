@@ -3,9 +3,10 @@
  *   Each row: { id, mod, name, status, tri, horizon: "today"|"week", rank, reason (<= 90 chars, clinical), data
  *   ("Real survey data (MEPS)" | "Synthetic"), language, interpreter, headline, updatedAt }.
  * Who is on it, worst first:
+ *   Glucose (C4) never reaches Today: even care-team-flag rows go to the top of This week (judges: Today is red flags only).
  *   today: C5 safety lines under 30 days old (medical, distress, social), incl. Clef's demo call replayed today · C3 urgent 7-day ER/hospital risk ·
- *          C4 frequent lows (4%+ below 70) or very high sugar (average 250+, or under 10% in range) · C1 care-team-today
- *   week:  C1 highest next-year ER/hospital risk (alert tier, top 5) · C3 rough-patch alerts · C4 other alerts
+ *          C1 care-team-today (survey red flag)
+ *   week:  C4 care-team flags first (frequent lows, very high sugar), then C1 highest next-year ER/hospital risk (alert tier, top 5) · C3 rough-patch alerts · C4 other alerts
  * The module APIs stay the source; this only picks rows and writes one short reason from their own fields.
  */
 interface Fetcher { fetch(input: RequestInfo, init?: RequestInit): Promise<Response> }
@@ -86,7 +87,7 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
   c4.forEach((x, i) => {
     if (typeof x.careTeamToday === "boolean" && x.todayReason) {
       const now = x.careTeamToday, pr = Number(x.priority ?? 2), tir = Number((String(x.todayReason).match(/(\d+(?:\.\d+)?)% in range/) || [])[1] ?? 50);
-      rows.push({ ...base("c4", x), horizon: now ? "today" : "week", rank: now ? (pr === 0 ? 930 + Number((String(x.todayReason).match(/(\d+(?:\.\d+)?)% of readings below/) || [])[1] || 0) : 920) : 300 + (100 - tir) / 10, reason: cut(String(x.todayReason)), data: "Synthetic", language: "" });
+      rows.push({ ...base("c4", x), horizon: "week", rank: now ? (pr === 0 ? 830 + Number((String(x.todayReason).match(/(\d+(?:\.\d+)?)% of readings below/) || [])[1] || 0) : 820) : 300 + (100 - tir) / 10, reason: cut(String(x.todayReason)), data: "Synthetic", language: "" });
       return;
     }
     const ev = new Map(((d4[i] && Array.isArray(d4[i]!.evidence) ? d4[i]!.evidence : []) as Rec[]).map((e) => [String(e.id), e.value as number]));
@@ -95,7 +96,7 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     const reason = lows ? `Glucose: ${tbr}% of readings below 70 (target under 4%), risk of lows`
       : high ? `Glucose: average ${mg} mg/dL, ${tir}% in range (target over 70%)`
       : `Glucose: ${tir}% in range (target over 70%), average ${mg} mg/dL`;
-    rows.push({ ...base("c4", x), horizon: lows || high ? "today" : "week", rank: lows ? 930 + (tbr || 0) : high ? 920 + (mg || 0) / 100 : 300 + (100 - (tir || 0)) / 10, reason: cut(reason), data: "Synthetic", language: "" });
+    rows.push({ ...base("c4", x), horizon: "week", rank: lows ? 830 + (tbr || 0) : high ? 820 + (mg || 0) / 100 : 300 + (100 - (tir || 0)) / 10, reason: cut(reason), data: "Synthetic", language: "" });
   });
 
   // C1: anyone the module marks care-team-today (red flags from the survey: hopelessness, serious distress…) is today's

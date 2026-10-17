@@ -193,7 +193,7 @@
     if (!tags) { tags = deriveTags(mod, x); if (mod === "c3" || mod === "c1") note(mod, "tags[] on roster rows (derived from the headline)"); }
     // A C5 call flag older than 30 days is an alert to review, not a same-day call.
     const stale = mod === "c5" && !(Date.now() - Date.parse(x.updatedAt) < 30 * 864e5);
-    return { id: x.survivorId, mod, name: patientName(x.displayName), status: x.status || "ok", tri: x.careTeamToday === true ? "today" : stale && x.status === "alert" ? "alert" : triage(mod, x.status, mod === "c3" && c3Urgent(x)), headline: x.headline || "", tags: tags.slice(0, 4), updatedAt: x.updatedAt };
+    return { id: x.survivorId, mod, name: patientName(x.displayName), status: x.status || "ok", tri: x.careTeamToday === true ? (mod === "c4" ? "alert" : "today") : stale && x.status === "alert" ? "alert" : triage(mod, x.status, mod === "c3" && c3Urgent(x)), headline: x.headline || "", tags: tags.slice(0, 4), updatedAt: x.updatedAt };
   }
   const patientName = (n) => n || "Unnamed patient";
 
@@ -222,7 +222,7 @@
     // The record, the program's model card and the call overlay load in parallel.
     const [d, m, ctx] = await Promise.all([fetchJSON(`/api/${mod}/survivors/${encodeURIComponent(id)}`, REQUIRED[mod]), mod === "c1" ? c1Metrics() : mod === "c3" ? c3Metrics() : null, context()]);
     // Same-day care-team flags outrank the tier: C1 red flags from the survey, C4 frequent lows or very high average.
-    const careToday = (mod === "c1" && d.redFlags && d.redFlags.careTeamToday === true) || (mod === "c4" && d.careTeamFlag && d.careTeamFlag.today === true);
+    const careToday = (mod === "c1" && d.redFlags && d.redFlags.careTeamToday === true);
     const base = { id, mod, name: patientName(d.displayName), status: d.status || "ok", tri: careToday ? "today" : triage(mod, d.status, mod === "c3" && c3Urgent(d)), headline: d.headline || "", summary: d.summary || "", updatedAt: d.updatedAt, facts: facts(d.profile || {}), identity: identity(d.profile || {}), source: health[mod] && health[mod].source };
     if (!d.profile) note(mod, "profile (not provided)");
     const v = mod === "c1" ? c1View(d, m) : mod === "c3" ? c3View(d, m) : mod === "c4" ? c4View(d) : c5View(d);
@@ -458,7 +458,12 @@
   // ---- C4 Dose and Timing
   const C4_CHART_FOR = { talk_to_team: ["daily"], walk: ["walk", "walkDose"], late_dinner: ["dinner"], overnight_fast: ["fast"] };
   const C4_CHART_BY_EVIDENCE = [[/^(tir|tbr|tar|mean_glucose|gmi|status)/, "daily"], [/walk/, "walk"], [/late|dinner/, "dinner"], [/fast/, "fast"]];
+  // Patient 360 is clinician-side: C4 writes some lines to the survivor ("your readings"); restate them for the care team.
+  // The translated call script (patientView) keeps its own voice: the coach reads it aloud.
+  const careVoice = (t) => String(t).replace(/\byour care team\b/gi, "the care team").replace(/\bYour\b/g, "Their").replace(/\byour\b/g, "their").replace(/\byours\b/gi, "theirs").replace(/\bYou are\b/g, "They are").replace(/\byou are\b/g, "they are").replace(/\bYou\b/g, "They").replace(/\byou\b/g, "them").replace(/\bthem (walked|ate|had|have|did|were|skipped|logged|fasted|scored)\b/g, "they $1");
+  const careVoiceDeep = (v, k) => (k === "patientView" || k === "displayName" ? v : typeof v === "string" ? careVoice(v) : Array.isArray(v) ? v.map((x) => careVoiceDeep(x)) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([kk, x]) => [kk, careVoiceDeep(x, kk)])) : v);
   function c4View(d) {
+    d = careVoiceDeep(d);
     const c = d.charts || {}, evById = Object.fromEntries((d.evidence || []).map((e) => [e.id, e]));
     const basisName = { personal: "Their own meals", cohort: "Whole program", trial: "Randomized trial", rule: "Safety rule" };
     const charts = {};
@@ -520,10 +525,10 @@
     const tar250 = val("tar250"), tar180 = val("tar180");
     const hero = {
       label: "Time in range (70–180 mg/dL, the target band)", tileLabel: "Time in range (70–180 mg/dL)", why: ctf ? `Send to the care team today: ${ctf.reasons.join("; ") || "glucose over the care-team line"}.` : "", value: isNum(tir) ? `${num(tir)}%` : NR,
-      st: ctf ? ST.red("Act today") : !isNum(tir) ? ST.none() : tir < 10 ? ST.redW("Far off target") : tir >= 70 ? ST.green(tir >= 90 ? "At ideal" : "On target") : ST.amber("Below target"),
+      st: ctf ? ST.redW("send readings to the care team today") : !isNum(tir) ? ST.none() : tir < 10 ? ST.redW("Far off target") : tir >= 70 ? ST.green(tir >= 90 ? "At ideal" : "On target") : ST.amber("Below target"),
       compare: `${ctf && isNum(tir) ? `Time in range ${tir >= 70 ? "on target" : "below target"} · ` : ""}Target over 70%, ideal 90%+${window_ ? ` · ${window_[1]}` : ""}`,
       means: isNum(tir) ? `${num(tir)} of every 100 readings were in the target band${isNum(tbr) && tbr > 0 ? `, ${num(tbr, 1)} below 70` : ", none below 70"}${isNum(tar180) && tar180 > 0 ? `, ${num(tar180, 1)} above 180` : ", none above 180"}.` : "No readings in this window.",
-      todo: d.plainSummary ? firstSentence(d.plainSummary) + (restOf(d.plainSummary) ? " " + firstSentence(restOf(d.plainSummary)) : "") : ((d.recommendations || [])[0] || {}).title || "No action from this program right now.",
+      todo: ctf ? "Send these readings to the care team today and call to check on symptoms. The coach does not change medication." : ((d.recommendations || [])[0] || {}).action || ((d.recommendations || [])[0] || {}).title || "No action from this program right now.",
       top: ctf ? { tone: "red", text: `Send to the care team today: ${ctf.reasons.join("; ") || "glucose over the care-team line"}.` } : null,
       bar: isNum(tir) ? [["Below 70", tbr, "red"], ["70–180", tir, "green"], ["181–250", isNum(tar180) && isNum(tar250) ? Math.max(0, tar180 - tar250) : null, "amber"], ["Above 250", tar250, "red"]].filter(([, v]) => isNum(v)).map(([label, v, tone]) => ({ label, v, tone })) : null,
       spark: dp ? { values: dp.values, band: (c.dailyProfile.targetRange || [70, 180]), note: `Blood sugar by hour of day, ${String(dp.label || "").replace(/^weeks/i, "weeks")} · band = 70–180` } : null,

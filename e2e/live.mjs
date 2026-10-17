@@ -110,6 +110,9 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Patients count = c1 + c3 + c4 + c5 list endpoints", count === total, `${count} vs ${total}`);
   const src = await page.locator(".mode .src").evaluateAll((els) => els.map((e) => e.textContent + ":" + e.className));
   ok("C1, C3, C4, C5 chips say live", src.length === 4 && src.every((c) => c.includes("s-live")), src.join(" | "));
+  const optToday = await page.locator('option[value="today"]').first().innerText().catch(() => "");
+  const apiToday = (await (await fetch(`${B}/api/today`)).json()).rows.filter((r) => r.horizon === "today").length;
+  ok("Patients 'Act today' count = Today queue count (one list everywhere)", optToday.includes(`(${apiToday})`), `${optToday} vs ${apiToday}`);
   for (const m of ["c3", "c4", "c1"]) {
     await page.locator(`[data-filter="${m}"]`).click(); await settle(page);
     ok(`${m} rows carry a reason and no repeated tag chips on Patients`, (await page.locator(`tr[data-pid^="${m}-"] td.hl`).first().innerText()).trim().length > 0 && (await page.locator(`tr[data-pid^="${m}-"] .tag`).count()) === 0);
@@ -125,6 +128,9 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   const todayRows = await page.locator(".today-list .t-row").count();
   const domMods = new Set(await page.locator(".today-list .t-row").evaluateAll((els) => els.map((e) => e.dataset.mod)));
   ok("Today page: rows from all four programs", todayRows >= 4 && domMods.size === 4, `${todayRows} rows, ${[...domMods].join(",")}`);
+  const nowN = tq.rows.filter((r) => r.horizon === "today").length;
+  ok("Today API: Act today holds red flags only, no glucose rows", !tq.rows.some((r) => r.horizon === "today" && r.mod === "c4"), `${nowN} today`);
+  ok("Today page: hero count matches the API's Act today rows", new RegExp(`\\b${nowN}\\b`).test(await page.locator(".today-hero, .t-hero, h1, .hero").first().innerText().catch(() => "")) || (await page.getByText(new RegExp(`^${nowN}$`)).count()) > 0, `${nowN}`);
   ok("Today page: data-type chip on every row", (await page.locator(".today-list .t-row .chip-data").count()) === todayRows);
   ok("Today page: interpreter chip for a non-English patient", (await page.locator(".today-list .chip-lang.need").count()) > 0);
   ok("Today page: separate-cohorts line", /Four programs, four separate cohorts/.test(await page.locator(".cohorts").innerText().catch(() => "")));
