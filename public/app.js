@@ -172,7 +172,7 @@
     const logged = r && r.lastSaved ? `last call ${A.ago(r.lastSaved.at)} by ${r.lastSaved.coach}` : "";
     return `<li class="q-row" data-pid="${esc(it.id)}" data-mod="${it.mod}"><span class="q-n ${it.horizon}">${i + 1}</span>
       <div class="q-main"><div class="q-top"><a class="q-name" href="#p-${esc(it.id)}">${esc(first)}</a>${who ? `<span class="q-who">${esc(who)}</span>` : ""}<span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span>${lang}${real}</div>
-        <p class="q-why">${esc(String(it.reason || it.headline).replace(/^Red flag \([^)]*\):/, "Red flag:"))}</p>
+        <p class="q-why">${esc(String(it.reason || it.headline).replace(/^Red flag \((?:[^()]|\([^()]*\))*\):/, "Red flag:"))}</p>
         <p class="q-meta">${[age, stale ? "<b>Close the loop: confirm it was handed off</b>" : "", logged, noOwner ? "" : `<span class="chip-own">${ownerOf(it)}</span>`].filter(Boolean).join(" · ")}</p></div>
       <div class="acts"><a class="btn${it.horizon === "today" ? " primary" : ""}" href="#live-${esc(it.id)}">Start call</a><button class="btn${it.horizon === "today" ? "" : " quiet"}" type="button" data-log data-pid="${esc(it.id)}" data-name="${esc(first)}" data-flag="${esc(r && r.concern ? r.concern.text : "")}">Log outcome</button></div></li>`;
   }
@@ -417,7 +417,7 @@
   // Header actions: one primary (Start call); Log outcome and Hand off to nurse are outline. A done hand-off shows who and when.
   function actionsHtml(p, callId) {
     const flag = p.concern ? p.concern.text : p.headline;
-    return `<a class="btn primary" href="#live-${esc(callId)}">Start call</a><button class="btn" type="button" title="After a call: reached, no answer, left message; who it went to; next contact" data-log data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Log outcome</button>${p.handoff ? `<span class="done">✓ ${esc(p.handoff.label)}${p.handoff.to && p.handoff.to !== "Called" ? ` → ${esc(p.handoff.to)}` : ""}${p.handoff.note ? `<span class="done-note">${esc(p.handoff.note)}</span>` : ""}</span>` : p.tri === "today" || p.concern ? `<button class="btn" type="button" title="Send the flagged line to the nurse now, with a note" data-handoff data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Hand off to nurse</button>` : ""}`;
+    return `<a class="btn primary" href="#live-${esc(callId)}">Start call</a><button class="btn" type="button" title="After a call: reached, no answer, left message; who it went to; next contact" data-log data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Log outcome</button>${p.handoff ? `<span class="done">✓ ${esc(p.handoff.label)}${p.handoff.to && p.handoff.to !== "Called" ? ` → ${esc(p.handoff.to)}` : ""}${p.handoff.note ? `<span class="done-note">${esc(String(p.handoff.note).replace(/Patient said: “[^”]*”\s*/g, "").trim())}</span>` : ""}</span>` : p.tri === "today" || p.concern ? `<button class="btn" type="button" title="Send the flagged line to the nurse now, with a note" data-handoff data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Hand off to nurse</button>` : ""}`;
   }
   function headHtml(p, id, callId) {
     const lang = p.identity && p.identity.language && p.identity.language !== "English" ? langName(p.identity.language) : "";
