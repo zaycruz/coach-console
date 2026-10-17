@@ -106,7 +106,9 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   const src = await page.locator(".mode .src").evaluateAll((els) => els.map((e) => e.textContent + ":" + e.className));
   ok("C1, C3, C4, C5 chips say live", src.length === 4 && src.every((c) => c.includes("s-live")), src.join(" | "));
   const optToday = await page.locator('a.fpill[href="#patients-today"]').first().innerText().catch(() => "");
-  const apiToday = (await (await fetch(`${B}/api/today`)).json()).rows.filter((r) => r.horizon === "today").length;
+  // Patients handed off today leave Call today. The test namespace is shared with other test sessions, so count theirs too.
+  const handedToday = new Set((await j("/api/handoffs")).filter((h) => h && new Date(h.at).toDateString() === new Date().toDateString()).map((h) => h.patientId));
+  const apiToday = (await (await fetch(`${B}/api/today`)).json()).rows.filter((r) => r.horizon === "today" && !handedToday.has(r.id)).length;
   ok("Patients 'Act today' count = Today queue count (one list everywhere)", new RegExp(`\\b${apiToday}\\b`).test(optToday), `${optToday} vs ${apiToday}`);
   for (const m of ["c3", "c4", "c1"]) {
     await page.locator(`[data-filter="${m}"]`).click(); await settle(page);
@@ -123,10 +125,10 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   const todayRows = await page.locator(".today-list .t-row").count();
   const domMods = new Set(await page.locator(".today-list .t-row").evaluateAll((els) => els.map((e) => e.dataset.mod)));
   ok("Today page: rows from all four programs", todayRows >= 4 && domMods.size === 4, `${todayRows} rows, ${[...domMods].join(",")}`);
-  const nowN = tq.rows.filter((r) => r.horizon === "today").length;
+  const nowN = tq.rows.filter((r) => r.horizon === "today" && !handedToday.has(r.id)).length;
   ok("Today API: Act today holds red flags only, no glucose rows", !tq.rows.some((r) => r.horizon === "today" && r.mod === "c4"), `${nowN} today`);
   ok("Today page: hero count matches the API's Act today rows", new RegExp(`\\b${nowN}\\b`).test(await page.locator(".today-hero, .t-hero, h1, .hero").first().innerText().catch(() => "")) || (await page.getByText(new RegExp(`^${nowN}$`)).count()) > 0, `${nowN}`);
-  ok("Today page: data-type chip on every row", (await page.locator(".today-list .t-row .chip-data").count()) === todayRows);
+  ok("Today page: data-type chip on every row", (await page.locator("#today-now .t-row .chip-data, #today-week .t-row .chip-data").count()) === (await page.locator("#today-now .t-row, #today-week .t-row").count()));
   ok("Today page: interpreter chip for a non-English patient", (await page.locator(".today-list .chip-lang.need").count()) > 0);
   ok("Today page: separate-cohorts line", /Four programs, four separate cohorts/.test(await page.locator(".cohorts").innerText().catch(() => "")));
   const domWhy = await page.locator(".today-list .t-row .why").allInnerTexts();
@@ -162,18 +164,30 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   // live call: typed lines are tagged by Clef, then saved and shown as the next recap
   const before = (await j(`/api/calls/${quiet.survivorId}`)).length;
   await page.goto(`${B}/#live-${quiet.survivorId}`); await settle(page);
-  for (const t of ["How have the last few days been for you?", "Honestly tired, but I want to get back to walking.", "It sounds like walking matters to you, even on tired days."]) {
-    await page.fill("#typed", t); await page.press("#typed", "Enter");
-  }
+  // Coach and patient alternate in the typed box, starting with the coach. Five coach lines, so the call has a score.
+  const typed = ["How have the last few days been for you?", "Honestly tired, but I want to get back to walking.",
+    "It sounds like walking matters to you, even on tired days.", "Yes. I used to walk every morning.",
+    "What would a first short walk look like this week?", "Maybe ten minutes after lunch.",
+    "Ten minutes after lunch feels doable to you.", "I think so.",
+    "Would it help to plan which days?", "Sure.", "You know what works for your body best."];
+  for (const t of typed.slice(0, 3)) { await page.fill("#typed", t); await page.press("#typed", "Enter"); }
   await page.waitForFunction(() => document.querySelectorAll("#live-lines .tag.live").length >= 2, null, { timeout: 90000 }).catch(() => {});
   const tagged = await page.locator("#live-lines .tag.live").count();
   ok("live call: typed lines get Clef tags", tagged >= 2, `${tagged} of 3`);
   await shot(page, "live-call-tagged_1280.png");
+  // The rest go in fast and End call is pressed at once, while Clef tags are still in flight (zay: "coach score drops").
+  for (const t of typed.slice(3)) { await page.fill("#typed", t); await page.press("#typed", "Enter"); }
   await page.locator("#endcall").click();
   await page.waitForFunction(() => document.querySelector("#recap h2") && /Last call/.test(document.querySelector("#recap h2").textContent), null, { timeout: 30000 }).catch(() => {});
   let after = before;
   for (let k = 0; k < 18 && after === before && before < 20; k++) { await new Promise((r) => setTimeout(r, 5000)); after = (await j(`/api/calls/${quiet.survivorId}?t=${Date.now()}`)).length; } // KV read-after-write lags up to 60 s
   ok("live call: saved, and the recap now shows it", after === Math.min(before + 1, 20) && (await page.locator("#recap").innerText()).includes("Logged in Patient 360"), `${before} → ${after}`);
+  // The saved score is the live formula over every saved line: End call waited for the tags in flight, so none dropped out.
+  const mine = (await j(`/api/calls/${quiet.survivorId}?t=${Date.now()}`)).filter((x) => x && Array.isArray(x.lines) && x.lines.length === typed.length).sort((a, b) => String(b.at).localeCompare(String(a.at)))[0];
+  const rescored = mine ? await page.evaluate((ls) => window.P360.liveScore(ls.map((l) => ({ speaker: l.speaker, live: l.tag ? { tag: l.tag } : null }))), mine.lines) : undefined;
+  const untagged = mine ? mine.lines.filter((l) => !l.tag).length : -1;
+  ok("live call: every line saved with its Clef tag, none dropped at End call", untagged === 0, mine ? `${untagged} of ${mine.lines.length} untagged` : "saved call not found");
+  ok("live call: saved coach score equals the live score of the same lines", !!mine && mine.score != null && mine.score === rescored, mine ? `saved ${mine.score} · live formula ${rescored}` : "saved call not found");
   manifest.savedCallPatient = quiet.survivorId;
 
   // AI assistant: opens a page instantly, answers a question through the model
@@ -218,6 +232,9 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
     const hits = await page.evaluate(() => (document.documentElement.outerHTML.match(/.{0,40}ellie.{0,40}/gi) || []).slice(0, 3));
     ok(`#${r}: rendered DOM has no "ellie"`, hits.length === 0, hits.join(" | "));
   }
+  // The old /api/ellie alias is gone: only /api/assistant answers.
+  const oldRoute = await fetch(`${B}/api/ellie`, { method: "POST", headers: { "content-type": "application/json", "x-p360-test": "1" }, body: JSON.stringify({ question: "Who needs a call today?" }) });
+  ok("/api/ellie no longer answers", oldRoute.status !== 200, `HTTP ${oldRoute.status}`);
 
   // One fact, one place: every tile number appears exactly once on its overview; no patient second person anywhere we write.
   const voice = [];
