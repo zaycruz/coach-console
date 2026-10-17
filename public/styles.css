@@ -952,3 +952,16 @@ button.more-link { align-self: flex-start; padding-left: 0; }
 .chart-grid { align-items: stretch; }
 .chart-grid > .card { display: flex; flex-direction: column; }
 .chart-grid > .card > .stack, .chart-grid > .card > .multiples { flex: 1; justify-content: center; }
+
+/* review pass: no half-row orphans anywhere */
+.chart-grid > .card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.tiles.one { grid-template-columns: minmax(0, 1fr); }
+.tiles.one .tile { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-4); min-height: 0; }
+.tiles.one .t-prog, .tiles.one .t-label { flex-basis: 100%; }
+.tiles.one .t-label { margin-top: -8px; }
+.tiles.one .t-numrow { flex: 0 0 auto; margin: 0; }
+.tiles.one .t-mark { flex: 1 1 260px; max-width: 360px; margin: 0; }
+.tiles.one .gauge { max-width: 360px; }
+.tiles.one .t-cmp { flex: 1 1 220px; }
+.tiles.one .t-sure { flex-basis: 100%; margin-top: 0; padding-top: 0; }
+@media (max-width: 760px) { .tiles.one { grid-template-columns: minmax(0, 1fr); } .tiles.one .tile { flex-direction: column; align-items: stretch; } }
