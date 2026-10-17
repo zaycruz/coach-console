@@ -302,7 +302,7 @@
       r.alertFrom != null && { label: "Alert line", value: r.alertFrom, text: pct(r.alertFrom), color: "var(--line-2)" },
     ].filter(Boolean) } : null;
     const driverBars = drivers.length ? { title: "What drives it", note: `Contribution to this person’s risk (model log-odds). Grey lowers it.${drivers.some(cost) ? " Health spending is a cost proxy for need, not a cause." : ""}`, rows: drivers.map((x) => ({ label: x.label + (cost(x) ? " (cost proxy)" : ""), value: Math.abs(x.logitContribution), text: (x.logitContribution > 0 ? "+" : "−") + num(Math.abs(x.logitContribution), 2), color: x.logitContribution > 0 ? "var(--m-c1-strong)" : "var(--ink-3)" })) } : null;
-    const panels = [{ id: "risk", title: "Hospital risk, next 12 months", lead: [d.riskWords, d.caveat].filter(Boolean).join(". ").replace(/\.\./g, "."), bars: riskBars, bars2: driverBars, list: ev.filter((e) => e.kind !== "model").map((e) => e.text), advice }];
+    const panels = [{ id: "risk", title: "What drives this patient’s risk", lead: d.riskWords ? `${sentence(d.riskWords)}.`.replace(/\.\.$/, ".") : "", bars: driverBars, list: ev.filter((e) => e.kind !== "model").map((e) => e.text), advice }];
     const sc = c.scores || {};
     const scoreNames = { physical_score: "Physical health score", mental_score: "Mental health score", distress_k6: "Distress (K6)", depression_phq2: "Depression (PHQ-2)", pain: "Pain", fatigue: "Fatigue", financial_toxicity: "Money worries", cost_delay: "Delayed care for cost" };
     const rows = Object.entries(sc).map(([k, v]) => [scoreNames[k] || k, v == null ? "not answered" : num(v, 1)]);
@@ -328,7 +328,8 @@
       compare: (rf && rf.careTeamToday && isNum(rv) ? `${isNum(alertAt) && rv >= alertAt ? "High" : isNum(watchAt) && rv >= watchAt ? "Middle" : "Low"} tier · ` : "") + (isNum(r.baseRate) ? `Average patient ${pct(r.baseRate)}${isNum(alertAt) ? ` · high tier (top of three risk groups) from ${pct(alertAt)}` : ""}` : ""),
       means: d.riskWords ? `${sentence(d.riskWords)}.`.replace(/\.\.$/, ".") + (apiDriver ? ` Driven by ${apiDriver}.` : "") : "No plain-words reading from this program.",
       todo: careTeam ? careTeam.text : "No action from this program right now.",
-      caveat: d.caveat || "",
+      caveat: "",
+      tiers: m && m.tiers && Array.isArray(m.tiers.tiers) && isNum(rv) ? { value: rv, base: isNum(r.baseRate) ? r.baseRate : null, tiers: m.tiers.tiers.map((t) => ({ status: t.status, from: t.riskFrom, to: t.riskTo, n: t.n, rate: t.observedRate })), dev } : null,
       top: rf && rf.careTeamToday ? { tone: "red", text: rf.banner || "Call the care team today." } : caution && !caution.soft ? { tone: "amber", text: `${caution.label}. ${caution.text}.` } : null,
       // Glance (overview tile): one bullet gauge, numbers-only comparison, the accuracy figure and the data window.
       gauge: isNum(rv) ? { value: rv, max: Math.max(rv, isNum(alertAt) ? alertAt : 0, isNum(r.baseRate) ? r.baseRate : 0, 0.5) * 1.15, pct: true, marks: [isNum(r.baseRate) && { v: r.baseRate, label: "avg" }, isNum(alertAt) && { v: alertAt, label: "high tier" }].filter(Boolean) } : null,
@@ -346,7 +347,7 @@
       tags: [caution && { label: caution.label, tone: caution.soft ? "info" : "warn" }, { label: `ER/hospital ${pct(d.risk)} · 12 months`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...pos.slice(0, 3).map((x) => ({ label: x.label + (cost(x) ? " (cost proxy)" : ""), tone: "warn" }))].filter(Boolean),
       kpis: [{ hero: true, value: isNum(d.risk) ? pct(d.risk) : NR, label: "Next-year ER or hospital risk (from 2017 survey)", sub: d.riskWords || (r.baseRate != null ? `average patient ${pct(r.baseRate)}` : ""), good: d.status === "alert" ? false : d.status === "ok" ? true : null }, use.erVisits != null && { value: String(use.erVisits), label: "ER visits, data year 2017", sub: "most survivors had none · real MEPS", good: use.erVisits === 0 ? true : null }, use.hospitalStays != null && { value: String(use.hospitalStays), label: "Hospital stays, data year 2017", sub: "most survivors had none · real MEPS", good: use.hospitalStays === 0 ? true : null }].filter(Boolean),
       panels, evidence: null,
-      footnote: (d.profile && d.profile.dataSource ? d.profile.dataSource + ". " : "") + (d.caveat || ""),
+      footnote: d.profile && d.profile.dataSource ? d.profile.dataSource + "." : "", caveat: d.caveat || "",
     };
   }
 
@@ -543,7 +544,7 @@
       spark: dp ? { values: dp.values, band: (c.dailyProfile.targetRange || [70, 180]), note: `Blood sugar by hour of day, ${String(dp.label || "")} · band = 70–180` } : null,
       gauge: (() => { const t = parseFloat((String(trigTarget || "").match(/(\d+(?:\.\d+)?)\s*%/) || [])[1]); return { value: trig.value, max: Math.max(trig.value, isNum(t) ? t : 0) * 1.4 || 10, unit: "%", d: 1, marks: isNum(t) ? [{ v: t, label: "target" }] : [] }; })(),
       cmp: [trigTarget && trigTarget.replace(/^target /i, "target "), isNum(tir) && `time in range ${num(tir)}%`].filter(Boolean).join(" · "),
-      sure: trig.n ? `${num(trig.n)} sensor readings, this person` : "this person's sensor readings",
+      sure: trig.n ? `measured, not modelled · ${num(trig.n)} sensor readings` : "measured, not modelled",
       age: window_ ? window_[1] + (d.updatedAt ? `, to ${new Date(d.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "") : "",
       source: "Synthetic CGM data (Crane Lab set), this person's readings.",
     } : {
@@ -557,7 +558,7 @@
       spark: dp ? { values: dp.values, band: (c.dailyProfile.targetRange || [70, 180]), note: `Blood sugar by hour of day, ${String(dp.label || "").replace(/^weeks/i, "weeks")} · band = 70–180` } : null,
       gauge: isNum(tir) ? { value: tir, max: 100, unit: "%", marks: [{ v: 70, label: "target" }, { v: 90, label: "ideal" }] } : null,
       cmp: [`target 70%+`, `ideal 90%+`, isNum(tbr) && tbr > 0 && `${num(tbr, 1)}% below 70`, isNum(tar250) && tar250 > 0 && `${num(tar250, 1)}% above 250`].filter(Boolean).join(" · "),
-      sure: evById.tir && evById.tir.n ? `${num(evById.tir.n)} sensor readings, this person` : "this person's sensor readings",
+      sure: evById.tir && evById.tir.n ? `measured, not modelled · ${num(evById.tir.n)} sensor readings` : "measured, not modelled",
       age: window_ ? window_[1] + (d.updatedAt ? `, to ${new Date(d.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "") : "",
       source: "Synthetic CGM data (Crane Lab set), this person's readings. Program-wide and real-data (CGMacros, NHANES) checks sit under For scientists.",
     };

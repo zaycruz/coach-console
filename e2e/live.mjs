@@ -33,10 +33,10 @@ ok("list endpoints answer", total > 0, `c1 ${l1.length}, c3 ${l3.length}, c4 ${l
 
 const ROUTES = [
   ["today", "Call today"], ["patients", "Patients"],
-  [`p-${ids.c3}`, "Health chart"], [`p-${ids.c3}.c3`, "What to do"],
-  [`p-${ids.c4}`, "Health chart"], [`p-${ids.c4}.c4`, "What to do"],
+  [`p-${ids.c3}`, "Health chart"], [`p-${ids.c3}.c3`, "How sure"],
+  [`p-${ids.c4}`, "Health chart"], [`p-${ids.c4}.c4`, "How sure"],
   [`p-${ids.c5}`, "Health chart"], [`p-${ids.c5}.c5`, "Calls"],
-  [`p-${ids.c1}`, "Health chart"], [`p-${ids.c1}.c1`, "What to do"],
+  [`p-${ids.c1}`, "Health chart"], [`p-${ids.c1}.c1`, "How sure"],
   [`p-${ids.c4}.c3`, "Not enrolled"], [`p-${ids.c4}.c1`, "Not enrolled"],
   ["calls", "Calls"], [`call-${flaggedCall.callId}`, "Transcript"],
   [`live-${c5WithCall}`, "Last call"], [`live-${ids.c4}`, "No previous call"],
@@ -112,7 +112,8 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Patients 'Act today' count = Today queue count (one list everywhere)", new RegExp(`\\b${apiToday}\\b`).test(optToday), `${optToday} vs ${apiToday}`);
   for (const m of ["c3", "c4", "c1"]) {
     await page.locator(`[data-filter="${m}"]`).click(); await settle(page);
-    ok(`${m} rows carry tags on Patients`, (await page.locator(`tr[data-pid^="${m}-"] .tag`).count()) > 0);
+    // One line per row: no tag clusters. Real · MEPS is the only tag, on hospital-risk rows, because real is the exception.
+    ok(`${m} rows on Patients: one line, no tag cluster`, (await page.locator(`tr[data-pid^="${m}-"] .tag`).count()) === 0 && (m !== "c1" || (await page.locator(`tr[data-pid^="c1-"] .tag-real`).count()) > 0));
   }
   await page.locator(`[data-filter="all"]`).click();
   await page.goto(`${B}/#today`); await settle(page);
@@ -122,19 +123,22 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Today API: one queue with rows from C1, C3, C4 and C5", ["c1", "c3", "c4", "c5"].every((m) => qMods.has(m)), [...qMods].join(","));
   ok("Today API: every row has a whole reason, never cut with \"…\"", tq.rows.every((r) => r.reason && !/…/.test(r.reason)), (tq.rows.find((r) => /…/.test(r.reason || "")) || {}).reason || "");
   ok("Today API: C1 rows say real MEPS data, the rest synthetic", tq.rows.every((r) => (r.mod === "c1") === /MEPS/.test(r.data)));
-  const todayRows = await page.locator(".today-list .t-row").count();
-  const domMods = new Set(await page.locator(".today-list .t-row").evaluateAll((els) => els.map((e) => e.dataset.mod)));
+  const todayRows = await page.locator(".queue .q-row").count();
+  const domMods = new Set(await page.locator(".queue .q-row").evaluateAll((els) => els.map((e) => e.dataset.mod)));
   ok("Today page: rows from all four programs", todayRows >= 4 && domMods.size === 4, `${todayRows} rows, ${[...domMods].join(",")}`);
   const nowN = tq.rows.filter((r) => r.horizon === "today" && !handedToday.has(r.id)).length;
   ok("Today API: Act today holds red flags only, no glucose rows", !tq.rows.some((r) => r.horizon === "today" && r.mod === "c4"), `${nowN} today`);
   ok("Today page: hero count matches the API's Act today rows", new RegExp(`\\b${nowN}\\b`).test(await page.locator(".today-hero, .t-hero, h1, .hero").first().innerText().catch(() => "")) || (await page.getByText(new RegExp(`^${nowN}$`)).count()) > 0, `${nowN}`);
-  ok("Today page: data-type chip on every row", (await page.locator("#today-now .t-row .chip-data, #today-week .t-row .chip-data").count()) === (await page.locator("#today-now .t-row, #today-week .t-row").count()));
-  ok("Today page: interpreter chip for a non-English patient", (await page.locator(".today-list .chip-lang.need").count()) > 0);
-  ok("Today page: separate-cohorts line", /Four programs, four separate cohorts/.test(await page.locator(".cohorts").innerText().catch(() => "")));
-  const domWhy = await page.locator(".today-list .t-row .why").allInnerTexts();
+  // Provenance once: Real · MEPS on every hospital-risk row and nowhere else; no "Synthetic" tag on rows (the page chrome says it once).
+  ok("Today page: Real · MEPS on hospital-risk rows only, no Synthetic tags", (await page.locator(".q-row[data-mod=c1] .tag-real").count()) === (await page.locator(".q-row[data-mod=c1]").count()) && (await page.locator(".q-row:not([data-mod=c1]) .tag-real").count()) === 0 && (await page.locator(".q-row .chip-data").count()) === 0);
+  ok("Today page: interpreter chip names the language", /Interpreter · (Spanish|Kreyòl)/.test(await page.locator(".queue .chip-lang.need").first().innerText().catch(() => "")));
+  ok("Today page: the cohort note is a ? popover, not a banner", /Four programs, four separate cohorts/.test(await page.locator(".pill-synthetic").getAttribute("title")) && (await page.locator(".cohorts").count()) === 0);
+  ok("Today page: one count line, no KPI boxes", (await page.locator(".counts").count()) === 1 && (await page.locator(".stat-strip, .summary").count()) === 0);
+  ok("Today page: every row has a numbered position, an owner chip and two actions", (await page.locator(".q-row .q-n").count()) === todayRows && (await page.locator(".q-row .chip-own").count()) === todayRows && (await page.locator(".q-row .btn.primary").count()) === todayRows && (await page.locator(".q-row [data-log]").count()) === todayRows);
+  const domWhy = await page.locator(".queue .q-row .q-why").allInnerTexts();
   ok("Today page: no reason truncated with \"…\" (rows wrap)", domWhy.length > 0 && !domWhy.some((t) => /…/.test(t)), domWhy.find((t) => /…/.test(t)) || `${domWhy.length} reasons`);
   await shot(page, "today_1280.png");
-  await page.locator(".t-row .btn.primary").first().click(); await settle(page);
+  await page.locator(".q-row .btn.primary").first().click(); await settle(page);
   ok("Today: first action opens a call or the risk view", /#(live-|p-c1-)/.test(await page.evaluate(() => location.hash)), await page.evaluate(() => location.hash));
 
   await page.goto(`${B}/#p-${ids.c4}`); await settle(page);
@@ -143,7 +147,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("advice sits beside its chart", (await page.locator(".do .do-visual svg.chart").count()) >= 2);
   ok("program view ends in the full raw response", (await page.locator("details#raw summary").innerText()).includes("Everything this program sent"));
   await page.goto(`${B}/#p-${ids.c4}`); await settle(page);
-  await page.locator("a.l-tile").first().click(); await settle(page);
+  await page.locator("a.tile").first().click(); await settle(page);
   ok("Health chart tile drills into the program view", (await page.evaluate(() => location.hash)) === `#p-${ids.c4}.c4`);
 
   // glucose: a series with no readings is named, never drawn as a phantom legend line
@@ -243,7 +247,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
     await page.waitForFunction(() => !document.querySelector("#view .is-loading, #view [aria-busy=true]"), null, { timeout: 30000 }).catch(() => {});
     await page.waitForFunction(() => { const e = document.querySelector(".assistant-insight"); return e && e.dataset.state && e.dataset.state !== "loading"; }, null, { timeout: 45000 }).catch(() => {});
     // The tile's number with its unit ("1 line", "10.3%"), counted as a whole token (not inside "13" or "21.0%").
-    const nums = (await page.locator("#view .l-tile .hero-num").allInnerTexts()).map((n) => n.replace(/\s+/g, " ").trim()), text = await page.locator("#view").innerText();
+    const nums = (await page.locator("#view .tile .t-num").allInnerTexts()).map((n) => n.replace(/\s+/g, " ").trim()), text = await page.locator("#view").innerText();
     const esc = (n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const rep = nums.filter((n) => n && n !== "Not recorded").map((n) => [n, (text.replace(/\s+/g, " ").match(new RegExp(`(?<![\\d.])${esc(n)}(?![\\d])`, "g")) || []).length]).filter(([, k]) => k !== 1);
     ok(`${pid} overview: each tile number appears exactly once`, nums.length > 0 && rep.length === 0, rep.length ? rep.map(([n, k]) => `${n}×${k}`).join(", ") : nums.join(", "));
@@ -263,7 +267,8 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await page.goto(`${B}/#p-${ids.c3}`); await settle(page);
   await page.waitForFunction(() => { const e = document.querySelector(".assistant-insight"); return e && /check before acting|program’s own (summary|record)/i.test(e.textContent); }, null, { timeout: 60000 }).catch(() => {});
   const ins = await page.locator(".assistant-insight").innerText().catch(() => "");
-  ok("Health chart shows AI Insight, short and labelled", /^AI Insight/.test(ins.trim()) && /check before acting|own (summary|record)/i.test(ins) && ins.split(/\s+/).length < 90, ins.replace(/\s+/g, " ").slice(0, 200));
+  ok("Health chart shows the brief: one labelled headline, no bullets", /^Why now/.test(ins.trim()) && /AI summary|own summary/i.test(ins) && ins.split(/\s+/).length < 60 && (await page.locator(".assistant-insight li").count()) === 0, ins.replace(/\s+/g, " ").slice(0, 200));
+  ok("Health chart has one Plan with owner and due chips and no Do next", (await page.locator(".plan-list li").count()) > 0 && (await page.locator(".plan-list .chip-own").count()) === (await page.locator(".plan-list li").count()) && (await page.locator(".do-next, .next-acts").count()) === 0);
   ok("Health chart has no raw dump (that lives in the program tab)", (await page.locator("details#raw").count()) === 0);
   await shot(page, "health-chart-insight_1280.png");
 
@@ -285,10 +290,10 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
 
   // call review still runs Clef live
   await page.goto(`${B}/#call-${flaggedCall.callId}`); await settle(page);
-  await page.locator("[data-run]").click();
+  // Clef starts by itself when the record opens (no button press).
   await page.waitForFunction(() => document.querySelectorAll(".tag.live").length >= 4, null, { timeout: 90000 }).catch(() => {});
   const liveTags = await page.locator(".tag.live").count();
-  ok("call review: live Clef tags arrive", liveTags >= 4, `${liveTags} tagged lines`);
+  ok("call review: Clef tags arrive without pressing anything", liveTags >= 4, `${liveTags} tagged lines`);
   await page.waitForFunction(() => !document.querySelector("[data-run][disabled]"), null, { timeout: 180000 }).catch(() => {});
   const agree = await page.locator("#agree").innerText().catch(() => "");
   ok("call review: agreement with supervisor computed", /%/.test(agree), agree.replace(/\s+/g, " "));
@@ -311,7 +316,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await shot(page, "fallback-c3-down_patients.png", false);
   await page.goto(`${B}/#p-${ids.c3}.c3`); await settle(page);
   const body = await page.locator("#view").innerText();
-  ok("C3 down: patient page renders from the saved copy", /What to do/.test(body) && /saved copy/i.test(body) && (await page.locator("svg.chart").count()) > 0);
+  ok("C3 down: patient page renders from the saved copy", /How sure/.test(body) && /saved copy/i.test(body) && (await page.locator("svg.chart").count()) > 0);
   await shot(page, "fallback-c3-down_patient.png");
   await page.goto(`${B}/#p-${ids.c4}.c4`); await settle(page);
   ok("C3 down: C4 pages stay live", (await page.locator(".mode .src", { hasText: "Glucose" }).getAttribute("class")).includes("s-live"));

@@ -834,3 +834,29 @@ dialog.sheet q { display: block; font-style: normal; color: var(--ink-2); border
 .c-row .c-ww b { color: var(--ink-2); font-weight: 600; margin-right: 4px; }
 .c-row .c-flag { color: var(--ink-2); }
 @media (max-width: 760px) { .prep-dl { grid-template-columns: 1fr; } .c-row { grid-template-columns: minmax(0, 1fr) auto; } .c-row .c-ww, .c-row .c-flag { grid-column: 1 / -1; } }
+
+/* feedback round 2 */
+.q-row .acts .btn { min-width: 120px; justify-content: center; }
+.q-n.today, .q-n.week { color: var(--ink-3); font-weight: 400; }
+.t-sure { color: var(--ink-2); }
+.gauge .gt { fill: var(--ink-2); font: 10px var(--font-body); }
+.gauge .gt.end { fill: var(--ink-3); }
+.chart.tiers .tb { fill: var(--surface-2); stroke: var(--surface); stroke-width: 2; }
+.chart.tiers .tb-watch { fill: #e9edf3; } .chart.tiers .tb-alert { fill: #dfe5ee; }
+.chart.tiers .tt { fill: var(--ink-2); font: 11px var(--font-body); }
+.chart.tiers .tt2 { fill: var(--ink-3); }
+.chart.tiers .tm { stroke: var(--ink-2); stroke-width: 2; } .chart.tiers .tm.me { stroke: var(--alert); }
+.chart.tiers .tl { fill: var(--ink-2); font: 600 11px var(--font-body); } .chart.tiers .tl.me { fill: var(--alert-ink); }
+.kpis { gap: var(--s-2); }
+.kpi { border-top: 0; padding: 12px 16px; }
+.kpi.k-ok, .kpi.k-bad { border-top: 0; }
+.kpi .kv { font-size: var(--t-20); }
+.kpi .kl, .kpi .ks { font-size: var(--t-14); }
+.ptable-wrap.roster .ptable th:first-child { width: 120px; }
+@media (max-width: 760px) {
+  .pills { mask-image: linear-gradient(90deg, #000 85%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  .rail { padding-right: 48px; }
+  .assistant-fab { top: 4px; right: 8px; bottom: auto; width: 36px; height: 36px; box-shadow: none; z-index: 21; }
+  .assistant-fab svg { width: 18px; height: 18px; }
+  :root { --fab: 24px; }
+}

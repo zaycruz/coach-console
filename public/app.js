@@ -164,14 +164,14 @@
     const who = r && r.name ? String(r.name).split(" · ").filter((x) => x !== first && !/^[A-Z]\d{3,}/.test(x)).join(" · ") : "";
     const at = it.flaggedAt || (r && r.concern && r.concern.at) || "";
     const days = at ? daysSince(at) : null;
-    const age = at ? `flagged ${A.ago(at)}` : it.mod === "c1" ? "2017 survey" : it.updatedAt || (r && r.updatedAt) ? `data to ${fmtDate(it.updatedAt || r.updatedAt)}` : "";
+    const age = at ? `flagged ${A.ago(at)}` : it.mod === "c1" ? "" : it.updatedAt || (r && r.updatedAt) ? `data to ${fmtDate(it.updatedAt || r.updatedAt)}` : "";
     const stale = days != null && days > 30;
     const lang = it.language && it.language !== "English" ? `<span class="chip-lang need">Interpreter · ${esc(it.language)}</span>` : "";
     const real = it.mod === "c1" ? `<span class="tag-real" title="Real survivor from the MEPS 2017 survey (ID reassigned)">Real · MEPS</span>` : "";
     const logged = r && r.lastSaved ? `last call ${A.ago(r.lastSaved.at)} by ${r.lastSaved.coach}` : "";
     return `<li class="q-row" data-pid="${esc(it.id)}" data-mod="${it.mod}"><span class="q-n ${it.horizon}">${i + 1}</span>
       <div class="q-main"><div class="q-top"><a class="q-name" href="#p-${esc(it.id)}">${esc(first)}</a>${who ? `<span class="q-who">${esc(who)}</span>` : ""}<span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span>${lang}${real}</div>
-        <p class="q-why">${esc(it.reason || it.headline)}</p>
+        <p class="q-why">${esc(String(it.reason || it.headline).replace(/^Red flag \([^)]*\):/, "Red flag:"))}</p>
         <p class="q-meta">${[age, stale ? "<b>Close the loop: confirm it was handed off</b>" : "", logged, `<span class="chip-own">${ownerOf(it)}</span>`].filter(Boolean).join(" · ")}</p></div>
       <div class="acts"><a class="btn primary" href="#live-${esc(it.id)}">Start call</a><button class="btn" type="button" data-log data-pid="${esc(it.id)}" data-name="${esc(first)}" data-flag="${esc(r && r.concern ? r.concern.text : "")}">Log outcome</button></div></li>`;
   }
@@ -262,11 +262,13 @@
   // Bullet gauge: the value as a bar on a track, with the comparison lines (average, target, alert) as ticks.
   function gauge(g) {
     if (!g || !isFinite(g.value)) return "";
-    const W = 240, H = 28, pl = 2, pr = 2, y = 9, h = 10, max = g.max > 0 ? g.max : 1;
+    const W = 240, H = 44, pl = 2, pr = 2, y = 16, h = 10, max = g.max > 0 ? g.max : 1;
     const X = (v) => pl + Math.max(0, Math.min(1, v / max)) * (W - pl - pr);
     const f = (v) => (g.pct ? pct(v, g.d || 0) : num(v) + (g.unit || ""));
-    const marks = (g.marks || []).map((m) => `<line class="gm" x1="${X(m.v).toFixed(1)}" x2="${X(m.v).toFixed(1)}" y1="${y - 6}" y2="${y + h + 6}"><title>${esc(m.label)} ${f(m.v)}</title></line>`).join("");
-    return `<svg class="gauge" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${f(g.value)}; ${(g.marks || []).map((m) => `${m.label} ${f(m.v)}`).join(", ")}`)}"><rect class="gtrack" x="${pl}" y="${y}" width="${W - pl - pr}" height="${h}"/><rect class="gv" x="${pl}" y="${y}" width="${Math.max(2, X(g.value) - pl).toFixed(1)}" height="${h}"/>${marks}</svg>`;
+    const anchor = (x) => (x > W - 44 ? "end" : x < 44 ? "start" : "middle");
+    const marks = (g.marks || []).map((m, i) => { const x = X(m.v); const above = i % 2 === 0; return `<line class="gm" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${y - 4}" y2="${y + h + 4}"/><text class="gt" x="${x.toFixed(1)}" y="${above ? y - 7 : y + h + 14}" text-anchor="${anchor(x)}">${esc(m.label)} ${f(m.v)}</text>`; }).join("");
+    const end = g.marks && g.marks.some((m) => X(m.v) > W - 44) ? "" : `<text class="gt end" x="${W - pr}" y="${y + h + 14}" text-anchor="end">${f(max)}</text>`;
+    return `<svg class="gauge" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${f(g.value)} on a scale to ${f(max)}; ${(g.marks || []).map((m) => `${m.label} ${f(m.v)}`).join(", ")}`)}"><rect class="gtrack" x="${pl}" y="${y}" width="${W - pl - pr}" height="${h}"/><rect class="gv" x="${pl}" y="${y}" width="${Math.max(2, X(g.value) - pl).toFixed(1)}" height="${h}"/>${marks}${end}</svg>`;
   }
   // Call dots: one per call, oldest first; a flagged call is red. The latest 14 calls.
   function callDots(ds) {
@@ -287,7 +289,7 @@
       <div class="t-mark">${mark}</div>${h.cmp ? `<p class="t-cmp">${esc(h.cmp)}</p>` : ""}
       <p class="t-sure">${esc([h.sure, h.age].filter(Boolean).join(" · "))}</p></a>`;
   }
-  // The brief: the assistant's one headline on why now (filled by ellie.js). The only prose on the overview.
+  // The brief: the assistant's one headline on why now (filled by assistant.js). The only prose on the overview.
   const brief = (p) => `<section class="brief"><div class="assistant-insight" data-pid="${esc(p.id)}"></div></section>`;
   // The plan: one numbered list across programs, each step with an owner and a due chip. Replaces What to do, Do next and the insight bullets.
   const ownerFor = (a, mod) => { const t = String(a.tag || "").toLowerCase(); return /care team|safety rule/.test(t) ? "Care team" : /caution|^today$|^within/.test(t) ? "Nurse" : /social/.test(t) ? "Care team" : "Coach"; };
@@ -302,7 +304,7 @@
     if (c && !p.handoff) {
       const days = daysSince(c.at), when = `${c.where}, ${A.ago(c.at)}`;
       // On today's list (a fresh flag, or the demo call replayed today) it is same-day work; an old flag nobody replayed is a loop to close.
-      if (p.tri === "today" || days == null || days <= 30) { add({ owner: "Nurse", due: "Today", mod: "c5", text: `Hand off the flagged line to the nurse today and log it (${when})` }); add({ owner: "Coach", due: "Today", mod: "c5", text: "If it comes up on a call: ask about it in their words, don’t assess, say “I’m sending this to your nurse today”, then hand off" }); }
+      if (p.tri === "today" || days == null || days <= 30) { add({ owner: "Nurse", due: "Today", mod: "c5", text: "Hand off the flagged line to the nurse today and log it" }); add({ owner: "Coach", due: "Today", mod: "c5", text: "If it comes up on a call: ask about it in their words, don’t assess, say “I’m sending this to your nurse today”, then hand off" }); }
       else add({ owner: "Nurse", due: "Today", mod: "c5", text: `Close the loop: confirm the flag from ${when} was handed off and acted on` });
     }
     for (const v of mem) for (const pn of v.panels || []) for (const a of pn.advice || []) {
@@ -338,13 +340,25 @@
         ${fl ? `<div class="prep-flag"><dt>Flagged moment · ${esc(fl.t)}</dt><dd>“${esc(fl.text)}” <span class="${ho ? "done" : "open-flag"}">${ho ? `✓ ${esc(ho.label)}` : "▲ not yet handed off"}</span></dd></div>` : ""}</dl>
       <p class="small"><a href="#call-${esc(c.callId)}">Call record and transcript →</a></p></section>`;
   }
+  // Tier strip (Hospital risk tab): the three tiers as bands sized by share of development patients, each labelled with
+  // what actually happened to people in it; this patient and the average patient marked on the risk axis.
+  function tierStrip(t) {
+    if (!t || !t.tiers || !t.tiers.length) return "";
+    const W = 640, H = 96, pl = 8, pr = 8, y = 36, h = 18, hi = Math.max(0.6, t.value * 1.1, ...t.tiers.map((x) => x.from));
+    const X = (v) => pl + Math.max(0, Math.min(1, v / hi)) * (W - pl - pr);
+    const tiers = [...t.tiers].sort((a, b) => a.from - b.from);
+    const bands = tiers.map((x) => { const x0 = X(x.from), x1 = X(x.to >= 1 ? hi : x.to); return `<rect class="tb tb-${x.status}" x="${x0.toFixed(1)}" y="${y}" width="${Math.max(1, x1 - x0).toFixed(1)}" height="${h}"/><text class="tt" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 16}" text-anchor="middle">${GROUP[x.status] === "This week" ? "High tier" : GROUP[x.status] === "Watch" ? "Middle tier" : "Low tier"} · ${x.from > 0 ? pct(x.from) + "+" : "under " + pct(x.to)}</text><text class="tt tt2" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 32}" text-anchor="middle">${pct(x.rate)} of ${x.n} had an ER visit or stay</text>`; }).join("");
+    const mark = (v, label, cls) => `<line class="tm ${cls}" x1="${X(v).toFixed(1)}" x2="${X(v).toFixed(1)}" y1="${y - 14}" y2="${y + h + 2}"/><text class="tl ${cls}" x="${X(v).toFixed(1)}" y="${y - 18}" text-anchor="${X(v) > W - 80 ? "end" : "middle"}">${esc(label)} ${pct(v)}</text>`;
+    return `<figure class="fig"><figcaption><span>Where this patient sits among the risk tiers</span><span class="muted">${t.dev ? `${t.dev} development patients, cross-validated` : ""}</span></figcaption>
+      <svg class="chart tiers" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`This patient ${pct(t.value)}; ${tiers.map((x) => `${x.status} tier from ${pct(x.from)}: ${pct(x.rate)} of ${x.n} had an event`).join("; ")}`)}">${bands}${t.base != null ? mark(t.base, "average patient", "avg") : ""}${mark(t.value, "this patient", "me")}</svg></figure>`;
+  }
   // The tab hero: the number at 44 px, its status and comparison, and the one full visual the tab owns (the four-band bar for glucose).
   function heroCard(h, mod, p) {
     if (!h) return "";
     return `<section class="hero-card" aria-label="${esc(h.label)}"><p class="eyebrow-l"><span class="dot m-${mod}"></span>${esc(MODS[mod].name)} · ${esc(h.label)}</p>
       <div class="hero-row"><p class="hero-num"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${statusPill(p.tri)}</div>
       ${h.cmp ? `<p class="hero-cmp">${esc(h.cmp)}</p>` : ""}${h.caveat ? `<p class="hero-cav">${esc(h.caveat)}</p>` : ""}
-      ${h.bar && h.bar.length ? tirBar(h.bar) : ""}</section>`;
+      ${h.bar && h.bar.length ? tirBar(h.bar) : ""}${h.tiers ? tierStrip(h.tiers) : ""}</section>`;
   }
   // How sure: accuracy, source, the subgroup check and the data window, in body type. Then the evidence tables.
   function howSure(p) {
@@ -356,7 +370,8 @@
       ${h.sure ? `<div><dt>Accuracy</dt><dd>${esc(h.sure)}</dd></div>` : ""}
       <div><dt>Source</dt><dd>${esc(src)}</dd></div>
       ${p.fit ? `<div><dt>For people like this patient</dt><dd class="tone-${esc(p.fit.tone)}"><span class="g" aria-hidden="true">${TONE_GLYPH[p.fit.tone] || "–"}</span> ${esc(p.fit.text)}</dd></div>` : ""}
-      ${h.age ? `<div><dt>Data window</dt><dd>${esc(h.age)}</dd></div>` : ""}</dl>
+      ${h.age ? `<div><dt>Data window</dt><dd>${esc(h.age)}</dd></div>` : ""}
+      ${p.caveat ? `<div><dt>Caveat</dt><dd>${esc(p.caveat)}</dd></div>` : ""}</dl>
       ${mine.length ? `<details class="more" id="ev"><summary>Evidence behind every number</summary><p class="small muted">95% CI: the range the true value likely sits in. n: how many readings or people it rests on.</p>${mine.map(grp).join("")}</details>` : ""}
       ${sci.length ? `<details class="more" id="sci"><summary>For scientists · program-wide, trial and real-data results</summary><p class="small muted">Whole-program effects, the randomized trial, and checks on real data (CGMacros, NHANES). They back the advice; they are not this patient’s numbers.</p>${sci.map((g) => grp({ ...g, open: false })).join("")}</details>` : ""}</section>`;
   }
@@ -432,7 +447,7 @@
       const callsP = once("calls", A.calls).catch(() => []);
       full.then((p) => callsP.then((calls) => setTimeout(() => { if (seq === renderSeq) whenMounted("[data-lk-rest]", (el) => { el.outerHTML = linkedRest(p, calls); }); }, 0))).catch((e) => setTimeout(() => whenMounted("[data-lk-rest]", (el) => { el.outerHTML = errorBox("this linked record", e.message); }), 0));
       const tiles = ALL.map((m) => `<div class="tile is-loading" data-lk-tile="${m}" aria-busy="true"><p class="t-prog"><span class="dot m-${m}"></span>${esc(MODS[m].name)}</p><div class="sk" style="height:32px;width:50%"></div><div class="sk" style="height:40px;width:100%"></div><div class="sk" style="height:12px;width:70%"></div></div>`).join("");
-      return `${head}<section class="stack-s"><h2>Health chart</h2><div class="tiles">${tiles}</div></section><div data-lk-rest>${loadingBox("the plan")}</div>`;
+      return `${head}<section class="stack-s"><div class="tiles">${tiles}</div></section><div data-lk-rest>${loadingBox("the plan")}</div>`;
     }
     let mem;
     try { mem = await getP(L.members[tab]); } catch (e) { return `${head}${errorBox(MODS[tab].name + " for this record", e.message)}`; }
@@ -531,14 +546,15 @@
      Charts, drivers, How sure and the raw response live on the program tab (moduleView). */
   function overview(p, calls) {
     const others = ALL.filter((m) => m !== p.mod).map((m) => MODS[m].name);
-    return `<section class="stack-s"><h2>Health chart</h2><div class="tiles one">${tile(`#p-${p.id}.${p.mod}`, p.mod, p)}</div><p class="not-enrolled">Not enrolled in ${esc(others.join(", "))}.</p></section>${brief(p)}${planHtml(planSteps(p))}${coachPrep(p, calls)}`;
+    return `<section class="stack-s"><div class="tiles one">${tile(`#p-${p.id}.${p.mod}`, p.mod, p)}</div><p class="not-enrolled">Not enrolled in ${esc(others.join(", "))}.</p></section>${brief(p)}${planHtml(planSteps(p))}${coachPrep(p, calls)}`;
   }
   // The program tab = evidence: hero, signals, every chart with its lead sentence, How sure, the raw fields. No actions here.
   function moduleView(p, o = {}) {
     const lang = o.lang || (p.identity && p.identity.language);
     const panels = p.panels.filter((pn) => pn.id !== "redflags");
     const sections = panels.map((pn) => { const vis = panelVisual(pn); return vis ? `<section class="card stack" id="pn-${esc(pn.id)}"><h2>${esc(pn.title)}</h2><div class="${pn.small ? "multiples" : "stack"}">${vis}</div></section>` : ""; }).join("");
-    return `${p.mod === "c1" ? redFlagsCard(p) : ""}${heroCard(p.hero, p.mod, p)}${p.mod === "c4" ? c4Safety(p, lang) : ""}
+    const kp = (p.kpis || []).filter((k) => !k.hero && !(p.hero && String(k.value) === String(p.hero.value)));
+    return `${p.mod === "c1" ? redFlagsCard(p) : ""}${heroCard(p.hero, p.mod, p)}${kp.length ? kpiCards(kp) : ""}${p.mod === "c4" ? c4Safety(p, lang) : ""}
       ${p.mod === "c3" ? signalRows(p.signals) : ""}${sections}
       ${p.mod === "c4" ? handout(p, lang) : ""}${p.mod === "c5" ? `<p class="agree-link small"><a href="#calls-agreement">How well Clef’s coach score matches supervisors →</a></p>` : ""}
       ${howSure(p)}${rawData(p)}${p.footnote ? `<p class="footnote">${esc(p.footnote)}</p>` : ""}`;
@@ -706,12 +722,14 @@
     return `<section class="flags" aria-label="Flags"><p class="eyebrow">${safe ? `${safe} need${safe === 1 ? "s" : ""} a person today` : ""}${safe && html.length > safe ? " · " : ""}${html.length > safe ? `${html.length - safe} coaching note${html.length - safe === 1 ? "" : "s"}` : ""}</p>${html.join("")}</section>`;
   }
 
+  const autoRan = new Set();
   async function renderCall(id) {
     const back = `<a class="back" href="#calls">← Calls</a>`;
     const f = forced("this call", "This call has no lines yet. For a live call, lines appear as people speak.");
     if (f) return back + f;
     let c;
     try { c = await Adapter.call(id); } catch (e) { return back + errorBox("this call", e.message); }
+    if (!SNAP && !autoRan.has(c.callId)) { autoRan.add(c.callId); setTimeout(() => runLive(c), 60); }
     const lines = live && live.callId === c.callId ? live.lines : c.lines;
     const untagged = lines.filter((l) => !(l.speaker === "coach" ? l.supervisor.move : l.supervisor.talk) && !(l.live && l.live.tag)).length;
     // Supervisor labels say only "needs a person"; the kind comes from the live model when it has run.
@@ -721,7 +739,7 @@
       <div class="facts"><span>Coach <b>${esc(c.coach.name)}</b> (${esc(c.coach.role)})</span><span>Week <b>${c.week}</b></span><span><b>${fmtDate(c.date)}</b> ${esc(c.start)}</span><span>${esc(c.language)}</span><span>Goal <b>${esc(c.goalTopic)}</b></span><span><b>${c.durationMin}</b> min</span></div></div>
       <div class="row">${SNAP ? "" : `<button class="btn primary" data-play="${esc(c.callId)}">▶ Play as live</button>`}<a class="btn" href="#p-${esc(c.survivorId)}">Patient page</a></div></header>
       <div id="flagbox" class="stack">${banners}</div>
-      <div class="call-layout"><section class="card"><div class="sec-head"><h2>Transcript</h2><p class="small muted">${untagged ? `${untagged} of ${lines.length} lines have no tag yet: press Run Clef to fill them.` : `Every line is already tagged from the call record (grey tag).`} Run Clef to add the model’s tag beside it (outlined: ✓ agrees, ≠ differs).</p></div><div class="transcript scroll" id="transcript">${lines.map((l) => lineHtml(l, c.coach.name)).join("")}</div></section>
+      <div class="call-layout"><section class="card"><div class="sec-head"><h2>Transcript</h2><p class="small muted">Clef tags every line as the record opens (outlined tag: ✓ agrees with the supervisor, ≠ differs). Grey tags are the supervisor’s.</p></div><div class="transcript scroll" id="transcript">${lines.map((l) => lineHtml(l, c.coach.name)).join("")}</div></section>
       <div id="side">${sidePanel(c)}</div></div>`;
   }
 
@@ -835,7 +853,7 @@
     const thead = `<thead><tr><th>Status</th><th>Patient</th><th>Why</th></tr></thead>`;
     // Next 7 days (C3 wearables) above the 12-month C1 list: same outcome, different horizon.
     const soon = rows.filter((x) => x.mod === "c3" && /ER or hospital risk/i.test(x.headline || "")).sort((a, b) => (a.prio ?? 0) - (b.prio ?? 0) || RANK[a.tri] - RANK[b.tri]);
-    const week = `<section class="stack-s"><h2>Next 7 days · wearables (C3) · ${soon.length}</h2><p class="small muted">ER or hospital risk this week, from watch signals against the person’s own usual. Several times their usual risk within a week means a same-day call (Act today). The 12-month list below is for outreach planning, so a high yearly risk is Alert, not Act today.</p>${soon.length ? `<div class="ptable-wrap"><table class="ptable">${thead}<tbody>${soon.map((it) => careRow(it, "c3", it.headline)).join("")}</tbody></table></div>` : `<p class="muted small">No one is over the 7-day urgent line.</p>`}</section>`;
+    const week = `<section class="stack-s"><h2>Next 7 days · from the Rough weeks program · ${soon.length}</h2><p class="small muted">ER or hospital risk this week, from watch signals against the person’s own usual. Several times their usual risk within a week means a same-day call (Act today). The 12-month list below is for outreach planning, so a high yearly risk is Alert, not Act today.</p>${soon.length ? `<div class="ptable-wrap"><table class="ptable">${thead}<tbody>${soon.map((it) => careRow(it, "c3", it.headline)).join("")}</tbody></table></div>` : `<p class="muted small">No one is over the 7-day urgent line.</p>`}</section>`;
     const tiers = m && m.tiers && m.tiers.tiers ? m.tiers.tiers : [];
     const fin = m && m.finalModel ? m.finalModel.key || m.finalModel.name : null;
     const fm = m && m.metrics ? (fin && m.metrics[fin]) || m.metrics.logistic : null, bm = m && m.metrics && m.metrics.baseline;
@@ -862,7 +880,7 @@
     // Patients first; the evidence behind the numbers sits under one collapsed "How much to trust this".
     const trust = `<section class="stack-s trust"><h2>How much to trust this</h2><p class="small muted">${fm && fm.auroc ? `The ${esc(fmName)} ranks patients correctly ${pct(fm.auroc.value)} of the time (AUROC ${num(fm.auroc.value, 2)}, 0.5 = chance${bm && bm.auroc ? `; simple baseline ${num(bm.auroc.value, 2)}` : ""}). ` : ""}Associations, not causes. Check the fairness table before acting on a score for a flagged group.</p>
       <details class="more"><summary>Risk tiers and accuracy${dev ? ` · ${dev} development patients` : ""}</summary>${strip}</details>${factors}${fair}${cav}${raw}</section>`;
-    return `${head}${sourceBanner(["c1", "c3"])}${week}${year}${trust}
+    return `${head}${sourceBanner(["c1", "c3"])}${year}${week}${trust}
       <p class="footnote">${m && m.outcome ? esc(m.outcome) + ". " : ""}Factors are associations, not causes. Survey and clinical records share no patient key.</p>`;
   }
   function renderResearch() {
