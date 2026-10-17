@@ -2,8 +2,8 @@
 // fill fields, then print where you ended up, what the page says, and what you can click next. Writes go to the test
 // namespace (p360test cookie), so nothing reaches production storage.
 //   node scripts/visit.mjs <base-url> <route> [--width 1440|390] [--click "<button/link text or CSS selector>"]...
-//                          [--fill "<selector>=<text>"]... [--check "<selector>"]... [--shot <file.png>] [--wait <ms>]
-// Example: node scripts/visit.mjs https://x.workers.dev today --click "Log outcome" --check "input[value=Nurse]" --click "Save"
+//                          [--fill "<selector>=<text>"]... [--check "<option label>"]... [--select "<selector>=<option label>"]... [--shot <file.png>] [--wait <ms>]
+// Example: node scripts/visit.mjs https://x.workers.dev today --click "Log outcome" --check "Reached" --check "Nurse" --check "Interpreter used" --select "#lo-lang=Spanish" --click "Save" --wait 3000
 import { chromium } from "playwright";
 const [,, base, route, ...rest] = process.argv;
 if (!base || !route) { console.error("usage: visit.mjs <base> <route> [--width N] [--click X]... [--fill sel=text]... [--check sel]... [--shot file] [--wait ms]"); process.exit(2); }
@@ -11,7 +11,7 @@ const opts = { width: 1440, steps: [], shot: "", wait: 400 };
 for (let i = 0; i < rest.length; i++) {
   const k = rest[i], v = rest[i + 1];
   if (k === "--width") { opts.width = Number(v); i++; }
-  else if (k === "--click" || k === "--fill" || k === "--check") { opts.steps.push([k.slice(2), v]); i++; }
+  else if (k === "--click" || k === "--fill" || k === "--check" || k === "--select") { opts.steps.push([k.slice(2), v]); i++; }
   else if (k === "--shot") { opts.shot = v; i++; }
   else if (k === "--wait") { opts.wait = Number(v); i++; }
 }
@@ -25,13 +25,15 @@ const settle = async () => { await page.waitForFunction(() => { const v = docume
 await page.goto(`${base}/#${route.replace(/^#/, "")}`); await settle();
 const find = (what) => {
   if (/^[.#\[]|^[a-z]+[.#\[]|^(button|a|input|select|textarea|dialog|summary)\b/.test(what)) return page.locator(what).first();
-  return page.locator(`dialog[open] button:has-text("${what}"), dialog[open] a:has-text("${what}"), dialog[open] label:has-text("${what}"), button:has-text("${what}"), a:has-text("${what}"), summary:has-text("${what}"), label:has-text("${what}")`).first();
+  // An open sheet first, then the page body, then the navigation: "Hospital risk" means the patient's tab before the clinic page.
+  return page.locator(`dialog[open] button:has-text("${what}"), dialog[open] a:has-text("${what}"), dialog[open] label:has-text("${what}"), #view button:has-text("${what}"), #view a:has-text("${what}"), #view summary:has-text("${what}"), #view label:has-text("${what}"), button:has-text("${what}"), a:has-text("${what}"), summary:has-text("${what}"), label:has-text("${what}")`).first();
 };
 for (const [kind, what] of opts.steps) {
   try {
     if (kind === "click") { await find(what).click({ timeout: 8000 }); await settle(); console.log(`[click] ${what} → ${await page.evaluate(() => location.hash)}`); }
     else if (kind === "fill") { const [sel, ...t] = what.split("="); await page.fill(sel, t.join("=")); console.log(`[fill] ${sel}`); }
-    else if (kind === "check") { await page.locator(what).first().check({ timeout: 8000 }); console.log(`[check] ${what}`); }
+    else if (kind === "check") { const byLabel = page.locator(`dialog[open] label:has-text("${what}") input, label:has-text("${what}") input`).first(); if (await byLabel.count()) await byLabel.check({ timeout: 8000 }); else await page.locator(what).first().check({ timeout: 8000 }); console.log(`[check] ${what}`); }
+    else if (kind === "select") { const [sel, ...t] = what.split("="); await page.selectOption(sel, { label: t.join("=") }); console.log(`[select] ${sel} = ${t.join("=")}`); }
   } catch (e) { console.log(`[${kind}] ${what}: FAILED (${String(e.message).split("\n")[0]})`); }
 }
 const hash = await page.evaluate(() => location.hash);

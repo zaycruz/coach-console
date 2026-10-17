@@ -287,9 +287,9 @@
     const label = h.tileLabel || h.label || "";
     const mark = h.gauge ? gauge(h.gauge) : h.dots ? callDots(h.dots) : "";
     return `<a class="tile" href="${esc(href)}" aria-label="${esc(`${MODS[m].name}: ${label} ${h.value || NR}${h.unit || ""}, ${statusLabel[v.tri] || ""}`)}"><p class="t-prog"><span class="dot m-${m}"></span>${esc(MODS[m].name)}</p>
-      <p class="t-label">${esc(label)}</p><div class="t-numrow"><p class="t-num"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${headTri && v.tri === headTri ? `<span class="t-same">sets the overall status</span>` : statusPill(v.tri)}</div>
+      <p class="t-label">${esc(label)}</p><div class="t-numrow"><p class="t-num"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${headTri && v.tri === headTri ? `<span class="t-same">sets the overall status (${esc(statusLabel[v.tri] || "")})</span>` : statusPill(v.tri)}</div>
       <div class="t-mark">${mark}</div>${h.cmp ? `<p class="t-cmp">${esc(h.cmp)}</p>` : ""}
-      <p class="t-sure">${esc([h.sure, h.age].filter(Boolean).join(" · "))}</p></a>`;
+      <p class="t-sure">${esc([m === "c1" ? "real survey data" : "synthetic cohort", h.sure, h.age].filter(Boolean).join(" · "))}</p></a>`;
   }
   // The brief: the assistant's one headline on why now (filled by assistant.js). The only prose on the overview.
   const brief = (p) => `<section class="brief"><div class="assistant-insight" data-pid="${esc(p.id)}"></div></section>`;
@@ -364,7 +364,7 @@
     if (!h) return "";
     return `<section class="hero-card" aria-label="${esc(h.label)}"><p class="eyebrow-l"><span class="dot m-${mod}"></span>${esc(MODS[mod].name)} · ${esc(h.label)}</p>
       <div class="hero-row"><p class="hero-num"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${statusPill(p.tri)}</div>
-      ${h.cmp ? `<p class="hero-cmp">${esc(h.cmp)}</p>` : ""}${h.caveat ? `<p class="hero-cav">${esc(h.caveat)}</p>` : ""}
+      ${h.cmp && !(h.bar && h.bar.length) && !h.tiers ? `<p class="hero-cmp">${esc(h.cmp)}</p>` : ""}${h.caveat ? `<p class="hero-cav">${esc(h.caveat)}</p>` : ""}
       ${h.bar && h.bar.length ? tirBar(h.bar) : ""}${h.tiers ? tierStrip(h.tiers) : ""}</section>`;
   }
   // How sure: accuracy, source, the subgroup check and the data window, in body type. Then the evidence tables.
@@ -415,7 +415,7 @@
   // Header actions: one primary (Start call); Log outcome and Hand off to nurse are outline. A done hand-off shows who and when.
   function actionsHtml(p, callId) {
     const flag = p.concern ? p.concern.text : p.headline;
-    return `<a class="btn primary" href="#live-${esc(callId)}">Start call</a><button class="btn" type="button" title="After a call: reached, no answer, left message; who it went to; next contact" data-log data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Log outcome</button>${p.handoff ? `<span class="done" title="${esc(p.handoff.note || "")}">✓ ${esc(p.handoff.label)}</span>` : p.tri === "today" || p.concern ? `<button class="btn" type="button" title="Send the flagged line to the nurse now, with a note" data-handoff data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Hand off to nurse</button>` : ""}`;
+    return `<a class="btn primary" href="#live-${esc(callId)}">Start call</a><button class="btn" type="button" title="After a call: reached, no answer, left message; who it went to; next contact" data-log data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Log outcome</button>${p.handoff ? `<span class="done">✓ ${esc(p.handoff.label)}${p.handoff.to && p.handoff.to !== "Called" ? ` → ${esc(p.handoff.to)}` : ""}${p.handoff.note ? `<span class="done-note">${esc(p.handoff.note)}</span>` : ""}</span>` : p.tri === "today" || p.concern ? `<button class="btn" type="button" title="Send the flagged line to the nurse now, with a note" data-handoff data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Hand off to nurse</button>` : ""}`;
   }
   function headHtml(p, id, callId) {
     const lang = p.identity && p.identity.language && p.identity.language !== "English" ? p.identity.language : "";

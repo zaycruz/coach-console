@@ -333,7 +333,7 @@
       top: rf && rf.careTeamToday ? { tone: "red", text: rf.banner || "Call the care team today." } : caution && !caution.soft ? { tone: "amber", text: `${caution.label}. ${caution.text}.` } : null,
       // Glance (overview tile): one bullet gauge, numbers-only comparison, the accuracy figure and the data window.
       gauge: isNum(rv) ? { value: rv, max: Math.max(rv, isNum(alertAt) ? alertAt : 0, isNum(r.baseRate) ? r.baseRate : 0, 0.5) * 1.15, pct: true, marks: [isNum(r.baseRate) && { v: r.baseRate, label: "avg" }, isNum(alertAt) && { v: alertAt, label: "high tier" }].filter(Boolean) } : null,
-      cmp: (() => { const tt = m && m.tiers && Array.isArray(m.tiers.tiers) ? m.tiers.tiers.find((t) => isNum(rv) && rv >= t.riskFrom && (t.riskTo >= 1 || rv < t.riskTo)) : null; return [tt && `${pct(tt.observedRate)} of the ${tt.n} in this tier had one`].filter(Boolean).join(" · "); })(),
+      cmp: (() => { const tt = m && m.tiers && Array.isArray(m.tiers.tiers) ? m.tiers.tiers.find((t) => isNum(rv) && rv >= t.riskFrom && (t.riskTo >= 1 || rv < t.riskTo)) : null; return [tt && `their own score; in this tier ${pct(tt.observedRate)} of ${tt.n} like them had one`].filter(Boolean).join(" · "); })(),
       sure: fm && fm.auroc ? `ranks patients correctly ${pct(fm.auroc.value)} of the time, held out${dev ? `, ${dev} pts` : ""}` : "held-out accuracy not loaded",
       sureFull: fm && fm.auroc ? `AUROC ${num(fm.auroc.value, 2)} (95% CI ${num(fm.auroc.ci95[0], 2)}–${num(fm.auroc.ci95[1], 2)}): ranks patients correctly ${pct(fm.auroc.value)} of the time (0.5 = chance), cross-validated${dev ? ` on ${dev} patients` : ""}` : "",
       age: "2017 survey → next-year risk",
