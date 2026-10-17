@@ -1,0 +1,16 @@
+// p360-reproduce: runs the Patient 360 E2E from a fresh clone inside a Cloudflare Container.
+// See src/index.js for how to run it. Deploy from THIS directory (the repo root has its own wrangler.jsonc).
+{
+  "name": "p360-reproduce",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "containers": [
+    { "class_name": "Reproducer", "scheduling_policy": "durable_object" }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "REPRODUCER", "class_name": "Reproducer" }]
+  },
+  "exports": {
+    "Reproducer": { "type": "durable-object", "storage": "sqlite" }
+  }
+}
