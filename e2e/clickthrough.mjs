@@ -24,7 +24,7 @@ async function open(vp, theme) {
   const errors = [];
   page.on("console", (m) => { if (m.type() === "error" && !/fonts\.(googleapis|gstatic)/.test(m.text())) errors.push(m.text()); });
   page.on("pageerror", (e) => errors.push(String(e)));
-  await page.goto(page0 + "#/today");
+  await page.goto(page0 + "#today");
   await page.waitForSelector("#view > *");
   return { ctx, page, errors };
 }
@@ -37,16 +37,16 @@ const ids = await p0.evaluate(() => ({
 await c0.close();
 
 const ROUTES = [
-  ["today", "#/today", "Today"],
-  ["survivor-demo", "#/s/demo", "Composite demo survivor"],
-  ["survivor-c3", `#/s/c3/${ids.c3}`, "Bad Week Radar"],
-  ["survivor-c4", `#/s/c4/${ids.c4}`, "Dose and Timing"],
-  ["survivor-c5", `#/s/c5/${ids.c5}`, "Coach’s Copilot"],
-  ["calls", "#/calls", "Calls"],
-  ["call-review", `#/call/${ids.call}`, "Call review"],
-  ["patient-demo", "#/patient/demo", "Survivor app"],
-  ["care-team-c1", "#/care-team", "Care team risk"],
-  ["research", "#/research", "Research"],
+  ["today", "#today", "Today"],
+  ["survivor-demo", "#s-demo", "Composite demo survivor"],
+  ["survivor-c3", `#s-c3-${ids.c3}`, "Bad Week Radar"],
+  ["survivor-c4", `#s-c4-${ids.c4}`, "Dose and Timing"],
+  ["survivor-c5", `#s-c5-${ids.c5}`, "Coach’s Copilot"],
+  ["calls", "#calls", "Calls"],
+  ["call-review", `#call-${ids.call}`, "Call review"],
+  ["patient-demo", "#patient-demo", "Survivor app"],
+  ["care-team-c1", "#care", "Care team risk"],
+  ["research", "#research", "Research"],
 ];
 const STATES = ["ready", "loading", "empty", "error"];
 const STATE_SCREENS = new Set(["today", "survivor-demo", "calls", "call-review", "patient-demo"]);
@@ -58,7 +58,7 @@ for (const vp of Object.keys(VIEWPORTS)) {
       for (const st of STATES) {
         if (st !== "ready" && !(STATE_SCREENS.has(name) && theme === "light")) continue;
         errors.length = 0;
-        await page.goto(page0 + hash + `?state=${st}`);
+        await page.goto(page0 + hash + `~${st}`);
         await page.waitForTimeout(120);
         const text = await page.locator("#view").innerText();
         const sw = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -90,8 +90,8 @@ const flow = [];
   await step("Open call review", async () => { await page.getByRole("link", { name: "Review call →" }).click(); await page.locator(".transcript .line.flagged").first().waitFor(); });
   await step("Jump to flagged line", async () => { await page.getByRole("link", { name: /Jump to line/ }).first().click(); });
   await page.screenshot({ path: join(out, "flow-call-review.png"), fullPage: false });
-  await step("Filter roster to C4", async () => { await page.goto(page0 + "#/today"); await page.locator('[data-filter="c4"]').click(); const n = await page.locator(".r-row").count(); return `${n} rows`; });
-  await step("Survivor app switches to Spanish", async () => { await page.goto(page0 + "#/patient/demo"); await page.locator('[data-lang="es"]').click(); await page.getByText("Su meta de esta semana").first().waitFor(); });
+  await step("Filter roster to C4", async () => { await page.goto(page0 + "#today"); await page.locator('[data-filter="c4"]').click(); const n = await page.locator(".r-row").count(); return `${n} rows`; });
+  await step("Survivor app switches to Spanish", async () => { await page.goto(page0 + "#patient-demo"); await page.locator('[data-lang="es"]').click(); await page.getByText("Su meta de esta semana").first().waitFor(); });
   await page.screenshot({ path: join(out, "flow-survivor-app-es.png"), fullPage: true });
   await step("No console errors during flow", async () => { if (errors.length) throw new Error(errors.join("; ")); });
   await ctx.close();

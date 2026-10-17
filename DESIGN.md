@@ -45,7 +45,7 @@ C3 and C5 IDs look alike but are unrelated people. Options:
 
 Rules that follow from this:
 
-- IDs are namespaced in routes and in the API: `c3:P00809`, `c4:N0214`, `c5:P0975` (route form `#/s/c3/P00809`).
+- IDs are namespaced in routes and in the API: `c3:P00809`, `c4:N0214`, `c5:P0975` (route form `#s-c3-P00809`).
 - A survivor page always shows all three module slots. A module the person is not in shows the state **"Not in this module's demo cohort"**, which is a first-class state and not an error.
 - The persistent "Synthetic demo data" pill sits in the top bar.
 
@@ -53,18 +53,20 @@ Rules that follow from this:
 
 ```
 Coach Console
-├── Today                 #/today           morning triage roster (all modules)
-├── Survivor              #/s/:module/:id   one person: C3 / C4 / C5 panels + actions
-│                         #/s/demo          composite demo survivor (illustrative)
-├── Calls                 #/calls           reviewed calls, flags first
-│   └── Call review       #/call/:callId    tagged transcript, score, flags, cues
-├── Survivor app          #/patient/:module/:id  or  #/patient/demo   phone preview, EN/ES/HT
+├── Today                 #today           morning triage roster (all modules)
+├── Survivor              #s-:module-:id   one person: C3 / C4 / C5 panels + actions
+│                         #s-demo          composite demo survivor (illustrative)
+├── Calls                 #calls           reviewed calls, flags first
+│   └── Call review       #call-:callId    tagged transcript, score, flags, cues
+├── Survivor app          #patient-:module-:id  or  #patient-demo   phone preview, EN/ES/HT
 └── Later
-    ├── Care team risk    #/care-team       C1 stub (risk badge + rules)
-    └── Research          #/research        C6/C7 stub (separate area, different user)
+    ├── Care team risk    #care            C1 stub (risk badge + rules)
+    └── Research          #research        C6/C7 stub (separate area, different user)
 ```
 
 Navigation is a left rail on desktop and a bottom tab bar under 760px. "Later" items carry a `C1` or `C6·C7` tag and stay visible, so the suite reads as one product with room to grow.
+
+Routes use plain tokens (letters, digits, `-`, `~`) so a shared Artifact link can deep-link to any screen, e.g. `…/artifact/<id>#call-CALL05423`.
 
 ## 4. Triage rule (Today ordering)
 
@@ -115,7 +117,7 @@ Within a group, rows sort C5, then C3, then C4. When C1 lands, its risk badge si
 
 ## 6. Screens and states
 
-The "Preview state" select in the top bar forces each screen into a state. You can also add `?state=loading|empty|error` to the hash. The alert state comes from the data itself.
+The "Preview state" select in the top bar forces each screen into a state. You can also add `~loading`, `~empty` or `~error` to the hash (e.g. `#today~error`). The alert state comes from the data itself.
 
 | Screen | Ready | Loading | Empty | Alert | Error |
 |---|---|---|---|---|---|
@@ -227,7 +229,8 @@ These are additions. Nothing existing changes, and no module repo was edited.
 6. Haitian Creole: who reviews the copy, and do we show English as a fallback or hide untranslated cards?
 7. How should the C1 risk badge sit on the roster without competing with today's status? (Suggestion: a quiet probability chip, never red.)
 8. Iconography: the prototype uses text glyphs as placeholders. It needs a real icon set.
-9. Brand: the prototype uses no Sylvester or UM marks on purpose. Confirm co-branding rules for the demo.
+9. Naming: the dataset READMEs number these challenges differently (Bad Week Radar's README says "Challenge 1"; the Challenge_1 guide is a different challenge). The UI follows the brief (C3/C4/C5). Should chips show names only?
+10. Brand: the prototype uses no Sylvester or UM marks on purpose. Confirm co-branding rules for the demo.
 
 ## 11. Verification
 

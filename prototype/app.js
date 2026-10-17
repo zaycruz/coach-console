@@ -66,7 +66,7 @@
     const filters = ["all", "c3", "c4", "c5"].map((f) => `<button class="chip ${f !== "all" ? "m-" + f : ""}" aria-pressed="${rosterFilter === f}" data-filter="${f}">${f !== "all" ? '<span class="dot"></span>' : ""}${f === "all" ? "All modules" : f.toUpperCase() + " · " + MODS[f]}</button>`).join("");
     const comp = M.composite;
     let rows = `<div class="r-group">Product preview</div>
-      <a class="r-row s-alert" href="#/s/demo"><span class="stripe"></span>
+      <a class="r-row s-alert" href="#s-demo"><span class="stripe"></span>
         <span class="r-name">${esc(comp.displayName)}<span class="meta">Illustrative · one record from each module</span></span>
         <span class="r-head"><span class="h">See all three modules on one survivor page</span><span class="row">${["c3", "c4", "c5"].map((m) => modChip(m, "illustrative")).join("")}</span></span>
         <span class="r-right"><span class="chip illustrative">Illustrative</span></span></a>`;
@@ -74,7 +74,7 @@
     for (const it of items) {
       if (rosterFilter !== "all" && it.mod !== rosterFilter) continue;
       if (it.tri !== last) { rows += `<div class="r-group" id="g-${it.tri}">${GROUP[it.tri]}</div>`; last = it.tri; }
-      rows += `<a class="r-row s-${it.tri}" href="#/s/${it.mod}/${it.survivorId}"><span class="stripe"></span>
+      rows += `<a class="r-row s-${it.tri}" href="#s-${it.mod}-${it.survivorId}"><span class="stripe"></span>
         <span class="r-name">${esc(it.displayName)}<span class="meta">${esc(MODS[it.mod])} cohort</span></span>
         <span class="r-head"><span class="h">${esc(it.headline)}</span><span class="row">${modChip(it.mod)}</span></span>
         <span class="r-right">${statusPill(it.tri)}<span class="when">${fmtTime(it.updatedAt)}</span></span></a>`;
@@ -180,7 +180,7 @@
       <p class="small muted">${esc(d.summary)}</p>
       ${flags}
       <div class="row" style="justify-content:space-between"><div class="score-big"><span class="n">${call.score}</span><span class="muted">/100 coach score</span></div>
-        <a class="btn" href="#/call/${call.callId}">Review call →</a></div>
+        <a class="btn" href="#call-${call.callId}">Review call →</a></div>
       ${scoreParts(call)}
       <p class="small muted">Call ${call.callNumber}, week ${call.week} · ${esc(call.date)} · ${esc(call.language)} · goal: ${esc(call.goalTopic)} · ${call.durationMin} min</p>
       ${recsBlock(d.recommendations)}
@@ -209,8 +209,8 @@
     const facts = isDemo
       ? `<span>C3 record <b>${parts.c3}</b></span><span>C4 record <b>${parts.c4}</b></span><span>C5 record <b>${parts.c5}</b></span>`
       : `<span>Age <b>${p.age}</b></span><span>Sex <b>${esc(p.sex)}</b></span><span>Cancer <b>${esc(p.cancer)}</b></span><span>Language <b>${esc(p.language)}</b></span>${p.treatment ? `<span>Treatment <b>${esc(p.treatment)}</b></span>` : ""}${p.livesAlone ? `<span>Lives alone <b>${esc(p.livesAlone)}</b></span>` : ""}${p.group ? `<span>Group <b>${esc(p.group)}</b></span>` : ""}${p.coach ? `<span>Coach <b>${esc(p.coach)}</b></span>` : ""}`;
-    const head = `<div class="page-head person-head"><div><a class="small" href="#/today">← Today</a><h1>${esc(title)}</h1><div class="facts">${facts}</div></div>
-      <div class="row">${isDemo ? '<span class="chip illustrative">Illustrative</span>' : ""}<a class="btn" href="#/patient/${isDemo ? "demo" : mod + "/" + id}">Survivor’s view</a></div></div>`;
+    const head = `<div class="page-head person-head"><div><a class="small" href="#today">← Today</a><h1>${esc(title)}</h1><div class="facts">${facts}</div></div>
+      <div class="row">${isDemo ? '<span class="chip illustrative">Illustrative</span>' : ""}<a class="btn" href="#patient-${isDemo ? "demo" : mod + "-" + id}">Survivor’s view</a></div></div>`;
     if (previewState !== "ready") return head + stateView(previewState, previewState === "empty" ? "No module has data for this survivor yet. Panels fill in after the first synced wearable day, meal log or call." : "this survivor");
     const note = isDemo ? `<div class="banner note"><span class="b-ico">i</span><div class="b-body small">${esc(M.composite.note)}</div></div>` : "";
     const panel = (m) => {
@@ -236,7 +236,7 @@
     const rows = calls.map((c) => {
       const who = M.modules.c5.list.find((x) => x.survivorId === c.survivorId);
       const st = c.flags.length ? "today" : c.score < 60 ? "watch" : "ok";
-      return `<a class="c-row" href="#/call/${c.callId}"><span><b>${esc(who.displayName)}</b><span class="small muted" style="display:block">Coach ${esc(c.coach.name)} · ${esc(c.date)} · ${esc(c.language)} · ${esc(c.goalTopic)}</span></span>
+      return `<a class="c-row" href="#call-${c.callId}"><span><b>${esc(who.displayName)}</b><span class="small muted" style="display:block">Coach ${esc(c.coach.name)} · ${esc(c.date)} · ${esc(c.language)} · ${esc(c.goalTopic)}</span></span>
         <span class="small">${c.flags.length ? esc(c.flags.map((f) => f.kind).join(", ")) + " flag" : c.cues.length + " cues"}</span>
         <span class="mono">${c.score}/100</span>${statusPill(st)}</a>`;
     }).join("");
@@ -247,9 +247,9 @@
     const c = M.calls[id];
     if (!c) return stateView("error", "this call");
     const who = M.modules.c5.list.find((x) => x.survivorId === c.survivorId);
-    const head = `<div class="page-head"><div><a class="small" href="#/calls">← Calls</a><h1>Call review · ${esc(who.displayName)}</h1>
+    const head = `<div class="page-head"><div><a class="small" href="#calls">← Calls</a><h1>Call review · ${esc(who.displayName)}</h1>
       <div class="facts"><span>Coach <b>${esc(c.coach.name)}</b> (${esc(c.coach.role)})</span><span>Call <b>${c.callNumber}</b>, week ${c.week}</span><span><b>${esc(c.date)}</b> ${esc(c.start)}</span><span>${esc(c.language)}</span><span>Goal <b>${esc(c.goalTopic)}</b></span><span><b>${c.durationMin}</b> min</span></div></div>
-      <a class="btn" href="#/s/c5/${c.survivorId}">Survivor page</a></div>`;
+      <a class="btn" href="#s-c5-${c.survivorId}">Survivor page</a></div>`;
     if (previewState !== "ready") return head + stateView(previewState, previewState === "empty" ? "This call has no lines yet. For a live call, lines appear as people speak." : "this call");
     const flags = c.flags.map((f) => `<div class="banner alert" role="alert"><span class="b-ico">▲</span><div class="b-body"><b>${esc(f.kind[0].toUpperCase() + f.kind.slice(1))} flag at ${esc(f.t)} · a person must follow up today</b><p class="small">“${esc(f.text)}”</p>
       <div class="b-actions"><button class="btn danger" data-toast="Hand-off sent to the care team (mock)">Hand off to care team</button><a class="btn" href="#line-${f.line}">Jump to line ${f.line}</a><button class="btn" data-toast="Marked handled (mock)">Mark handled</button></div></div></div>`).join("");
@@ -330,11 +330,12 @@
   }
 
   // ------------------------------------------------------------------ router
+  // Routes are plain tokens (#today, #s-c3-P00809, #call-CALL05423, #today~error) because the
+  // Artifact viewer only passes letters, digits and . _ ~ - from a shared link's hash.
   function parse() {
-    const raw = location.hash.replace(/^#/, "") || "/today";
-    const [path, q] = raw.split("?");
-    const st = new URLSearchParams(q || "").get("state");
-    return { parts: path.split("/").filter(Boolean), st };
+    const raw = location.hash.replace(/^#/, "") || "today";
+    const [path, st] = raw.split("~");
+    return { parts: path.split("-").filter(Boolean), st };
   }
   function render() {
     const { parts, st } = parse();
@@ -346,7 +347,7 @@
       else if (nav === "calls") html = renderCalls();
       else if (nav === "call") { nav = "calls"; html = renderCall(parts[1]); }
       else if (nav === "patient") html = parts[1] === "demo" ? renderPatient("demo") : renderPatient(parts[1], parts[2]);
-      else if (nav === "care-team") { nav = "care"; html = renderCare(); }
+      else if (nav === "care") html = renderCare();
       else if (nav === "research") html = renderResearch();
       else html = stateView("empty", "This page doesn’t exist. Use the navigation to get back.");
     } catch (e) {
