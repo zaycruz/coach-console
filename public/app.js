@@ -524,13 +524,24 @@
   const FLAG_TEXT = { medical: "Medical concern: tell the care team today", distress: "Emotional distress: check in and connect to support today", social: "Unmet basic need: connect to a navigator today", missed_concern: "Coach did not route a concern the patient raised", medical_advice: "Coach gave medical advice outside their role" };
   let live = null;
 
-  function liveScore(lines) {
+  // The four score parts over the coach lines Clef has tagged, in the shape of C5's scoreParts (src/c5.ts scoreMoves):
+  // value, target, points, max. Same formula as the stored score; liveScore is their sum. null under 4 tagged coach lines.
+  function liveParts(lines) {
     const c = lines.filter((l) => l.speaker === "coach" && l.live && l.live.tag).map((l) => l.live.tag);
     const n = (t) => c.filter((x) => x === t).length;
     const oq = n("open question"), cq = n("closed question"), sr = n("simple reflection"), cr = n("complex reflection");
     const ad = c.filter((t) => FAMILY[t] === "s").length, na = n("persuade") + n("confront"), q = oq + cq, r = sr + cr;
     if (c.length < 4) return null;
-    return Math.round(30 * Math.min((q ? r / q : r ? 2 : 0) / 2, 1)) + Math.round(20 * Math.min((r ? cr / r : 0) / 0.4, 1)) + Math.round(20 * Math.min((q ? oq / q : 0) / 0.5, 1)) + Math.round(30 * (ad + na ? ad / (ad + na) : 1));
+    return {
+      reflectionsPerQuestion: { value: q ? +(r / q).toFixed(2) : null, target: 2, points: Math.round(30 * Math.min((q ? r / q : r ? 2 : 0) / 2, 1)), max: 30 },
+      complexReflectionPct: { value: r ? Math.round((100 * cr) / r) : null, target: 40, points: Math.round(20 * Math.min((r ? cr / r : 0) / 0.4, 1)), max: 20 },
+      openQuestionPct: { value: q ? Math.round((100 * oq) / q) : null, target: 50, points: Math.round(20 * Math.min((q ? oq / q : 0) / 0.5, 1)), max: 20 },
+      miConsistent: { value: `${ad} vs ${na}`, target: "no persuade or confront", points: Math.round(30 * (ad + na ? ad / (ad + na) : 1)), max: 30 },
+    };
+  }
+  function liveScore(lines) {
+    const p = liveParts(lines);
+    return p ? Object.values(p).reduce((s, x) => s + x.points, 0) : null;
   }
 
   function agreement(lines) {
@@ -839,7 +850,7 @@
   window.addEventListener("hashchange", () => { if (parse().route === "line") return; toast.hidden = true; window.scrollTo(0, 0); render().then(() => view.focus({ preventScroll: true })); });
   // Shared with call.js and assistant.js, which load after this file and add their own routes.
   window.P360 = { NAME, routes: {}, render, esc, fmtDate, pct, num, post, once, memo, A, MODS, SNAP, LIVE_URL, COPILOT_URL, statusPill, modChip, tagsHtml, loadingBox, errorBox, emptyBox, forced, sourceBanner, showToast, notWired, parse,
-    FAMILY, FLAG_TEXT, liveScore, lineHtml, flagBanner, cueTrigger, panelVisual, adviceCard, sortRows, current: () => current };
+    FAMILY, FLAG_TEXT, liveScore, liveParts, lineHtml, flagBanner, cueTrigger, panelVisual, adviceCard, sortRows, current: () => current };
 
   // ------------------------------------------------------------------ coach name stamped on saved calls and hand-offs (no sign-in in the demo)
   let coachName = "";
