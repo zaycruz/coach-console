@@ -397,11 +397,12 @@ async function insight(env: Env, body: Record<string, unknown>) {
   if (!p || !/^[a-z0-9]+-[A-Za-z0-9]+$/.test(id)) return json({ error: "patient with an id is required" }, 400);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(p)));
   const hash = [...new Uint8Array(digest)].slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
-  const key = `insight:${id}:${hash}`;
+  const key = `insight2:${id}:${hash}`; // v2: one sentence, no numbers (the tiles hold them)
   const hit = insightMem.get(key) ?? JSON.parse((await env.CALLS.get(key).catch(() => null)) || "null");
   if (hit) { insightMem.set(key, hit); return json({ ...(hit as object), cached: true }); }
   const system = `You write "Ellie's insight" for a clinician (health coach or care-team lead) opening a cancer survivor's health chart. Use ONLY the patient data given, from every program it covers. If the data has "forEllie", that sentence is the hospital-risk bullet and is added for you: do not write another hospital-risk bullet. Return one headline sentence (what matters most right now, at most 20 words) and up to 3 bullets, each a recommendation or insight of at most 15 words, most important first. Lead with the action. Keep the numbers from the data. Call the person "the patient", never "survivor" or "participant". No diagnosis, no prescribing, no invented facts. Plain words.
-The chart already shows the program's headline (given as "headline"). Do NOT repeat it or restate the alert ("medical concern needs follow-up", "a person must follow up today"). Add what it hides: when "patientWords" has a flagged line, the headline must name that symptom or need in plain clinical words (e.g. "New shortness of breath on light exertion (kitchen walk); call today and tell the care team.") and may quote up to 8 of the patient's words. Otherwise name the driver or trend behind the numbers.`;
+The chart already shows the program's headline (given as "headline"). Do NOT repeat it or restate the alert ("medical concern needs follow-up", "a person must follow up today"). Add what it hides: when "patientWords" has a flagged line, the headline must name that symptom or need in plain clinical words (e.g. "New shortness of breath on light exertion (kitchen walk); call today and tell the care team.") and may quote up to 8 of the patient's words. Otherwise name the driver or trend behind the numbers.
+THIS VERSION: the chart's tiles already show every number and the plan lists every action. Write the headline as ONE sentence (at most 25 words) about what changed or what is dangerous, in clinician voice (never "you" or "your"), with NO numbers, percentages or scores and NO action. Bullets: return an empty array.`;
   const schema = { name: "insight", strict: true, schema: { type: "object", additionalProperties: false, required: ["headline", "bullets"], properties: {
     headline: { type: "string" }, bullets: { type: "array", items: { type: "string" } } } } };
   const ask = () => glm(env, system, `PATIENT: ${clip(p, 6_000)}`, schema, 500);
@@ -427,20 +428,29 @@ async function recap(env: Env, body: Record<string, unknown>) {
   return json({ ...r, model: GLM });
 }
 
+/* Test data never reaches the app. A request carrying the test marker (cookie p360test=1 or header x-p360-test: 1, set
+   only by the E2E) reads and writes under the "test:" key prefix and every record it writes says test: true. Normal
+   reads skip anything marked test, and the E2E script's own saved calls from before this marker existed. */
+const isTestReq = (req: Request) => req.headers.get("x-p360-test") === "1" || /(?:^|;\s*)p360test=1(?:;|$)/.test(req.headers.get("cookie") || "");
+const ns = (req: Request) => (isTestReq(req) ? "test:" : "");
+const E2E_LINES = ["How have the last few days been for you?", "Honestly tired, but I want to get back to walking."];
+const legacyTestCall = (c: unknown) => isRec(c) && Array.isArray(c.lines) && c.lines.length === 3 && isRec(c.lines[0]) && isRec(c.lines[1]) && c.lines[0].text === E2E_LINES[0] && c.lines[1].text === E2E_LINES[1];
+const realOnly = (list: unknown[]) => list.filter((x) => !(isRec(x) && x.test) && !legacyTestCall(x));
+
 async function savedCalls(env: Env, req: Request, pid: string) {
   if (!/^[a-z0-9]+-[A-Za-z0-9]+$/.test(pid)) return json({ error: "bad patient id" }, 400);
-  const key = `calls:${pid}`;
+  const test = isTestReq(req), key = `${ns(req)}calls:${pid}`;
   const list: unknown[] = JSON.parse((await env.CALLS.get(key)) || "[]");
-  if (req.method === "GET") return new Response(JSON.stringify(list), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  if (req.method === "GET") return new Response(JSON.stringify(test ? list : realOnly(list)), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
   const c = (await req.json()) as Record<string, unknown>;
   const lines = (Array.isArray(c.lines) ? c.lines : []).slice(0, 400).filter(isRec).map((l) => ({ speaker: l.speaker === "coach" ? "coach" : "participant", text: String(l.text || "").slice(0, 1_000), tag: l.tag ? String(l.tag) : null, flag: l.flag ? String(l.flag) : null }));
   if (!lines.length) return json({ error: "a call needs at least one line" }, 400);
-  const saved = { id: crypto.randomUUID(), pid, name: String(c.name || "").slice(0, 80), at: new Date().toISOString(), coach: String(c.coach || "").trim().slice(0, 60) || "Unknown coach", lines, score: typeof c.score === "number" ? c.score : null, note: String(c.note || "").slice(0, 2_000) };
+  const saved = { id: crypto.randomUUID(), pid, name: String(c.name || "").slice(0, 80), at: new Date().toISOString(), coach: String(c.coach || "").trim().slice(0, 60) || "Unknown coach", lines, score: typeof c.score === "number" ? c.score : null, note: String(c.note || "").slice(0, 2_000), ...(test ? { test: true } : {}) };
   await env.CALLS.put(key, JSON.stringify([saved, ...list].slice(0, 20)));
   // One cross-patient index so Today and the Calls list see every saved call (and its flagged lines) in one read.
-  const idx: unknown[] = JSON.parse((await env.CALLS.get("calls:index").catch(() => null)) || "[]");
-  const entry = { id: saved.id, pid, name: saved.name, at: saved.at, coach: saved.coach, score: saved.score, lines: lines.length, flags: lines.filter((l) => l.flag && l.flag !== "none").map((l) => ({ flag: l.flag, text: l.text })) };
-  await env.CALLS.put("calls:index", JSON.stringify([entry, ...idx].slice(0, 200))).catch(() => {});
+  const idx: unknown[] = JSON.parse((await env.CALLS.get(`${ns(req)}calls:index`).catch(() => null)) || "[]");
+  const entry = { ...(test ? { test: true } : {}), id: saved.id, pid, name: saved.name, at: saved.at, coach: saved.coach, score: saved.score, lines: lines.length, flags: lines.filter((l) => l.flag && l.flag !== "none").map((l) => ({ flag: l.flag, text: l.text })) };
+  await env.CALLS.put(`${ns(req)}calls:index`, JSON.stringify([entry, ...idx].slice(0, 200))).catch(() => {});
   return json(saved, 201);
 }
 
@@ -464,18 +474,27 @@ async function swr(url: URL, ctx: ExecutionContext, make: () => Promise<Response
   return new Response(hit.body, { status: 200, headers: { "content-type": "application/json", "cache-control": `public, max-age=${FRESH_S}`, "x-p360-cache": age > FRESH_S ? "stale" : "hit" } });
 }
 const noStore = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
-async function allSavedCalls(env: Env) { return noStore(JSON.parse((await env.CALLS.get("calls:index").catch(() => null)) || "[]")); }
+async function allSavedCalls(env: Env, req: Request) {
+  const idx: unknown[] = JSON.parse((await env.CALLS.get(`${ns(req)}calls:index`).catch(() => null)) || "[]");
+  if (isTestReq(req)) return noStore(idx);
+  // Index entries carry no line text: drop the ones whose saved call (per patient) is test data.
+  const pids = [...new Set(idx.filter(isRec).map((e) => String(e.pid)))];
+  const bad = new Set<string>();
+  await Promise.all(pids.map(async (pid) => { const l: unknown[] = JSON.parse((await env.CALLS.get(`calls:${pid}`).catch(() => null)) || "[]"); l.filter((c) => isRec(c) && (c.test || legacyTestCall(c))).forEach((c) => bad.add(String((c as Record<string, unknown>).id))); }));
+  return noStore(idx.filter((e) => isRec(e) && !e.test && !bad.has(String(e.id))));
+}
 
 // Hand-offs to the care team: who, when, which patient, the flagged line and a note. Newest first, in KV.
 async function handoffs(env: Env, req: Request) {
-  const list: unknown[] = JSON.parse((await env.CALLS.get("handoffs").catch(() => null)) || "[]");
-  if (req.method === "GET") return noStore(list);
+  const test = isTestReq(req);
+  const list: unknown[] = JSON.parse((await env.CALLS.get(`${ns(req)}handoffs`).catch(() => null)) || "[]");
+  if (req.method === "GET") return noStore(test ? list : realOnly(list));
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const pid = String(b.patientId || "");
   if (!/^[a-z0-9]+-[A-Za-z0-9]+$/.test(pid)) return json({ error: "patientId is required" }, 400);
   const h = { id: crypto.randomUUID(), at: new Date().toISOString(), patientId: pid, name: String(b.name || "").slice(0, 80), coach: String(b.coach || "").trim().slice(0, 60) || "Unknown coach",
-    to: String(b.to || "Care team").slice(0, 60), flag: String(b.flag || "").slice(0, 500), note: String(b.note || "").slice(0, 2_000) };
-  await env.CALLS.put("handoffs", JSON.stringify([h, ...list].slice(0, 300)));
+    to: String(b.to || "Care team").slice(0, 60), flag: String(b.flag || "").slice(0, 500), note: String(b.note || "").slice(0, 2_000), ...(test ? { test: true } : {}) };
+  await env.CALLS.put(`${ns(req)}handoffs`, JSON.stringify([h, ...list].slice(0, 300)));
   return json(h, 201);
 }
 
@@ -499,7 +518,7 @@ export default {
       if (mod === "ellie" && req.method === "POST") return await ellie(env, (await req.json()) as Record<string, unknown>);
       if (mod === "recap" && req.method === "POST") return await recap(env, (await req.json()) as Record<string, unknown>);
       if (mod === "stt" && req.method === "POST") return await (await import("./stt")).stt(env, req);
-      if (mod === "calls" && rest.length === 0 && req.method === "GET") return await allSavedCalls(env);
+      if (mod === "calls" && rest.length === 0 && req.method === "GET") return await allSavedCalls(env, req);
       if (mod === "calls" && rest.length === 1 && (req.method === "GET" || req.method === "POST")) return await savedCalls(env, req, rest[0]);
       if (mod === "handoffs" && rest.length === 0 && (req.method === "GET" || req.method === "POST")) return await handoffs(env, req);
       if ((mod === "c1" || mod === "c3" || mod === "c4") && req.method === "GET") {

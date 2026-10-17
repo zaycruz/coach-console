@@ -14,7 +14,9 @@ type Rec = Record<string, unknown>;
 type TodayEnv = { C1: Fetcher; C3: Fetcher; C4: Fetcher; C5: Fetcher };
 
 const isRec = (x: unknown): x is Rec => !!x && typeof x === "object" && !Array.isArray(x);
-const cut = (s: string, n = 90) => (s.length > n ? s.slice(0, n - 1).replace(/[\s,;:·]+\S*$/, "") + "…" : s);
+// Reasons are shown whole (the row wraps to two lines); a reason is never cut with "…".
+const cut = (s: string) => s.replace(/\s+/g, " ").trim();
+const agoWords = (iso: unknown) => { const t = Date.parse(String(iso || "")); if (isNaN(t)) return ""; const d = Math.floor((Date.now() - t) / 864e5); return d < 1 ? "today" : d < 2 ? "yesterday" : d < 60 ? `${d} days ago` : `${Math.round(d / 30.4)} months ago`; };
 const r0 = (v: unknown, d = 0) => (typeof v === "number" ? Number(v.toFixed(d)) : null);
 const LANG: Record<string, string> = { "haitian creole": "Kreyòl", kreyol: "Kreyòl", "kreyòl": "Kreyòl", spanish: "Spanish", español: "Spanish", english: "English" };
 const lang = (s: unknown) => { const t = String(s || "").trim(); return t ? LANG[t.toLowerCase()] || t : ""; };
@@ -53,7 +55,7 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     const words = String(dBanner.quote || "").replace(/\s+/g, " ").replace(/^(oh,?\s+)?before you go,?\s+(and\s+)?/i, "").trim();
     const c = callList.find((x) => x.callId === dm.callId) || {};
     rows.push({ id: pid, mod: "c5", name: String(c.participantName || pid), status: "alert", headline: `${label} on call ${c.callNumber || ""}, replayed through Clef today`, updatedAt: dm.playedAt,
-      horizon: "today", rank, reason: cut(`${label}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: lang(dm.language) || langOf5.get(pid) || "", flaggedAt: dm.playedAt });
+      horizon: "today", rank, reason: cut(`${label}, call ${c.callNumber || ""}, replayed today: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: lang(dm.language) || langOf5.get(pid) || "", flaggedAt: dm.playedAt });
   }
   for (const [pid, c] of byP) {
     if (dm && pid === String(dm.survivorId)) continue;
@@ -62,7 +64,7 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     const [label, rank] = KIND[String(f.kind)] || KIND.medical;
     const words = String(f.text || "").replace(/\s+/g, " ").replace(/^(oh,?\s+)?before you go,?\s+(and\s+)?/i, "").trim();
     rows.push({ id: pid, mod: "c5", name: String(c.participantName || pid), status: "alert", headline: `${label} on call ${c.callNumber}`, updatedAt: c.date,
-      horizon: "today", rank, reason: cut(`${label}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: langOf5.get(pid) || "" });
+      horizon: "today", rank, reason: cut(`${label}, call ${c.callNumber}, ${agoWords(c.date)}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: langOf5.get(pid) || "" });
   }
 
   // C3: urgent first (7-day ER/hospital risk over its line), then rough-patch alerts.

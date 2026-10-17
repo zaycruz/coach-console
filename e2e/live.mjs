@@ -18,7 +18,9 @@ mkdirSync(dir, { recursive: true });
 const checks = [];
 const ok = (name, pass, detail = "") => { checks.push({ name, pass: !!pass, detail }); console.log(`${pass ? "PASS" : "FAIL"} ${name}${detail ? " · " + detail : ""}`); };
 
-const j = async (p) => (await fetch(B + p)).json();
+// Everything this test writes (saved calls, hand-offs) goes to the "test:" namespace: cookie in the browser, header here.
+const TEST_COOKIE = { name: "p360test", value: "1", url: B };
+const j = async (p) => (await fetch(B + p, { headers: { "x-p360-test": "1" } })).json();
 const [l1, l3, l4, l5, calls] = await Promise.all([j("/api/c1/survivors"), j("/api/c3/survivors"), j("/api/c4/survivors"), j("/api/c5/survivors"), j("/api/c5/calls")]);
 const total = l1.length + l3.length + l4.length + l5.length;
 const ids = { c1: l1[0].survivorId, c3: l3[0].survivorId, c4: l4[0].survivorId, c5: l5[0].survivorId };
@@ -46,6 +48,7 @@ const manifest = { base: B, ts, total, ids, call: flaggedCall.callId, shots: [] 
 
 async function newPage(opts, abortC3 = false) {
   const ctx = await browser.newContext(opts);
+  await ctx.addCookies([TEST_COOKIE]);
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -102,9 +105,9 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Patients count = c1 + c3 + c4 + c5 list endpoints", count === total, `${count} vs ${total}`);
   const src = await page.locator(".mode .src").evaluateAll((els) => els.map((e) => e.textContent + ":" + e.className));
   ok("C1, C3, C4, C5 chips say live", src.length === 4 && src.every((c) => c.includes("s-live")), src.join(" | "));
-  const optToday = await page.locator('option[value="today"]').first().innerText().catch(() => "");
+  const optToday = await page.locator('a.fpill[href="#patients-today"]').first().innerText().catch(() => "");
   const apiToday = (await (await fetch(`${B}/api/today`)).json()).rows.filter((r) => r.horizon === "today").length;
-  ok("Patients 'Act today' count = Today queue count (one list everywhere)", optToday.includes(`(${apiToday})`), `${optToday} vs ${apiToday}`);
+  ok("Patients 'Act today' count = Today queue count (one list everywhere)", new RegExp(`\\b${apiToday}\\b`).test(optToday), `${optToday} vs ${apiToday}`);
   for (const m of ["c3", "c4", "c1"]) {
     await page.locator(`[data-filter="${m}"]`).click(); await settle(page);
     ok(`${m} rows carry tags on Patients`, (await page.locator(`tr[data-pid^="${m}-"] .tag`).count()) > 0);
@@ -115,7 +118,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   const tq = await (await fetch(`${B}/api/today`)).json();
   const qMods = new Set(tq.rows.map((r) => r.mod));
   ok("Today API: one queue with rows from C1, C3, C4 and C5", ["c1", "c3", "c4", "c5"].every((m) => qMods.has(m)), [...qMods].join(","));
-  ok("Today API: every reason is 90 characters or less", tq.rows.every((r) => r.reason && r.reason.length <= 90), tq.rows.map((r) => r.reason.length).sort((x, y) => y - x)[0]);
+  ok("Today API: every row has a whole reason, never cut with \"…\"", tq.rows.every((r) => r.reason && !/…/.test(r.reason)), (tq.rows.find((r) => /…/.test(r.reason || "")) || {}).reason || "");
   ok("Today API: C1 rows say real MEPS data, the rest synthetic", tq.rows.every((r) => (r.mod === "c1") === /MEPS/.test(r.data)));
   const todayRows = await page.locator(".today-list .t-row").count();
   const domMods = new Set(await page.locator(".today-list .t-row").evaluateAll((els) => els.map((e) => e.dataset.mod)));
@@ -126,6 +129,8 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Today page: data-type chip on every row", (await page.locator(".today-list .t-row .chip-data").count()) === todayRows);
   ok("Today page: interpreter chip for a non-English patient", (await page.locator(".today-list .chip-lang.need").count()) > 0);
   ok("Today page: separate-cohorts line", /Four programs, four separate cohorts/.test(await page.locator(".cohorts").innerText().catch(() => "")));
+  const domWhy = await page.locator(".today-list .t-row .why").allInnerTexts();
+  ok("Today page: no reason truncated with \"…\" (rows wrap)", domWhy.length > 0 && !domWhy.some((t) => /…/.test(t)), domWhy.find((t) => /…/.test(t)) || `${domWhy.length} reasons`);
   await shot(page, "today_1280.png");
   await page.locator(".t-row .btn.primary").first().click(); await settle(page);
   ok("Today: first action opens a call or the risk view", /#(live-|p-c1-)/.test(await page.evaluate(() => location.hash)), await page.evaluate(() => location.hash));
@@ -136,8 +141,8 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("advice sits beside its chart", (await page.locator(".do .do-visual svg.chart").count()) >= 2);
   ok("program view ends in the full raw response", (await page.locator("details#raw summary").innerText()).includes("Everything this program sent"));
   await page.goto(`${B}/#p-${ids.c4}`); await settle(page);
-  await page.locator("a.kpi").first().click(); await settle(page);
-  ok("KPI card drills into the program view", (await page.evaluate(() => location.hash)) === `#p-${ids.c4}.c4`);
+  await page.locator("a.l-tile").first().click(); await settle(page);
+  ok("Health chart tile drills into the program view", (await page.evaluate(() => location.hash)) === `#p-${ids.c4}.c4`);
 
   // glucose: a series with no readings is named, never drawn as a phantom legend line
   const n72 = await j("/api/c4/survivors/c4-N0072").catch(() => null);
@@ -206,6 +211,29 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await page.locator("#ellie-close").click();
   ok("Ellie closes", await page.locator("#ellie").isHidden());
 
+  // One fact, one place: every tile number appears exactly once on its overview; no patient second person anywhere we write.
+  const voice = [];
+  for (const pid of ["x-L1", "c4-N0072", "c3-P03000", "c1-S71188550", "c5-P0002"]) {
+    await page.goto(`${B}/#p-${pid}`); await settle(page);
+    await page.waitForFunction(() => !document.querySelector("#view .is-loading, #view [aria-busy=true]"), null, { timeout: 30000 }).catch(() => {});
+    await page.waitForFunction(() => { const e = document.querySelector(".ellie-insight"); return e && e.dataset.state && e.dataset.state !== "loading"; }, null, { timeout: 45000 }).catch(() => {});
+    // The tile's number with its unit ("1 line", "10.3%"), counted as a whole token (not inside "13" or "21.0%").
+    const nums = (await page.locator("#view .l-tile .hero-num").allInnerTexts()).map((n) => n.replace(/\s+/g, " ").trim()), text = await page.locator("#view").innerText();
+    const esc = (n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rep = nums.filter((n) => n && n !== "Not recorded").map((n) => [n, (text.replace(/\s+/g, " ").match(new RegExp(`(?<![\\d.])${esc(n)}(?![\\d])`, "g")) || []).length]).filter(([, k]) => k !== 1);
+    ok(`${pid} overview: each tile number appears exactly once`, nums.length > 0 && rep.length === 0, rep.length ? rep.map(([n, k]) => `${n}×${k}`).join(", ") : nums.join(", "));
+    for (const tab of ["", ".c1", ".c3", ".c4", ".c5"]) {
+      if (tab && !(pid.startsWith("x-") || pid.startsWith(tab.slice(1)))) continue;
+      if (tab) { await page.goto(`${B}/#p-${pid}${tab}`); await settle(page); }
+      // Our copy only: quoted patient words, the coach's translated call script and call transcripts are theirs.
+      const mine = await page.locator("#view").evaluate((v) => { const c = v.cloneNode(true); c.querySelectorAll(".handout, .c-row, blockquote, .calls-list, .t-quote, .hypo-tr, details#raw").forEach((e) => e.remove()); return c.innerText.replace(/“[^”]*”/g, ""); });
+      const hit = (mine.match(/[^.\n]{0,40}\byour? \w+[^.\n]{0,30}/gi) || []).filter((m) => /\byour /i.test(m));
+      if (hit.length) voice.push(`${pid}${tab}: ${hit[0].trim()}`);
+    }
+  }
+  for (const r of ["today", "patients"]) { await page.goto(`${B}/#${r}`); await settle(page); const t = (await page.locator("#view").innerText()).replace(/“[^”]*”/g, ""); const h = t.match(/[^.\n]{0,40}\byour [^.\n]{0,30}/i); if (h) voice.push(`${r}: ${h[0].trim()}`); }
+  ok("Clinician voice: no \"your \" in our copy (overviews, tabs, Today, Patients)", voice.length === 0, voice.slice(0, 3).join(" | "));
+
   // Health chart = summary + Ellie's Insight; detail lives in the pills
   await page.goto(`${B}/#p-${ids.c3}`); await settle(page);
   await page.waitForFunction(() => { const e = document.querySelector(".ellie-insight"); return e && /check before acting|program’s own (summary|record)/i.test(e.textContent); }, null, { timeout: 60000 }).catch(() => {});
@@ -266,6 +294,18 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await ctx.close();
 }
 
+// What a judge sees (no test cookie): test calls never reach #calls, and no saved call is listed twice.
+{
+  const clean = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await clean.newPage();
+  await page.goto(`${B}/#calls`); await page.waitForSelector("#view[data-ready]", { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(1500);
+  const logged = await page.locator("#view .c-row").evaluateAll((rs) => rs.map((r) => r.innerText.replace(/\s+/g, " ").trim()).filter((t) => /Logged in Patient 360/.test(t)));
+  const dup = logged.length - new Set(logged).size;
+  ok("#calls: no duplicate 'Logged in Patient 360' rows, no test data", dup === 0 && !logged.some((t) => /P00949/.test(t) && /Marisol/.test(t)), `${logged.length} logged rows, ${dup} duplicates`);
+  const pub = await (await fetch(`${B}/api/calls`)).json();
+  ok("API without the test marker returns no test records", Array.isArray(pub) && !pub.some((x) => x.test), `${pub.length} entries`);
+  await clean.close();
+}
 await browser.close();
 
 // 5. the mic: Chromium's fake mic plays a spoken wav; Whisper must turn it into a line
@@ -274,6 +314,7 @@ await browser.close();
   const wav = new URL("./fixtures/mic.wav", import.meta.url).pathname;
   const mb = await chromium.launch({ args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-audio-capture=${wav}`] });
   const ctx = await mb.newContext({ viewport: { width: 1280, height: 900 }, permissions: ["microphone"] });
+  await ctx.addCookies([TEST_COOKIE]);
   const page = await ctx.newPage();
   await page.goto(`${B}/#live-${quiet.survivorId}`); await settle(page);
   await page.locator("#mic").click();

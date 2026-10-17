@@ -169,16 +169,16 @@
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off */ } };
   function fallbackInsight(p) {
     const advice = (p.panels || []).flatMap((pn) => (pn.advice || []).map((a) => a.title)).filter(Boolean);
-    return { headline: p.headline || "No summary from this program yet.", bullets: advice.slice(0, 3).map(cut15), fallback: true };
+    return { headline: p.headline || "No summary from this program yet.", bullets: [], fallback: true };
   }
   function paintInsight(el, x) {
     const top = x.fallback ? `<span class="ei-src">From the program’s own summary</span>` : `<span class="ai-label">AI · check before acting</span>`;
-    el.innerHTML = `<div class="ei-top"><b>AI Insight</b>${top}</div><p class="ei-line">${esc(x.headline)}</p>${x.bullets && x.bullets.length ? `<ul class="ei-list">${x.bullets.map((b) => `<li>${esc(b)}</li>`).join("")}</ul>` : ""}`;
+    el.innerHTML = `<div class="ei-top"><b>AI Insight</b>${top}</div><p class="ei-line">${esc(x.headline)}</p>`; // headline only: numbers live on the tiles, actions in Do next
   }
   // One request per patient+data version, shared by the chart and the prefetch below.
   const inflight = new Map();
   function getInsight(p) {
-    const cp = compactPatient(p), key = `ellie-insight:${p.id}:${hash(JSON.stringify(cp))}`;
+    const cp = compactPatient(p), key = `ellie-insight2:${p.id}:${hash(JSON.stringify(cp))}`;
     const have = insights.get(key) || lsGet(key);
     if (have) return Promise.resolve(have);
     if (!inflight.has(key)) inflight.set(key, P.post("/api/insight", { patient: cp })

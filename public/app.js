@@ -243,7 +243,7 @@
         <p class="hero-num"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${stBadge(h.st)}${h.why && noTop !== true ? `<p class="hero-why">${esc(h.why)}</p>` : ""}${h.compare ? `<p class="hero-cmp">${esc(h.compare)}</p>` : ""}</div>
         ${sp ? `<figure class="hero-spark">${sp}<figcaption>${esc(h.spark.note || "")}</figcaption></figure>` : ""}</div>
       ${h.bar && h.bar.length ? tirBar(h.bar) : ""}
-      <dl class="hero-wm"><div><dt>What it means</dt><dd>${esc(h.means || NR)}${h.caveat ? `<span class="hero-cav">${esc(h.caveat)}</span>` : ""}</dd></div><div><dt>What to do</dt><dd>${esc(h.todo || "No action from this program right now.")}</dd></div></dl>
+      <dl class="hero-wm"><div><dt>What it means</dt><dd>${esc(h.means || NR)}${h.caveat ? `<span class="hero-cav">${esc(h.caveat)}</span>` : ""}</dd></div></dl>
       <p class="hero-src"><span>Source</span>${esc(h.source || "")}</p></section>`;
   }
   // One line on how well the program works for people like this patient. Never blank.
@@ -325,21 +325,29 @@
     const href = `#p-${id}.${m}`;
     if (!v || v.error) return `<a class="l-tile tone-neutral" href="${esc(href)}"><p class="eyebrow"><span class="dot m-${m}"></span>${esc(MODS[m].challenge)} ${esc(MODS[m].name)}</p><p class="lt-label">Couldn’t load this program</p><p class="lt-means">${esc((v && v.error) || "No answer")}</p><span class="lt-open">Try the tab →</span></a>`;
     const h = v.hero || {};
-    const label = h.tileLabel || { c1: "12-month ER or hospital risk", c3: "7-day rough-week risk", c4: "Time in range (70–180 mg/dL)", c5: "Last call score" }[m];
+    const label = h.tileLabel || { c1: "Next-year ER or hospital risk (from 2017 survey)", c3: "7-day rough-week risk", c4: "Time in range (70–180 mg/dL)", c5: "Last call score" }[m];
     return `<a class="l-tile tone-${esc(h.st ? h.st.tone : "neutral")}" href="${esc(href)}"><p class="eyebrow"><span class="dot m-${m}"></span>${esc(MODS[m].challenge)} ${esc(MODS[m].name)}</p><p class="lt-label">${esc(label)}</p>
-      <p class="hero-num sm"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${h.st ? stBadge(h.st) : ""}${h.compare ? `<p class="lt-cmp">${esc(h.compare.split(" · ")[0])}</p>` : ""}
-      ${h.top ? `<p class="lt-top tone-${esc(h.top.tone)}"><span class="g" aria-hidden="true">${TONE_GLYPH[h.top.tone] || "▲"}</span>${esc(h.top.text)}</p>` : `<p class="lt-means">${esc(h.means || "")}</p>`}<span class="lt-open">Open →</span></a>`;
+      <p class="hero-num sm"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${h.st ? stBadge(h.st) : ""}${h.compare ? `<p class="lt-cmp">${esc(h.compare)}</p>` : ""}
+      ${h.reason ? `<p class="lt-means">${esc(h.reason)}</p>` : ""}<span class="lt-open">Open →</span></a>`;
   }
   // Below the tiles: Ellie's insight across all four programs, then one next step per program, worst first.
   function linkedRest(p) {
     const RANKT = { today: 0, alert: 1, watch: 2, ok: 3 };
     const ok = ALL.map((m) => p.members[m]).filter((v) => v && !v.error).sort((a, b) => RANKT[a.tri] - RANKT[b.tri]);
-    const steps = ok.map((v) => [v, v.panels.flatMap((pn) => (pn.id === "redflags" ? [] : pn.advice || []))[0]]).filter(([, a]) => a).slice(0, 3);
-    return `<div class="ellie-insight" data-pid="${esc(p.id)}"></div>
-      ${steps.length ? `<section class="stack-s"><h2 class="sec-t">Do next</h2><div class="next-acts">${steps.map(([v, a], i) => `<section class="card"><p class="eyebrow"><span class="dot m-${v.mod}"></span>${esc(MODS[v.mod].name)}</p>${adviceCard(a, i + 1)}<a class="small" href="#p-${esc(p.id)}.${v.mod}">See the chart behind it →</a></section>`).join("")}</div></section>` : ""}
-      <p class="footnote">${esc(p.footnote)}</p>`;
+    const steps = ok.map((v) => [v, firstStep(v)]).filter(([, a]) => a);
+    return `<div class="ellie-insight" data-pid="${esc(p.id)}"></div>${doNext(steps)}`;
   }
 
+  // The overview's one list of actions: the program's top step (the hero's "what to do" when the program flags today), once each.
+  function firstStep(v) {
+    const a = v.panels.flatMap((pn) => (pn.id === "redflags" ? [] : pn.advice || []))[0];
+    const todo = v.hero && v.hero.todo && !/^No action/.test(v.hero.todo) ? v.hero.todo : "";
+    return (v.tri === "today" || v.tri === "alert") && todo ? { title: todo, tag: v.tri === "today" ? "Today" : "This week", tone: v.tri === "today" ? "risk" : "warn" } : a ? { ...a, evidence: null, more: null } : todo ? { title: todo, tag: "" } : null;
+  }
+  function doNext(steps) {
+    const seen = new Set(), uniq = steps.filter(([, a]) => { const k = a.title.toLowerCase(); return !seen.has(k) && seen.add(k); });
+    return uniq.length ? `<section class="stack-s do-next"><h2 class="sec-t">Do next</h2><div class="next-acts">${uniq.map(([v, a], i) => `<section class="card"><p class="eyebrow"><span class="dot m-${v.mod}"></span>${esc(MODS[v.mod].name)}</p>${adviceCard(a, i + 1)}</section>`).join("")}</div></section>` : `<p class="muted">No actions from this program right now.</p>`;
+  }
   // KPI tiles: label, number, its comparison line, and a sparkline where the program sends a series.
   function kpiCards(kpis, href, compact) {
     const tag = href ? "a" : "div";
@@ -428,17 +436,12 @@
   /* Health chart = the summary: hero card, Ellie's insight, at most 3 KPI tiles, the top two actions.
      Charts, detail panels, evidence and the raw response live on the program pill (moduleView). */
   function overview(p) {
-    const href = `#p-${p.id}.${p.mod}`;
-    const allAdvice = p.panels.flatMap((pn) => (pn.id === "redflags" ? [] : pn.advice || []));
-    const top = allAdvice.slice(0, 2);
-    const acts = top.length ? `<section class="stack-s"><h2 class="sec-t">Do next</h2><div class="next-acts">${top.map((a, i) => `<section class="card">${adviceCard(a, i + 1)}</section>`).join("")}</div>
-      <a href="${esc(href)}">${allAdvice.length > 2 ? `All ${allAdvice.length} next steps, each with the chart behind it →` : `See the chart behind ${top.length > 1 ? "each" : "it"} →`}</a></section>` : `<p class="muted">No actions from this program right now.</p>`;
-    const kp = (p.kpis || []).filter((k) => !k.hero).slice(0, 3);
-    return `${p.mod === "c4" ? c4Safety(p, p.identity && p.identity.language) : ""}${heroCard(p.hero, p.mod, p.mod === "c4" && !!p.careFlag)}
-      <div class="ellie-insight" data-pid="${esc(p.id)}"></div>
-      ${kp.length ? `<section class="stack-s"><p class="eyebrow">More numbers · ${esc(MODS[p.mod].challenge)} ${esc(MODS[p.mod].name)}</p>${kpiCards(kp, href, true)}</section>` : ""}
-      ${acts}<p class="small"><a href="${esc(href)}">Full ${esc(MODS[p.mod].name)} detail: charts, evidence and every field the program sent →</a></p>`;
+    const others = ALL.filter((m) => m !== p.mod).map((m) => MODS[m].name);
+    return `<section class="stack-s"><h2 class="sec-t">Health chart · one number per program</h2><div class="l-tiles">${linkedTile(p.id, p.mod, p)}</div>
+      <p class="small muted">Not enrolled in ${esc(others.join(", "))}.</p></section>
+      <div class="ellie-insight" data-pid="${esc(p.id)}"></div>${doNext([[p, firstStep(p)]].filter(([, a]) => a))}`;
   }
+
   function moduleView(p, o = {}) {
     const lang = o.lang || (p.identity && p.identity.language);
     const more = p.panels.filter((pn) => pn.id !== "redflags" && (!pn.advice || !pn.advice.length));
@@ -447,7 +450,7 @@
     const evs = p.evidence || [], mine = evs.filter((g) => !g.scientists), sci = evs.filter((g) => g.scientists);
     const ev = mine.length ? `<details class="more" id="ev"><summary>Evidence behind every number</summary><p class="small muted">95% CI: the range the true value likely sits in. n: how many readings or people it rests on.</p>${mine.map(grp).join("")}</details>` : "";
     const sciHtml = sci.length ? `<details class="more" id="sci"><summary>For scientists · program-wide, trial and real-data results</summary><p class="small muted">Whole-program effects (same person, with and without), the randomized trial, and checks on real data (CGMacros, NHANES). They back the advice above; they are not this patient’s numbers.</p>${sci.map((g) => grp({ ...g, open: false })).join("")}</details>` : "";
-    const kp = (p.kpis || []).filter((k) => !k.hero);
+    const kp = (p.kpis || []).filter((k) => !k.hero && !(p.hero && String(k.value) === String(p.hero.value)));
     return `${p.mod === "c1" ? redFlagsCard(p) : ""}${p.mod === "c4" ? c4Safety(p, lang) : ""}${heroCard(p.hero, p.mod, p.mod === "c4" && !!p.careFlag)}${fitLine(p)}${p.mod === "c5" ? `<p class="agree-link small"><a href="#calls-agreement">How well Clef’s coach score matches supervisors →</a></p>` : ""}
       ${p.mod === "c3" ? signalRows(p.signals) : ""}${kp.length ? kpiCards(kp) : ""}
       ${p.mod === "c4" ? handout(p, lang) : ""}
@@ -877,6 +880,9 @@
   }
   P360.routes.inbox = renderInbox;
   updateMode();
+  // The top bar shows each program as live, saved copy or down as soon as its list answers, not only after a page render.
+  window.addEventListener("p360:health", updateMode);
+  if (!SNAP) once("roster", A.roster).catch(() => null).then(updateMode);
   Object.assign(window.P360, { cueHtml, flagList });
   window.addEventListener("DOMContentLoaded", render);
 })();

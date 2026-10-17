@@ -14,10 +14,10 @@ record is synthetic. Each program has its own cohort, so no patient appears in m
 | Path | What it is |
 |---|---|
 | `src/index.ts` | The Cloudflare Worker (`patient-360`). It serves `public/` and `/api/*`: it proxies C1, C3, C4 and C5 through service bindings and adds Ellie (`/api/ellie`), AI Insight (`/api/insight`), call recaps, saved calls and hand-offs (KV), and speech-to-text. |
-| `src/today.ts` | `GET /api/today`: one ranked queue across the four programs. Each row has a reason of 90 characters or less, its data type and the patient's language. |
+| `src/today.ts` | `GET /api/today`: one ranked queue across the four programs. Each row has a whole reason (never cut; it says how old a call flag is), its data type and the patient's language. |
 | `src/stt.ts` | `POST /api/stt`: Whisper on Workers AI for the in-call mic. |
 | `public/` | The app. Static files, no build step. `adapters.js` is the only file that knows module response shapes; `app.js` holds the pages; `call.js` the live call; `ellie.js` the assistant. `fallback-data.js` is a saved copy of the module APIs, used when a module is down. |
-| `e2e/live.mjs` | The end-to-end test against a deployed site: real browser, real module data, about 90 checks. |
+| `e2e/live.mjs` | The end-to-end test against a deployed site: real browser, real module data, about 100 checks. |
 | `e2e/fixtures/` | A fixed mic clip for the speech test. |
 | `scripts/snapshot.mjs` | Rebuilds `public/fallback-data.js` from the live APIs. |
 | `scripts/persona-feedback.workflow.js` | The simulated-clinician feedback session run after each release (Claude Code workflow). |
