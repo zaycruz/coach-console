@@ -65,7 +65,6 @@ p { margin: 0; }
 .nav-link { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 0; color: #c9d6e6; font-weight: 500; border-left: 3px solid transparent; }
 .nav-link:hover { background: var(--navy-2); color: #fff; text-decoration: none; }
 .nav-link.active { background: var(--navy-2); color: #fff; font-weight: 600; border-left-color: #6fb1ff; }
-.nav-link .ico { width: 18px; text-align: center; color: #8fa6c2; }
 .soon { margin-left: auto; font-size: .66rem; font-family: var(--font-data); color: #8fa6c2; border: 1px solid #2f5277; border-radius: 0; padding: 0 6px; }
 
 .main { min-width: 0; display: flex; flex-direction: column; }
@@ -248,19 +247,6 @@ details.ev-g { margin: 8px 0 14px; } details.ev-g > summary { cursor: pointer; f
 .cue q { font-style: italic; }
 .cue .why { display: block; font-size: .74rem; color: var(--ink-3); margin-top: 2px; }
 
-/* ---------- patient's app ---------- */
-.phone-wrap { display: flex; flex-wrap: wrap; gap: 36px; align-items: flex-start; }
-.phone { width: 100%; max-width: 380px; border: 1px solid var(--line-2); border-radius: 0; background: var(--surface); padding: 22px 18px 26px; display: flex; flex-direction: column; gap: 14px; }
-.phone h2 { font-size: 1.4rem; }
-.p-card { border-radius: 0; padding: 18px; background: var(--surface-2); display: flex; flex-direction: column; gap: 8px; }
-.p-card.focus { background: var(--ok-soft); }
-.p-card .big { font-size: 1.12rem; font-weight: 650; line-height: 1.35; }
-.p-card .why { font-size: .92rem; color: var(--ink-2); }
-.notice { padding: 8px 12px; border-radius: 0; background: var(--watch-soft); }
-.check { display: flex; gap: 10px; align-items: center; font-size: .95rem; }
-.check input { width: 20px; height: 20px; accent-color: var(--ok); }
-.notes-side { flex: 1; min-width: 0; max-width: 480px; }
-
 /* ---------- states ---------- */
 .sk { background: linear-gradient(90deg, var(--surface-2), var(--line), var(--surface-2)); background-size: 200% 100%; border-radius: 0; animation: sk 1.4s linear infinite; }
 @keyframes sk { to { background-position: -200% 0; } }
@@ -286,8 +272,7 @@ details.ev-g { margin: 8px 0 14px; } details.ev-g > summary { cursor: pointer; f
   .brand, .rail-label { display: none; }
   .rail-group { flex-direction: row; flex: 1; justify-content: space-around; gap: 0; }
   .rail-later { flex: 0 0 auto; }
-  .nav-link { flex-direction: column; gap: 0; font-size: .66rem; padding: 4px 6px; text-align: center; }
-  .nav-link .ico { font-size: 1rem; }
+  .nav-link { flex-direction: column; justify-content: center; gap: 0; font-size: .76rem; padding: 10px 6px; text-align: center; }
   .soon { display: none; }
   .rail-later { display: none; }
   .topbar { padding: 8px var(--gutter); }
@@ -308,6 +293,14 @@ details.ev-g { margin: 8px 0 14px; } details.ev-g > summary { cursor: pointer; f
 /* ---------- clinical additions ---------- */
 .p-head { padding-bottom: 4px; }
 a.kpi:hover { border-color: var(--accent); text-decoration: none; }
+.kpis.compact { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.kpis.compact .kpi { padding: 10px 12px; }
+.kpis.compact .kv { font-size: 1.25rem; }
+.next-acts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.ptable tr.row-link { cursor: pointer; }
+.ptable tr.row-link:hover td { background: var(--accent-soft, #eef4fb); }
+.ptable tr.row-link:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ptable tr.row-link td.nm b { color: var(--link); }
 a.kpi .ks::after { content: " · details ›"; color: var(--link); }
 .today-list { display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--surface); }
 .t-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line); }
@@ -381,3 +374,50 @@ a.kpi .ks::after { content: " · details ›"; color: var(--link); }
 }
 
 .ellie[hidden], .ellie-fab[hidden] { display: none; }
+
+/* ellie */
+/* The FAB stays on screen and toggles the panel; on desktop the panel sits above it. */
+.ellie-fab { z-index: 42; }
+.ellie-fab.on { background: var(--navy-2); }
+.ellie { bottom: 84px; height: min(620px, calc(100vh - 108px)); }
+@media (max-width: 760px) {
+  .ellie { bottom: 0; height: calc(100vh - 64px); }
+  .ellie-fab.on { display: none; }
+}
+/* Ellie's insight on the health chart */
+.ellie-insight:empty { display: none; }
+.ellie-insight { border: 1px solid var(--line); border-left: 3px solid var(--m-c5); background: var(--surface); padding: 12px 14px; }
+.ellie-insight .ei-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .82rem; margin-bottom: 6px; }
+.ellie-insight .ei-src { font-size: .72rem; color: var(--ink-3); }
+.ellie-insight .ei-line { margin: 0; font-weight: 600; line-height: 1.4; }
+.ellie-insight .ei-list { margin: 6px 0 0; padding-left: 18px; font-size: .88rem; line-height: 1.45; color: var(--ink-2); }
+.ellie-insight .ei-skel i { display: block; height: 10px; margin: 8px 0; background: linear-gradient(90deg, var(--line) 0%, var(--surface-2) 50%, var(--line) 100%); background-size: 200% 100%; animation: ei-shimmer 1.2s linear infinite; }
+.ellie-insight .ei-skel i:nth-child(1) { width: 85%; }
+.ellie-insight .ei-skel i:nth-child(2) { width: 65%; }
+.ellie-insight .ei-skel i:nth-child(3) { width: 50%; }
+@keyframes ei-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .ellie-insight .ei-skel i { animation: none; } }
+
+/* calls: scrolling transcripts, mic state, call replay, demo calls (owned by the calls work; call.js + renderCalls/renderCall) */
+.transcript.scroll { max-height: min(62vh, 620px); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); background: var(--surface); }
+.transcript.scroll.short { max-height: 320px; }
+.transcript.scroll > .line:first-child { border-top: 0; }
+.rc-lines > summary { cursor: pointer; font-size: .86rem; font-weight: 600; color: var(--link); padding: 4px 0; }
+.rc-lines[open] > summary { margin-bottom: 8px; }
+.mic-state { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; min-height: 0; font-size: .88rem; }
+.mic-state:empty { display: none; }
+.mic-state .banner { flex: 1; }
+.mic-state .lvl { width: 120px; height: 8px; background: var(--surface-2); border: 1px solid var(--line); }
+.mic-state .lvl > span { display: block; height: 100%; width: 0; background: var(--ok); transition: width .1s linear; }
+.rec-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--alert); flex: none; animation: rec-blink 1.2s steps(2, start) infinite; }
+.rec-dot.off { background: var(--ink-3); animation: none; }
+@keyframes rec-blink { to { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+kbd { font-family: var(--font-data); font-size: .76rem; padding: 0 5px; border: 1px solid var(--line-2); background: var(--surface); }
+#nextline[hidden] { display: none; }
+.line.interim p { font-style: italic; }
+.replay-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 12px 14px; background: var(--accent-soft); border: 1px solid var(--accent); }
+.demo-calls { border-left: 4px solid var(--m-c5); margin-bottom: 16px; }
+.demo-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.demo-row > span:first-child { flex: 1; min-width: 200px; }
+@media (max-width: 640px) { .transcript.scroll { max-height: 55vh; } .mic-state .lvl { width: 80px; } }

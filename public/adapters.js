@@ -128,13 +128,15 @@
   // ---- C1 Care Team Risk
   function c1View(d) {
     const c = d.charts || {}, r = c.risk || {}, use = c.use2017 || {}, ev = d.evidence || [];
-    const audName = { "care-team": "For the care team", coach: "For the coach", survivor: "For the patient" };
-    const advice = (d.recommendations || []).filter((x) => x.audience !== "survivor").map((x, i) => ({ title: x.text, text: "", tag: audName[x.audience] || x.audience || "", tone: i === 0 && d.status === "alert" ? "risk" : "info" }));
+    const audName = { "care-team": "For the care team", coach: "For the coach", survivor: "To pass on to the patient" };
+    // Care-team and coach advice first; advice the program wrote for the patient follows, for the clinician to pass on.
+    const recs = d.recommendations || [];
+    const advice = [...recs.filter((x) => x.audience !== "survivor"), ...recs.filter((x) => x.audience === "survivor")].map((x, i) => ({ title: x.text, text: "", tag: audName[x.audience] || x.audience || "", tone: i === 0 && d.status === "alert" ? "risk" : "info" }));
     if ((d.recommendations || []).some((x) => !x.audience)) note("c1", "recommendations[].audience (not provided)");
     const drivers = (c.drivers || []).filter((x) => x && x.logitContribution != null);
-    const riskBars = r.value != null ? { title: "Chance of an ER visit or hospital stay next year", note: "This patient against the average survivor and the tier lines.", rows: [
+    const riskBars = r.value != null ? { title: "Chance of an ER visit or hospital stay next year", note: "This patient against the average patient and the tier lines.", rows: [
       { label: "This patient", value: r.value, text: pct(r.value), color: "var(--alert)" },
-      r.baseRate != null && { label: "Average survivor", value: r.baseRate, text: pct(r.baseRate), color: "var(--ink-3)" },
+      r.baseRate != null && { label: "Average patient", value: r.baseRate, text: pct(r.baseRate), color: "var(--ink-3)" },
       r.alertFrom != null && { label: "Alert line", value: r.alertFrom, text: pct(r.alertFrom), color: "var(--line-2)" },
     ].filter(Boolean) } : null;
     const driverBars = drivers.length ? { title: "What drives it", note: "Contribution to this person’s risk (model log-odds). Grey lowers it.", rows: drivers.map((x) => ({ label: x.label, value: Math.abs(x.logitContribution), text: (x.logitContribution > 0 ? "+" : "−") + num(Math.abs(x.logitContribution), 2), color: x.logitContribution > 0 ? "var(--m-c1-strong)" : "var(--ink-3)" })) } : null;
@@ -146,8 +148,8 @@
     if (rows.length || useRows.length) panels.push({ id: "survey", title: "2017 survey answers and care use", charts: [], advice: [], table: { head: ["Measure", "2017"], rows: [...useRows, ...rows] } });
     return {
       tags: [{ label: `Acute care ${pct(d.risk)}`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...drivers.filter((x) => x.logitContribution > 0).slice(0, 3).map((x) => ({ label: x.label, tone: "warn" }))],
-      kpis: [{ value: pct(d.risk), label: "ER or hospital stay, next year", sub: r.baseRate != null ? `average survivor ${pct(r.baseRate)}` : "", good: d.status === "alert" ? false : d.status === "ok" ? true : null }, use.erVisits != null && { value: String(use.erVisits), label: "ER visits last year", sub: "most survivors had none", good: use.erVisits === 0 ? true : null }, use.hospitalStays != null && { value: String(use.hospitalStays), label: "Hospital stays last year", sub: "", good: use.hospitalStays === 0 ? true : null }].filter(Boolean),
-      panels, evidence: null, patientAdvice: (d.recommendations || []).filter((x) => x.audience === "survivor").map((x) => x.text),
+      kpis: [{ value: pct(d.risk), label: "ER or hospital stay, next year", sub: r.baseRate != null ? `average patient ${pct(r.baseRate)}` : "", good: d.status === "alert" ? false : d.status === "ok" ? true : null }, use.erVisits != null && { value: String(use.erVisits), label: "ER visits last year", sub: "most survivors had none", good: use.erVisits === 0 ? true : null }, use.hospitalStays != null && { value: String(use.hospitalStays), label: "Hospital stays last year", sub: "", good: use.hospitalStays === 0 ? true : null }].filter(Boolean),
+      panels, evidence: null,
       footnote: (d.profile && d.profile.dataSource ? d.profile.dataSource + ". " : "") + (d.caveat || ""),
     };
   }
@@ -264,7 +266,7 @@
     return {
       tags: Array.isArray(d.tags) ? d.tags : [flagLines ? { label: flagLines === 1 ? "1 line needs a person" : `${flagLines} lines need a person`, tone: "risk" } : null, calls[0] && calls[0].score != null ? { label: `Score ${calls[0].score}`, tone: calls[0].score < 60 ? "warn" : "good" } : null, { label: `${calls.length} call${calls.length === 1 ? "" : "s"}`, tone: "info" }].filter(Boolean),
       kpis: [calls[0] && { value: `${calls[0].score ?? "–"}`, label: "Coach score, latest call", sub: "target 60 or more", good: calls[0].score == null ? null : calls[0].score >= 60 }, { value: String(flagLines), label: "Lines that need a person", sub: "supervisor labels", good: flagLines === 0 }, { value: String(calls.length), label: "Calls on file", sub: "", good: null }].filter(Boolean),
-      panels, evidence: null, footnote: "Calls and labels from the Copilot’s supervisor-labelled set. Synthetic participants.",
+      panels, evidence: null, footnote: "Calls and labels from the Copilot’s supervisor-labelled set. Synthetic patients.",
     };
   }
 

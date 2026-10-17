@@ -38,3 +38,7 @@ right say live / saved copy / down per module, and a banner names the module tha
 **C5 Coaching calls**
 - Serve `/api/c5/survivors[/:id]` and `/api/c5/calls[/:id]` from the Copilot. The Worker tries them first and switches over with no console change (`x-c5-source: native`).
 - A call-history write endpoint, so calls started in Patient 360 (stored in Patient 360's KV today) live with the rest.
+
+## C5 rate limit (found 2026-10-17)
+
+`POST /api/review` and `/api/cue` on coach-copilot-clef return 429 under bursts. One "Run live Copilot" pass over a call is enough to trigger it. Patient 360's proxy retries twice with backoff, and tags (`/api/turn`) still arrive. **Ask:** raise the limit for the `patient-360` service binding, or send `Retry-After`.

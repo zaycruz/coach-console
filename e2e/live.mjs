@@ -4,7 +4,9 @@
 // short; module chips say "live"; pills navigate; every program view ends in the raw response; a live call
 // tags typed lines through the Copilot and saves, and the recap matches the record; Ellie opens pages and
 // answers; with C3 forced down (its API requests aborted in the browser) the app falls back to the saved copy.
-// Not covered: the microphone (browser speech recognition needs a real mic and a person).
+// Also: Health chart is a summary with Ellie's Insight; Hospital-risk rows open the patient; no Patient's app or nav icons;
+// Ellie follow-ups ("open that first patient", "start a call with them"); Play-as-live demo; the mic records a spoken
+// clip (Chromium fake mic fed a `say` wav) and Whisper transcribes it into a line.
 // Usage: node e2e/live.mjs [baseUrl]
 import { chromium } from "playwright";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -36,7 +38,6 @@ const ROUTES = [
   [`p-${ids.c4}.c3`, "Not enrolled"], [`p-${ids.c4}.c1`, "Not enrolled"],
   ["calls", "Calls"], [`call-${flaggedCall.callId}`, "Transcript"],
   [`live-${c5WithCall}`, "Last call"], [`live-${ids.c4}`, "No previous call"],
-  [`app-${ids.c4}`, "Good morning"], [`app-${ids.c1}`, "Good morning"],
   ["care", "Hospital risk"], ["research", "Research"],
   ["today~error", "Couldn"], ["today~empty", "Nothing here yet"], ["today~loading", ""],
 ];
@@ -48,7 +49,7 @@ async function newPage(opts, abortC3 = false) {
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
-  page.on("console", (m) => { if (m.type() === "error" && !/fonts\.g|net::ERR_FAILED|status of 404/.test(m.text())) errors.push(m.text()); });
+  page.on("console", (m) => { if (m.type() === "error" && !/fonts\.g|net::ERR_FAILED|status of 404|status of 429/.test(m.text())) errors.push(m.text()); });
   if (abortC3) await page.route("**/api/c3/**", (r) => r.abort());
   return { ctx, page, errors };
 }
@@ -166,6 +167,47 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await shot(page, "ellie_1280.png", false);
   manifest.ellie = ans;
 
+  // Ellie: follow-ups resolve to the patients she just named; the panel closes
+  await page.fill("#ellie-q", "who is at most risk of hospitalization"); await page.press("#ellie-q", "Enter");
+  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
+  const firstCite = await page.locator("#ellie-msgs .m.a").last().locator('a[href^="#p-"]').first().getAttribute("href").catch(() => null);
+  ok("Ellie names patients for a risk question", !!firstCite, firstCite || (await page.locator("#ellie-msgs .m.a").last().innerText()).slice(0, 160));
+  await page.fill("#ellie-q", "open up that first patient"); await page.press("#ellie-q", "Enter");
+  await page.waitForFunction((h) => location.hash.startsWith(h), firstCite, { timeout: 60000 }).catch(() => {});
+  const fh = await page.evaluate(() => location.hash);
+  ok("Ellie follow-up: 'that first patient' opens the one she named", !!firstCite && fh.startsWith(firstCite), `${fh} vs ${firstCite}`);
+  await settle(page);
+  await page.fill("#ellie-q", "start a call with them"); await page.press("#ellie-q", "Enter");
+  await page.waitForFunction(() => location.hash.startsWith("#live-"), null, { timeout: 60000 }).catch(() => {});
+  ok("Ellie follow-up: 'start a call with them' opens the call", firstCite && (await page.evaluate(() => location.hash)) === "#live-" + firstCite.slice(3).split(".")[0], await page.evaluate(() => location.hash));
+  await shot(page, "ellie-followup_1280.png", false);
+  await page.locator("#ellie-close").click();
+  ok("Ellie closes", await page.locator("#ellie").isHidden());
+
+  // Health chart = summary + Ellie's Insight; detail lives in the pills
+  await page.goto(`${B}/#p-${ids.c3}`); await settle(page);
+  await page.waitForFunction(() => { const e = document.querySelector(".ellie-insight"); return e && /check before acting|program’s own summary/i.test(e.textContent); }, null, { timeout: 60000 }).catch(() => {});
+  const ins = await page.locator(".ellie-insight").innerText().catch(() => "");
+  ok("Health chart shows Ellie's Insight, short and labelled", /check before acting|own summary/i.test(ins) && ins.split(/\s+/).length < 90, ins.replace(/\s+/g, " ").slice(0, 200));
+  ok("Health chart has no raw dump (that lives in the program tab)", (await page.locator("details#raw").count()) === 0);
+  await shot(page, "health-chart-insight_1280.png");
+
+  // Hospital risk: the whole row opens the patient's C1 view
+  await page.goto(`${B}/#care`); await settle(page);
+  await page.locator("tr.row-link td.hl").first().click(); await settle(page);
+  ok("Hospital risk: clicking a row opens that patient's C1 view", /^#p-c1-.+\.c1$/.test(await page.evaluate(() => location.hash)), await page.evaluate(() => location.hash));
+  ok("no Patient's app link and no nav icons", (await page.locator('a[href^="#app"]').count()) === 0 && (await page.locator(".nav-link .ico").count()) === 0);
+
+  // Play a stored call as if live
+  await page.goto(`${B}/#calls`); await settle(page);
+  await page.locator("[data-play]").first().click(); await settle(page);
+  await page.waitForFunction(() => document.querySelectorAll("#live-lines .line, #live-lines [data-line], #live-lines > div:not(.live-empty)").length >= 3, null, { timeout: 30000 }).catch(() => {});
+  const played = await page.locator("#live-lines > *:not(.live-empty)").count();
+  const box = await page.locator("#live-lines").evaluate((e) => getComputedStyle(e).overflowY + " " + e.clientHeight);
+  ok("Play as live: lines stream into a fixed scrolling box", played >= 3 && /auto|scroll/.test(box) && parseInt(box.split(" ")[1]) < 900, `${played} lines, ${box}`);
+  await shot(page, "play-as-live_1280.png", false);
+  await page.locator("#replaystop").click().catch(() => {});
+
   // call review still runs the live Copilot
   await page.goto(`${B}/#call-${flaggedCall.callId}`); await settle(page);
   await page.locator("[data-run]").click();
@@ -203,6 +245,24 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
 }
 
 await browser.close();
+
+// 5. the mic: Chromium's fake mic plays a spoken wav; Whisper must turn it into a line
+{
+  const { execSync } = await import("node:child_process");
+  const wav = dir + "mic.wav";
+  execSync(`say -o "${dir}mic.aiff" "Hi, how have you been feeling since our last call?" && afconvert -f WAVE -d LEI16@16000 "${dir}mic.aiff" "${wav}"`);
+  const mb = await chromium.launch({ args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-audio-capture=${wav}`] });
+  const ctx = await mb.newContext({ viewport: { width: 1280, height: 900 }, permissions: ["microphone"] });
+  const page = await ctx.newPage();
+  await page.goto(`${B}/#live-${quiet.survivorId}`); await settle(page);
+  await page.locator("#mic").click();
+  await page.waitForFunction(() => /feel|call/i.test(document.getElementById("live-lines")?.innerText || ""), null, { timeout: 60000 }).catch(() => {});
+  const heard = await page.locator("#live-lines").innerText();
+  ok("mic: a spoken line is recorded and transcribed", /feel|call/i.test(heard), heard.replace(/\s+/g, " ").slice(0, 160));
+  await shot(page, "mic-transcribed_1280.png", false);
+  await page.locator("#mic").click().catch(() => {});
+  await mb.close();
+}
 manifest.checks = checks;
 manifest.passed = checks.filter((c) => c.pass).length;
 manifest.failed = checks.filter((c) => !c.pass).length;

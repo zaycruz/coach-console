@@ -4,6 +4,10 @@
    backs each one beside it. Everything else is folded away. */
 (function () {
   "use strict";
+  // The product name lives here and only here: brand text, document title and window.P360.NAME read it.
+  const NAME = "Patient 360";
+  document.title = NAME;
+  document.querySelectorAll(".brand-name").forEach((el) => (el.textContent = NAME));
   const LIVE_URL = "https://patient-360.raava.dev";
   const COPILOT_URL = "https://coach.raava.dev";
   const SNAP = !!window.SNAPSHOT_ONLY;
@@ -187,16 +191,16 @@
     }).join("");
     const factsLine = p.facts.slice(0, 7).map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join("");
     const head = `${back}<header class="p-head"><div class="stack-s"><div class="row"><h1>${esc(p.name)}</h1>${statusPill(p.tri)}</div><div class="facts">${factsLine}</div></div>
-      <div class="row">${p.tri === "today" ? `<button class="btn danger" ${notWired("Escalate to care team")}>Escalate to care team</button>` : ""}<a class="btn primary" href="#live-${esc(id)}">Start call</a><a class="btn" href="#app-${esc(id)}">Patient’s app</a></div></header>
+      <div class="row">${p.tri === "today" ? `<button class="btn danger" ${notWired("Escalate to care team")}>Escalate to care team</button>` : ""}<a class="btn primary" href="#live-${esc(id)}">Start call</a></div></header>
       <nav class="pills" aria-label="Patient views">${pills}</nav>${sourceBanner([p.mod])}`;
     const body = tab === "overview" ? overview(p) : tab === p.mod ? moduleView(p) : notEnrolled(tab);
     const miss = p.missing && p.missing.length ? `<p class="footnote">Not in this program’s response yet: ${esc(p.missing.join("; "))}.</p>` : "";
     return head + body + miss;
   }
 
-  function kpiCards(kpis, href) {
+  function kpiCards(kpis, href, compact) {
     const tag = href ? "a" : "div";
-    return kpis.length ? `<div class="kpis">${kpis.map((k) => `<${tag} class="kpi ${k.good == null ? "" : k.good ? "k-ok" : "k-bad"}" ${href ? `href="${esc(href)}"` : ""}><div class="kl">${esc(k.label)}</div><div class="kv">${esc(k.value)}</div>${k.sub || href ? `<div class="ks">${esc(k.sub || "")}</div>` : ""}</${tag}>`).join("")}</div>` : "";
+    return kpis.length ? `<div class="kpis${compact ? " compact" : ""}">${kpis.map((k) => `<${tag} class="kpi ${k.good == null ? "" : k.good ? "k-ok" : "k-bad"}" ${href ? `href="${esc(href)}"` : ""}><div class="kl">${esc(k.label)}</div><div class="kv">${esc(k.value)}</div>${k.sub || href ? `<div class="ks">${esc(k.sub || "")}</div>` : ""}</${tag}>`).join("")}</div>` : "";
   }
   // The last layer of every program view: every field the program sent, so the summary never hides data.
   function flatten(o, path = "", out = []) {
@@ -231,19 +235,25 @@
     const cards = withAdvice.slice(0, limit || 99).map((pn) => `<section class="card do ${pn.small ? "small" : ""}" id="pn-${esc(pn.id)}"><div class="do-text">${pn.advice.map((a) => adviceCard(a, ++n)).join("")}</div><div class="do-visual">${panelVisual(pn)}</div></section>`).join("");
     return cards;
   }
+  /* Health chart = the summary: headline, status, Ellie's insight, one compact KPI strip, the top two
+     actions. Charts, detail panels, evidence and the raw response live on the program pill (moduleView). */
   function overview(p) {
-    const first = doCards(p, 1);
+    const href = `#p-${p.id}.${p.mod}`;
     const allAdvice = p.panels.flatMap((pn) => pn.advice || []);
-    const steps = allAdvice.length > 1 ? `<section class="card stack-s"><p class="eyebrow">All next steps</p><ol class="steps">${allAdvice.map((a) => `<li><b>${esc(a.title)}</b>${a.tag ? ` <span class="muted small">· ${esc(a.tag)}</span>` : ""}</li>`).join("")}</ol><a href="#p-${esc(p.id)}.${p.mod}">See each one with its chart →</a></section>` : "";
-    return `<p class="big-hl">${esc(p.headline)}</p>${tagsHtml(p.tags)}${kpiCards(p.kpis, `#p-${p.id}.${p.mod}`)}
+    const top = allAdvice.slice(0, 2);
+    const acts = top.length ? `<section class="stack-s"><h2 class="sec-t">Do next</h2><div class="next-acts">${top.map((a, i) => `<section class="card">${adviceCard(a, i + 1)}</section>`).join("")}</div>
+      <a href="${esc(href)}">${allAdvice.length > 2 ? `All ${allAdvice.length} next steps, each with the chart behind it →` : `See the chart behind ${top.length > 1 ? "each" : "it"} →`}</a></section>` : `<p class="muted">No actions from this program right now.</p>`;
+    return `<p class="big-hl">${esc(p.headline)}</p>${tagsHtml(p.tags)}
       ${p.reasons && p.reasons.length ? `<p class="muted small">Status set because ${esc(p.reasons.join("; "))}.</p>` : ""}
-      ${first || (p.panels[0] ? `<section class="card">${panelVisual(p.panels[0])}</section>` : "")}${steps}`;
+      <div class="ellie-insight" data-pid="${esc(p.id)}"></div>
+      <section class="stack-s"><p class="eyebrow">Key numbers · ${esc(MODS[p.mod].challenge)} ${esc(MODS[p.mod].name)}</p>${kpiCards(p.kpis, href, true) || `<p class="small muted">No headline numbers from this program.</p>`}</section>
+      ${acts}<p class="small"><a href="${esc(href)}">Full ${esc(MODS[p.mod].name)} detail: charts, evidence and every field the program sent →</a></p>`;
   }
   function moduleView(p) {
     const more = p.panels.filter((pn) => !pn.advice || !pn.advice.length);
     const moreHtml = more.length ? `<details class="more"><summary>More detail · ${more.map((pn) => esc(pn.title)).join(", ")}</summary>${more.map((pn) => `<section class="card stack"><h2>${esc(pn.title)}</h2><div class="${pn.small ? "multiples" : ""}">${panelVisual(pn)}</div></section>`).join("")}</details>` : "";
     const ev = p.evidence && p.evidence.length ? `<details class="more" id="ev"><summary>Evidence behind every number</summary>${p.evidence.map((g) => `<details ${g.open ? "open" : ""} class="ev-g"><summary>${esc(g.group)} <span class="muted">(${g.rows.length})</span></summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Measure</th><th>Value</th><th>95% CI</th><th>n</th></tr></thead><tbody>${g.rows.map((r) => `<tr><td>${esc(r.label)}${r.caveat ? `<span class="cav">${esc(r.caveat)}</span>` : ""}</td><td class="mono">${esc(r.value)}</td><td class="mono">${esc(r.ci)}</td><td class="mono">${esc(r.n)}</td></tr>`).join("")}</tbody></table></div></details>`).join("")}</details>` : "";
-    return `<div class="mod-head">${modChip(p.mod)}<p class="big-hl">${esc(p.headline)}</p></div>${kpiCards(p.kpis)}<h2 class="sec-t">What to do</h2>${doCards(p) || `<p class="muted">No actions from this program right now.</p>`}${moreHtml}${ev}${rawData(p)}${p.footnote ? `<p class="footnote">${esc(p.footnote)}</p>` : ""}`;
+    return `<div class="mod-head">${modChip(p.mod)}<p class="big-hl">${esc(p.headline)}</p>${tagsHtml(p.tags)}</div>${kpiCards(p.kpis)}<h2 class="sec-t">What to do</h2>${doCards(p) || `<p class="muted">No actions from this program right now.</p>`}${moreHtml}${ev}${rawData(p)}${p.footnote ? `<p class="footnote">${esc(p.footnote)}</p>` : ""}`;
   }
   function notEnrolled(tab) {
     return `<div class="state-box"><h2>Not enrolled in ${esc(MODS[tab] ? MODS[tab].name : tab)}</h2><p class="muted">Each program uses its own cohort today, so this patient has no ${esc(MODS[tab] ? MODS[tab].short.toLowerCase() : "")} data. When the programs share one patient ID, this pill fills in.</p></div>`;
@@ -262,14 +272,22 @@
     if (f) return head + f;
     let calls;
     try { calls = await once("calls", A.calls); } catch (e) { return head + errorBox("calls", e.message); }
-    return `${head}${sourceBanner(["c5"])}<div class="calls-list">${calls.map((c) => callRow(c, true)).join("")}</div>`;
+    // Demo: replay a recorded call through the live-call screen (call.js P.playCall), so tags, cues and alerts appear as they would live.
+    const flagged = calls.filter((c) => c.flags.length);
+    const demos = [flagged.find((c) => c.language === "English"), flagged.find((c) => c.language === "Spanish"), [...calls].filter((c) => !c.flags.length && c.score != null).sort((a, b) => b.score - a.score)[0]]
+      .filter((c, i, a) => c && a.indexOf(c) === i);
+    const why = (c) => c.flags.length ? `${c.flags[0].kind} concern at ${c.flags[0].t}` : `coach score ${c.score}/100, no concerns`;
+    const demo = demos.length ? `<section class="card stack demo-calls"><div class="sec-head"><h2>Play a call as if live</h2><p class="small muted">Replays a recorded call one line every 1.5 s through the live-call screen. The Copilot tags each line, and cues and alerts appear as they would on a real call.</p></div>
+      ${demos.map((c) => `<div class="demo-row"><span><b>${esc(c.participantName)}</b> · call ${c.callNumber} · ${esc(c.language)}<span class="small muted" style="display:block">${esc(why(c))} · ${c.lines} lines · coach ${esc(c.coach.name)}</span></span>
+        ${SNAP ? `<a class="btn" href="${LIVE_URL}/#call-${esc(c.callId)}" target="_blank" rel="noopener">Open on the live site ↗</a>` : `<button class="btn primary" data-play="${esc(c.callId)}">▶ Play as live</button>`}<a class="btn" href="#call-${esc(c.callId)}">Call record</a></div>`).join("")}</section>` : "";
+    return `${head}${sourceBanner(["c5"])}${demo}<div class="calls-list">${calls.map((c) => callRow(c, true)).join("")}</div>`;
   }
 
   /* Call review: supervisor labels first; "Run live Copilot" sends each line through /api/c5/turn
      (Clef), low-confidence lines through /api/c5/review (GLM), and cue triggers through /api/c5/cue,
      using the same rules as the Copilot's own screen. */
   const FAMILY = { "open question": "q", "closed question": "q", "simple reflection": "r", "complex reflection": "r", affirm: "s", "seek collaboration": "s", "emphasize autonomy": "s", "ask permission": "s", "give information": "i", persuade: "x", confront: "x", other: "o" };
-  const FLAG_TEXT = { medical: "Medical concern: tell the care team today", distress: "Emotional distress: check in and connect to support today", social: "Unmet basic need: connect to a navigator today", missed_concern: "Coach did not route a concern the participant raised", medical_advice: "Coach gave medical advice outside their role" };
+  const FLAG_TEXT = { medical: "Medical concern: tell the care team today", distress: "Emotional distress: check in and connect to support today", social: "Unmet basic need: connect to a navigator today", missed_concern: "Coach did not route a concern the patient raised", medical_advice: "Coach gave medical advice outside their role" };
   let live = null;
 
   function liveScore(lines) {
@@ -325,7 +343,7 @@
         <div class="score-pair"><div><span class="n">${c.score ?? "–"}</span><span class="l">from supervisor labels</span></div><div><span class="n" id="live-score">${ls ?? "–"}</span><span class="l">from Copilot tags</span></div></div>${parts}
         <p class="small muted">MITI-style targets, same arithmetic as the Copilot screen.</p></div>
       <div class="card stack"><p class="eyebrow">Copilot vs supervisor</p>${liveBtn}
-        ${a.mn || a.tn ? `<div class="agree" id="agree"><span><b>${pct(a.move)}</b> coach moves (${a.mn} lines)</span><span><b>${pct(a.talk)}</b> participant talk (${a.tn})</span><span><b>${pct(a.flag)}</b> needs-a-person calls (${a.fn})</span></div><p class="small muted">Experts agree with each other about 84% of the time on AnnoMI.</p>` : `<p class="small muted">Run the model to see how closely it matches the supervisor, line by line.</p>`}
+        ${a.mn || a.tn ? `<div class="agree" id="agree"><span><b>${pct(a.move)}</b> coach moves (${a.mn} lines)</span><span><b>${pct(a.talk)}</b> patient talk (${a.tn})</span><span><b>${pct(a.flag)}</b> needs-a-person calls (${a.fn})</span></div><p class="small muted">Experts agree with each other about 84% of the time on AnnoMI.</p>` : `<p class="small muted">Run the model to see how closely it matches the supervisor, line by line.</p>`}
         <a class="small" href="${COPILOT_URL}" target="_blank" rel="noopener">Tag a spoken call in the live Copilot ↗</a></div>
     </aside>`;
   }
@@ -342,14 +360,15 @@
     let c;
     try { c = await Adapter.call(id); } catch (e) { return back + errorBox("this call", e.message); }
     const lines = live && live.callId === c.callId ? live.lines : c.lines;
+    const untagged = lines.filter((l) => !(l.speaker === "coach" ? l.supervisor.move : l.supervisor.talk) && !(l.live && l.live.tag)).length;
     // Supervisor labels say only "needs a person"; the kind comes from the live model when it has run.
     const banners = c.flags.map((x) => flagBanner({ ...x, kind: null, src: "Supervisor" }))
       .concat(lines.filter((l) => l.live && l.live.flag && l.live.flag !== "none").map((l) => flagBanner({ t: l.t, line: l.n, kind: l.live.flag, text: l.text, src: "Copilot" }))).join("");
     return `${back}<header class="page-head"><div><p class="eyebrow">${modChip("c5")}</p><h1>${esc(c.participantName)} · call ${c.callNumber}</h1>
       <div class="facts"><span>Coach <b>${esc(c.coach.name)}</b> (${esc(c.coach.role)})</span><span>Week <b>${c.week}</b></span><span><b>${fmtDate(c.date)}</b> ${esc(c.start)}</span><span>${esc(c.language)}</span><span>Goal <b>${esc(c.goalTopic)}</b></span><span><b>${c.durationMin}</b> min</span></div></div>
-      <a class="btn" href="#p-${esc(c.survivorId)}">Patient page</a></header>
+      <div class="row">${SNAP ? "" : `<button class="btn primary" data-play="${esc(c.callId)}">▶ Play as live</button>`}<a class="btn" href="#p-${esc(c.survivorId)}">Patient page</a></div></header>
       <div id="flagbox" class="stack">${banners}</div>
-      <div class="call-layout"><section class="card"><div class="sec-head"><h2>Transcript</h2><p class="small muted">Grey tag = supervisor label. Outlined tag = live Copilot (✓ agrees, ≠ differs).</p></div><div class="transcript" id="transcript">${lines.map((l) => lineHtml(l, c.coach.name)).join("")}</div></section>
+      <div class="call-layout"><section class="card"><div class="sec-head"><h2>Transcript</h2><p class="small muted">${untagged ? `${untagged} of ${lines.length} lines have no tag yet: press Run live Copilot to fill them.` : `Every line is already tagged from the call record (grey tag).`} Run live Copilot to add the model’s tag beside it (outlined: ✓ agrees, ≠ differs).</p></div><div class="transcript scroll" id="transcript">${lines.map((l) => lineHtml(l, c.coach.name)).join("")}</div></section>
       <div id="side">${sidePanel(c)}</div></div>`;
   }
 
@@ -390,15 +409,15 @@
     const coachCount = lines.slice(0, i + 1).filter((x) => x.speaker === "coach").length;
     let trigger = null;
     const f = l.live.flag;
-    if (f === "missed_concern") trigger = "The participant raised a concern and the coach moved on without routing it.";
+    if (f === "missed_concern") trigger = "The patient raised a concern and the coach moved on without routing it.";
     else if (f === "medical_advice") trigger = "The coach just gave medical advice outside their role.";
-    else if (f && f !== "none") trigger = `The participant raised a ${f} concern.`;
+    else if (f && f !== "none") trigger = `The patient raised a ${f} concern.`;
     else if (l.speaker === "coach") {
       const coach = lines.slice(0, i + 1).filter((x) => x.speaker === "coach" && x.live && x.live.tag);
       const last = coach.slice(-4).map((x) => x.live.tag), before = lines[i - 1];
-      if (l.live.tag === "confront") trigger = "The coach just confronted the participant.";
-      else if (l.live.tag === "persuade" && !coach.slice(-3, -1).some((x) => x.live.tag === "ask permission")) trigger = "The coach told the participant what to do without asking permission.";
-      else if (before && before.speaker === "participant" && before.live && before.live.tag === "change" && FAMILY[l.live.tag] !== "r" && l.live.tag !== "affirm") trigger = "The participant voiced change talk and the coach did not reflect or affirm it.";
+      if (l.live.tag === "confront") trigger = "The coach just confronted the patient.";
+      else if (l.live.tag === "persuade" && !coach.slice(-3, -1).some((x) => x.live.tag === "ask permission")) trigger = "The coach told the patient what to do without asking permission.";
+      else if (before && before.speaker === "participant" && before.live && before.live.tag === "change" && FAMILY[l.live.tag] !== "r" && l.live.tag !== "affirm") trigger = "The patient voiced change talk and the coach did not reflect or affirm it.";
       else if (last.length === 4 && last.every((t) => FAMILY[t] === "q")) trigger = "Four questions in a row without a reflection.";
       else if (last.length >= 3 && last.slice(-3).every((t) => t === "closed question")) trigger = "Three closed questions in a row.";
       if (trigger && coachCount - lastCueAt < 3) trigger = null;
@@ -419,42 +438,6 @@
     }).catch(() => {});
   }
 
-  // ------------------------------------------------------------------ Patient's app (what the patient sees)
-  async function renderApp(id) {
-    const head = `<header class="page-head"><div><h1>Patient’s app</h1><p class="sub">What the patient sees on their phone: one thing at a time, in plain words, from their own data. No scores and no risk labels.</p></div></header>`;
-    const f = forced("their plan", "No advice yet. The first tip appears after a week of meal logs or wearable data.");
-    if (f) return head + f;
-    if (!id) { try { const r = await once("roster", A.roster); const first = r.rows.find((x) => x.mod === "c4") || r.rows[0]; id = first.id; } catch (e) { return head + errorBox("their plan", e.message); } }
-    let p;
-    try { p = await once("p:" + id, () => A.patient(id)); } catch (e) { return head + errorBox("their plan", e.message); }
-    const lang = (p.facts.find(([k]) => k === "Language") || [])[1] || "English";
-    let cards = "";
-    if (p.mod === "c4") {
-      const ai = await A.advice(id).catch(() => null);
-      const recs = ai || p.panels.flatMap((pn) => pn.advice).map((a) => ({ title: a.title, text: a.text, rule: a.tone === "risk" }));
-      const rules = recs.filter((r) => r.rule), tips = recs.filter((r) => !r.rule);
-      cards = rules.concat(tips).map((r) => `<div class="p-card ${r === tips[0] ? "focus" : ""}"><p class="eyebrow">${r.rule ? "Check with your care team" : r === tips[0] ? "This week’s focus" : "Also try"}</p><p class="big">${esc(r.title)}</p><p class="why">${esc(r.text)}</p>${r.rule ? "" : `<label class="check"><input type="checkbox"> Done this week</label>`}</div>`).join("");
-      if (ai) cards += `<p class="small muted">Plain-language text by Workers AI, checked against the evidence; ${ai.filter((x) => x.source === "template").length} kept as written.</p>`;
-    } else if (p.mod === "c1") {
-      const tips = p.patientAdvice || [];
-      cards = tips.length ? tips.map((t, i) => `<div class="p-card ${i ? "" : "focus"}"><p class="eyebrow">${i ? "Also" : "This month"}</p><p class="big">${esc(t)}</p></div>`).join("")
-        : `<div class="p-card focus"><p class="eyebrow">This month</p><p class="big">Keep your follow-up visits, and call your care team early when something changes.</p></div>`;
-    } else if (p.mod === "c3") {
-      const rough = p.status !== "ok";
-      cards = `<div class="p-card focus"><p class="eyebrow">This week</p><p class="big">${rough ? "Your body may need more rest in the next few days." : "You’re close to your usual. Keep your routine."}</p><p class="why">${rough ? "Your watch shows changes from your usual. Rest is OK. Short walks around the house count. Your coach will call to check in." : "Short daily walks and a steady bedtime help on treatment weeks."}</p></div>
-        <div class="p-card"><p class="eyebrow">Call your care team now if</p><p class="why">You have a fever of 100.4°F or higher, chills, shortness of breath, or can’t keep food or fluids down.</p></div>`;
-    } else {
-      cards = `<div class="p-card focus"><p class="eyebrow">Your coach</p><p class="big">Your next call is with your coach.</p><p class="why">Bring one thing that went well this week and one thing that was hard.</p></div>`;
-    }
-    const phone = `<div class="phone" aria-label="Patient phone preview"><div class="row" style="justify-content:space-between"><h2>Good morning</h2><span class="chip">${esc(lang)}</span></div>
-      ${lang !== "English" ? `<p class="small notice">Shown in English. ${esc(lang)} text is pending from the program.</p>` : ""}
-      ${cards}<div class="p-card"><button class="btn primary" ${notWired("Message your coach")}>Message your coach</button></div>
-      <p class="small muted">General guidance from your coaching program, not medical advice. For fever, chest pain or trouble breathing, call your care team now.</p></div>`;
-    const notes = `<div class="notes-side stack"><h2>${esc(p.name)}</h2><p class="muted">${p.mod === "c4" ? "Cards are the glucose program’s own advice for this person, rewritten in plain words when the AI check passes. Safety rules come first." : p.mod === "c3" ? "Rough-weeks advice is written for the coach, so the patient sees a softer card and the fever rule. The program should send patient-facing text." : p.mod === "c1" ? "Cards are the hospital-risk program’s own advice marked for the patient. The risk number itself is never shown to them." : "The calls program has no patient-facing text yet."}</p>
-      <a class="btn" href="#p-${esc(id)}">Back to their 360</a></div>`;
-    return `${head}<div class="phone-wrap">${phone}${notes}</div>`;
-  }
-
   // ------------------------------------------------------------------ later
   async function renderCare() {
     const head = `<header class="page-head"><div><p class="eyebrow">Challenge 1 · for the care-team lead</p><h1>Hospital risk</h1><p class="sub">Chance of an ER visit or hospital stay next year, from 2017 survey answers. Highest first.</p></div></header>`;
@@ -465,7 +448,7 @@
     const tiers = m && m.tiers && m.tiers.tiers ? m.tiers.tiers : [];
     const fm = m && m.metrics && m.finalModel ? m.metrics[m.finalModel.name] || m.metrics.logistic : null;
     const strip = tiers.length ? `<div class="stat-strip">${tiers.map((t) => `<a href="#patients-${t.status}"><span class="n">${pct(t.observedRate)}</span><span class="l">${GROUP[t.status]}: ${t.n} people in the test set had an ER visit or stay this often</span></a>`).join("")}${fm ? `<div><span class="n">${num(fm.auroc.value, 2)}</span><span class="l">How well it ranks people (AUROC, 0.5 = chance; 95% CI ${num(fm.auroc.ci95[0], 2)}–${num(fm.auroc.ci95[1], 2)})</span></div>` : ""}</div>` : "";
-    const table = `<div class="ptable-wrap"><table class="ptable"><thead><tr><th>Status</th><th>Patient</th><th>Why</th></tr></thead><tbody>${list.slice(0, ui.limit / 4).map((it) => `<tr><td>${statusPill(it.tri)}</td><td class="nm"><a href="#p-${esc(it.id)}.c1">${esc(it.name)}</a></td><td class="hl">${esc(it.headline)}${it.tags.length ? `<div style="margin-top:6px">${tagsHtml(it.tags)}</div>` : ""}</td></tr>`).join("")}</tbody></table>${list.length > ui.limit / 4 ? `<button class="r-more" data-more>Show 15 more of ${list.length}</button>` : ""}</div>`;
+    const table = `<div class="ptable-wrap"><table class="ptable"><thead><tr><th>Status</th><th>Patient</th><th>Why</th></tr></thead><tbody>${list.slice(0, ui.limit / 4).map((it) => `<tr class="row-link" data-href="#p-${esc(it.id)}.c1" role="link" tabindex="0" aria-label="${esc(it.name)}: open hospital risk"><td>${statusPill(it.tri)}</td><td class="nm"><b>${esc(it.name)}</b><div class="small muted mono">${esc(it.id)}</div></td><td class="hl">${esc(it.headline)}${it.tags.length ? `<div style="margin-top:6px">${tagsHtml(it.tags)}</div>` : ""}</td></tr>`).join("")}</tbody></table>${list.length > ui.limit / 4 ? `<button class="r-more" data-more>Show 15 more of ${list.length}</button>` : ""}</div>`;
     const factors = m && m.plainFactors ? `<details class="more"><summary>What raises or lowers risk across everyone</summary><ul class="evidence">${m.plainFactors.map((x) => `<li>${esc(typeof x === "string" ? x : x.text || x.label || JSON.stringify(x))}</li>`).join("")}</ul></details>` : "";
     const fair = m && m.fairness ? `<details class="more"><summary>Fairness check by group · ${m.fairness.length} groups</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Group</th><th>n</th><th>Observed</th><th>Predicted</th><th>AUROC</th></tr></thead><tbody>${m.fairness.map((g) => `<tr><td>${esc(g.attribute)}: ${esc(g.group)}${g.tooSmall ? '<span class="cav">too few people to judge</span>' : ""}</td><td class="mono">${g.n}</td><td class="mono">${pct(g.observedRate)}</td><td class="mono">${pct(g.meanPredicted)}</td><td class="mono">${num(g.auroc, 2)}</td></tr>`).join("")}</tbody></table></div></details>` : "";
     const cav = m && m.caveats ? `<details class="more"><summary>Caveats</summary><ul class="evidence">${m.caveats.map((c) => `<li>${esc(typeof c === "string" ? c : JSON.stringify(c))}</li>`).join("")}</ul></details>` : "";
@@ -486,7 +469,6 @@
     const k = path.indexOf("-");
     let route = k < 0 ? path : path.slice(0, k), arg = k < 0 ? "" : path.slice(k + 1);
     if (route === "s") route = "p";
-    if (route === "patient") route = "app";
     return { route, arg, st };
   }
   let renderSeq = 0, current = null;
@@ -494,7 +476,7 @@
     const { route, arg, st } = parse();
     if (route === "line") return;
     previewState = st || "ready";
-    if (route !== "p" && route !== "live" && route !== "app") current = null;
+    if (route !== "p" && route !== "live") current = null;
     const seq = ++renderSeq;
     const nav = { p: "patients", call: "calls", live: "patients" }[route] || route;
     document.querySelectorAll(".nav-link").forEach((a) => a.classList.toggle("active", a.dataset.nav === nav));
@@ -507,7 +489,6 @@
       else if (P360.routes[route]) html = await P360.routes[route](arg);
       else if (route === "calls") html = await renderCalls();
       else if (route === "call") html = await renderCall(arg);
-      else if (route === "app") html = await renderApp(arg);
       else if (route === "care") html = await renderCare();
       else if (route === "research") html = renderResearch();
       else html = emptyBox("This page doesn’t exist. Use the navigation to get back.");
@@ -528,7 +509,12 @@
     const t = e.target.closest && e.target.closest("[data-tip]");
     if (t && t.dataset.tip) { tip.textContent = t.dataset.tip; tip.hidden = false; tip.style.left = Math.min(e.clientX + 12, innerWidth - 280) + "px"; tip.style.top = e.clientY + 14 + "px"; } else tip.hidden = true;
   });
+  // Clickable table rows (Hospital risk): the whole row opens data-href; Enter or Space does the same.
+  const rowLink = (e) => { const r = e.target.closest && e.target.closest("tr[data-href]"); return r && !e.target.closest("a, button") ? r : null; };
+  document.addEventListener("keydown", (e) => { if (e.key !== "Enter" && e.key !== " ") return; const r = rowLink(e); if (r && e.target === r) { e.preventDefault(); location.hash = r.dataset.href; } });
   document.addEventListener("click", async (e) => {
+    const row = rowLink(e);
+    if (row) { location.hash = row.dataset.href; return; }
     const el = e.target.closest("button, a");
     if (!el) return;
     if (el.dataset.toast) showToast(el.dataset.toast);
@@ -548,7 +534,7 @@
   });
   window.addEventListener("hashchange", () => { if (parse().route === "line") return; toast.hidden = true; window.scrollTo(0, 0); render().then(() => view.focus({ preventScroll: true })); });
   // Shared with call.js and ellie.js, which load after this file and add their own routes.
-  window.P360 = { routes: {}, render, esc, fmtDate, pct, num, post, once, memo, A, MODS, SNAP, LIVE_URL, COPILOT_URL, statusPill, modChip, tagsHtml, loadingBox, errorBox, emptyBox, forced, sourceBanner, showToast, notWired, parse,
+  window.P360 = { NAME, routes: {}, render, esc, fmtDate, pct, num, post, once, memo, A, MODS, SNAP, LIVE_URL, COPILOT_URL, statusPill, modChip, tagsHtml, loadingBox, errorBox, emptyBox, forced, sourceBanner, showToast, notWired, parse,
     FAMILY, FLAG_TEXT, liveScore, lineHtml, flagBanner, cueTrigger, panelVisual, adviceCard, current: () => current };
   updateMode();
   window.addEventListener("DOMContentLoaded", render);
