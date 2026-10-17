@@ -1,43 +1,43 @@
-/* Ellie: the clinician's assistant. Natural language to (1) open a page, (2) find and explain a patient's
+/* The AI assistant: the clinician's assistant. Natural language to (1) open a page, (2) find and explain a patient's
    information, (3) answer general medical questions. Plain commands ("open glucose for N0072", "open the first
-   one", "start a call with them") are resolved here, instantly. Everything else goes to /api/ellie, a small tool
+   one", "start a call with them") are resolved here, instantly. Everything else goes to /api/assistant, a small tool
    loop in the worker (search_patients, get_patient, read_page; navigate, open_tab, start_call). The client sends
-   the roster, a summary of the page on screen and the ids Ellie named in earlier turns, so follow-ups like
-   "that first patient" resolve. The worker checks every page Ellie wants to open before the app follows it.
-   Also: Ellie's insight, a short AI read of the patient on every health chart (.ellie-insight[data-pid]). */
+   the roster, a summary of the page on screen and the ids the assistant named in earlier turns, so follow-ups like
+   "that first patient" resolve. The worker checks every page the assistant wants to open before the app follows it.
+   Also: AI Insight, a short AI read of the patient on every health chart (.assistant-insight[data-pid]). */
 (function () {
   "use strict";
   const P = window.P360;
   const { esc, once, A, MODS, SNAP, LIVE_URL } = P;
-  const history = []; // { role: "user" | "ellie", text, ids? } ids = patients Ellie named, in order
+  const history = []; // { role: "user" | "assistant", text, ids? } ids = patients the assistant named, in order
   let open = false, busy = false;
 
   const fab = document.createElement("button");
-  fab.className = "ellie-fab"; fab.id = "ellie-fab"; fab.type = "button"; fab.setAttribute("aria-controls", "ellie"); fab.setAttribute("aria-expanded", "false");
-  const FAB_OPEN = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>Ask Ellie`;
-  const FAB_CLOSE = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2"/></svg>Close Ellie`;
+  fab.className = "assistant-fab"; fab.id = "assistant-fab"; fab.type = "button"; fab.setAttribute("aria-controls", "assistant"); fab.setAttribute("aria-expanded", "false");
+  const FAB_OPEN = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>AI assistant`;
+  const FAB_CLOSE = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2"/></svg>Close`;
   fab.innerHTML = FAB_OPEN;
   const box = document.createElement("section");
-  box.className = "ellie"; box.id = "ellie"; box.hidden = true; box.setAttribute("aria-label", "Ellie assistant");
-  box.innerHTML = `<header><b>Ellie</b><span class="small" style="opacity:.75">clinician assistant</span><button type="button" id="ellie-close" aria-label="Close Ellie">Close</button></header>
-    <div class="msgs" id="ellie-msgs" aria-live="polite"><div class="m a">Hi, I’m Ellie. I can find patients, explain their numbers, open any page or tab, start a call, and answer general medical questions.<span class="meta">I read the same data you see. Check anything clinical before acting.</span></div></div>
-    <div class="sugg" id="ellie-sugg"><button type="button">Who is most at risk of the hospital?</button><button type="button">Open the first one</button><button type="button">Start a call with them</button><button type="button">Who needs a call today?</button><button type="button">What does time in range mean?</button></div>
-    <form id="ellie-form"><input id="ellie-q" placeholder="Ask Ellie…" autocomplete="off" aria-label="Ask Ellie"><button type="submit">Send</button></form>`;
+  box.className = "assistant"; box.id = "assistant"; box.hidden = true; box.setAttribute("aria-label", "AI assistant");
+  box.innerHTML = `<header><b>AI assistant</b><span class="small" style="opacity:.75">for the care team</span><button type="button" id="assistant-close" aria-label="Close the AI assistant">Close</button></header>
+    <div class="msgs" id="assistant-msgs" aria-live="polite"><div class="m a">Hi, I’m the AI assistant. I can find patients, explain their numbers, open any page or tab, start a call, and answer general medical questions.<span class="meta">I read the same data you see. Check anything clinical before acting.</span></div></div>
+    <div class="sugg" id="assistant-sugg"><button type="button">Who is most at risk of the hospital?</button><button type="button">Open the first one</button><button type="button">Start a call with them</button><button type="button">Who needs a call today?</button><button type="button">What does time in range mean?</button></div>
+    <form id="assistant-form"><input id="assistant-q" placeholder="Ask the AI assistant…" autocomplete="off" aria-label="Ask the AI assistant"><button type="submit">Send</button></form>`;
   document.body.append(fab, box);
 
-  const msgs = () => document.getElementById("ellie-msgs");
+  const msgs = () => document.getElementById("assistant-msgs");
   function say(role, html) { const d = document.createElement("div"); d.className = `m ${role}`; d.innerHTML = html; msgs().appendChild(d); msgs().scrollTop = msgs().scrollHeight; return d; }
   function toggle(v) {
     open = typeof v === "boolean" ? v : !open;
     box.hidden = !open;
     fab.classList.toggle("on", open); fab.setAttribute("aria-expanded", String(open)); fab.innerHTML = open ? FAB_CLOSE : FAB_OPEN;
-    if (open) document.getElementById("ellie-q").focus(); else if (box.contains(document.activeElement)) fab.focus();
+    if (open) document.getElementById("assistant-q").focus(); else if (box.contains(document.activeElement)) fab.focus();
   }
 
   const compactRow = (r) => ({ id: r.id, name: r.name, program: MODS[r.mod].name, status: r.tri, headline: r.headline, tags: r.tags.map((t) => t.label) });
   function compactPatient(p) {
     if (!p) return null;
-    return { id: p.id, name: p.name, program: MODS[p.mod].name, status: p.tri, headline: p.headline, facts: p.facts, tags: (p.tags || []).map((t) => t.label), ...(p.forEllie ? { forEllie: p.forEllie } : {}),
+    return { id: p.id, name: p.name, program: MODS[p.mod].name, status: p.tri, headline: p.headline, facts: p.facts, tags: (p.tags || []).map((t) => t.label), ...(p.forAssistant ? { forAssistant: p.forAssistant } : {}),
       kpis: (p.kpis || []).map((k) => `${k.label}: ${k.value}${k.sub ? " (" + k.sub + ")" : ""}`),
       advice: (p.panels || []).flatMap((pn) => (pn.advice || []).map((a) => `${a.title}${a.text ? ": " + a.text : ""}`)).slice(0, 8),
       details: (p.panels || []).map((pn) => pn.title + (pn.lead ? ": " + pn.lead : "")).slice(0, 10),
@@ -83,7 +83,7 @@
     const page = PAGES.find(([re]) => re.test(q)), tab = page ? page[1] : "";
     return { route: `p-${p.id}${tab ? "." + tab : ""}`, text: `Opening ${p.name}${tab ? ", " + MODS[tab].name : ""}.${tab && tab !== p.mod ? ` They aren’t enrolled in ${MODS[tab].name}, so that view will be empty.` : ""}`, ids: [p.id] };
   }
-  // "Open the first one", "start a call with them": resolve against the last list Ellie gave.
+  // "Open the first one", "start a call with them": resolve against the last list the assistant gave.
   const ORD = { first: 0, "1st": 0, top: 0, second: 1, "2nd": 1, third: 2, "3rd": 2, fourth: 3, "4th": 3, fifth: 4, "5th": 4, last: -1 };
   function resolveRef(q, rows) {
     if (!VERB.test(q) || named(q, rows).length) return null;
@@ -92,7 +92,7 @@
     if (!m && !pron) return null;
     // Ordinals: the latest list long enough ("open the second one" after opening the first still works).
     const need = m && ORD[m[1]] >= 0 ? ORD[m[1]] + 1 : 1;
-    const turn = [...history].reverse().find((h) => h.role === "ellie" && h.ids && h.ids.length >= need);
+    const turn = [...history].reverse().find((h) => h.role === "assistant" && h.ids && h.ids.length >= need);
     if (!turn) return null;
     const i = m ? (ORD[m[1]] < 0 ? turn.ids.length - 1 : ORD[m[1]]) : 0;
     const id = turn.ids[i];
@@ -114,9 +114,9 @@
     return null;
   }
 
-  // After Ellie lists patients, offer the follow-ups that act on that list.
+  // After the assistant lists patients, offer the follow-ups that act on that list.
   function showFollowUps() {
-    const s = document.getElementById("ellie-sugg");
+    const s = document.getElementById("assistant-sugg");
     s.innerHTML = `<button type="button">Open the first one</button><button type="button">Start a call with them</button><button type="button">Open the second one</button>`;
     s.hidden = false; msgs().after(s);
   }
@@ -125,23 +125,23 @@
   async function ask(q) {
     if (busy || !q.trim()) return;
     busy = true;
-    document.getElementById("ellie-sugg").hidden = true;
+    document.getElementById("assistant-sugg").hidden = true;
     say("u", esc(q));
     const wait = say("a", `<span class="muted">Thinking…</span>`);
     try {
       const { rows } = await once("roster", A.roster);
       const quick = resolveRef(q, rows) || quickRoute(q, rows);
       if (quick) {
-        history.push({ role: "user", text: q }, { role: "ellie", text: quick.text, ids: quick.ids });
+        history.push({ role: "user", text: q }, { role: "assistant", text: quick.text, ids: quick.ids });
         wait.innerHTML = `${esc(quick.text)}<span class="meta">Opened <a href="#${esc(quick.route)}">${esc(quick.route)}</a></span>`;
         wait.dataset.nav = quick.route; location.hash = "#" + quick.route; busy = false; return;
       }
-      if (SNAP) { wait.innerHTML = `Ellie needs the live site to reach the model.<span class="meta"><a href="${LIVE_URL}" target="_blank" rel="noopener">Open the live site ↗</a></span>`; busy = false; return; }
+      if (SNAP) { wait.innerHTML = `The AI assistant needs the live site to reach the model.<span class="meta"><a href="${LIVE_URL}" target="_blank" rel="noopener">Open the live site ↗</a></span>`; busy = false; return; }
       const counts = rows.reduce((c, r) => ((c[r.tri] = (c[r.tri] || 0) + 1), c), { total: rows.length });
       let matches = named(q, rows).map(compactRow);
       if (matches.length && matches.length <= 2) matches = await Promise.all(matches.map((m) => once("p:" + m.id, () => A.patient(m.id)).then(compactPatient).catch(() => m)));
-      const r = await P.post("/api/ellie", { question: q, history: history.slice(-8), page: readPage(), patient: compactPatient(P.current()), matches, counts, roster: rosterForModel(rows) });
-      history.push({ role: "user", text: q }, { role: "ellie", text: r.answer, ids: r.cites || [] });
+      const r = await P.post("/api/assistant", { question: q, history: history.slice(-8), page: readPage(), patient: compactPatient(P.current()), matches, counts, roster: rosterForModel(rows) });
+      history.push({ role: "user", text: q }, { role: "assistant", text: r.answer, ids: r.cites || [] });
       const label = r.kind === "medical" ? `<span class="ai-label">AI · check before acting</span> ` : "";
       wait.innerHTML = `${esc(r.answer)}<span class="meta">${label}${r.navigate ? `Opened <a href="#${esc(r.navigate)}">${esc(r.navigate)}</a> ` : ""}${citeLinks(r.cites, rows)}</span>`;
       if (r.navigate) { wait.dataset.nav = r.navigate; location.hash = "#" + r.navigate; }
@@ -153,14 +153,14 @@
 
   fab.addEventListener("click", () => toggle());
   box.addEventListener("click", (e) => {
-    if (e.target.closest("#ellie-close")) { toggle(false); return; }
-    const s = e.target.closest("#ellie-sugg button"); if (s) ask(s.textContent);
+    if (e.target.closest("#assistant-close")) { toggle(false); return; }
+    const s = e.target.closest("#assistant-sugg button"); if (s) ask(s.textContent);
   });
-  box.addEventListener("submit", (e) => { e.preventDefault(); const i = document.getElementById("ellie-q"); const q = i.value; i.value = ""; ask(q); });
+  box.addEventListener("submit", (e) => { e.preventDefault(); const i = document.getElementById("assistant-q"); const q = i.value; i.value = ""; ask(q); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && open) { e.preventDefault(); toggle(false); } });
 
-  // ---------------------------------------------------------------- Ellie's insight on the health chart
-  // Contract: the health chart renders <div class="ellie-insight" data-pid="<id>"></div>. We fill every such
+  // ---------------------------------------------------------------- AI Insight on the health chart
+  // Contract: the health chart renders <div class="assistant-insight" data-pid="<id>"></div>. We fill every such
   // element that has no data-state yet (set before writing, so our own writes don't re-trigger the observer).
   const insights = new Map();
   const hash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
@@ -169,16 +169,16 @@
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage off */ } };
   function fallbackInsight(p) {
     const advice = (p.panels || []).flatMap((pn) => (pn.advice || []).map((a) => a.title)).filter(Boolean);
-    return { headline: p.headline || "No summary from this program yet.", bullets: advice.slice(0, 3).map(cut15), fallback: true };
+    return { headline: p.headline || "No summary from this program yet.", bullets: [], fallback: true };
   }
   function paintInsight(el, x) {
     const top = x.fallback ? `<span class="ei-src">From the program’s own summary</span>` : `<span class="ai-label">AI · check before acting</span>`;
-    el.innerHTML = `<div class="ei-top"><b>AI Insight</b>${top}</div><p class="ei-line">${esc(x.headline)}</p>${x.bullets && x.bullets.length ? `<ul class="ei-list">${x.bullets.map((b) => `<li>${esc(b)}</li>`).join("")}</ul>` : ""}`;
+    el.innerHTML = `<div class="ei-top"><b>AI Insight</b>${top}</div><p class="ei-line">${esc(x.headline)}</p>`; // headline only: numbers live on the tiles, actions in Do next
   }
   // One request per patient+data version, shared by the chart and the prefetch below.
   const inflight = new Map();
   function getInsight(p) {
-    const cp = compactPatient(p), key = `ellie-insight:${p.id}:${hash(JSON.stringify(cp))}`;
+    const cp = compactPatient(p), key = `assistant-insight2:${p.id}:${hash(JSON.stringify(cp))}`;
     const have = insights.get(key) || lsGet(key);
     if (have) return Promise.resolve(have);
     if (!inflight.has(key)) inflight.set(key, P.post("/api/insight", { patient: cp })
@@ -216,10 +216,10 @@
     if (!el.isConnected) return;
     paintInsight(el, x); el.dataset.state = x.fallback ? "fallback" : "ai";
   }
-  function scanInsights() { document.querySelectorAll(".ellie-insight[data-pid]:not([data-state])").forEach(fillInsight); }
+  function scanInsights() { document.querySelectorAll(".assistant-insight[data-pid]:not([data-state])").forEach(fillInsight); }
   const view = document.getElementById("view");
   if (view && "MutationObserver" in window) new MutationObserver(scanInsights).observe(view, { childList: true, subtree: true });
   scanInsights();
 
-  window.Ellie = { ask, toggle, readPage };
+  window.Assistant = { ask, toggle, readPage };
 })();

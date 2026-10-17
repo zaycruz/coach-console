@@ -10,8 +10,8 @@
  *   GET|POST /api/handoffs    -> hand-offs to the care team (who, when, patient, flagged line, note), KV, newest first
  *   GET  /api/today           -> one ranked queue across C1/C3/C4/C5 with a short clinical reason, data type and language per row (src/today.ts)
  *   POST /api/recap           -> GLM summary of the last call, for picking the conversation back up
- *   POST /api/ellie           -> Ellie, the clinician assistant: a small GLM tool loop (search/get patient, read page; navigate/open tab/start call)
- *   POST /api/insight         -> Ellie's insight for one patient (headline + up to 3 bullets), cached in KV by patient id + data hash
+ *   POST /api/assistant       -> the AI assistant for clinicians: a small GLM tool loop (search/get patient, read page; navigate/open tab/start call)
+ *   POST /api/insight         -> AI Insight for one patient (headline + up to 3 bullets), cached in KV by patient id + data hash
  * Everything else is the static app in ./public.
  */
 import PEOPLE from "./c5-people.json";
@@ -154,7 +154,7 @@ async function glm(env: Env, system: string, user: string, schema: Record<string
     response_format: { type: "json_schema", json_schema: schema },
   });
   // Workers AI rate-limits GLM per minute (error 3021) when the room is busy. Retry once after a pause, then
-  // fall back to Llama 3.3 70B with the same JSON schema, so Ellie, insights and recaps keep answering.
+  // fall back to Llama 3.3 70B with the same JSON schema, so the AI assistant, insights and recaps keep answering.
   const fallback = () => env.AI.run(FALLBACK_LLM, {
     messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: maxTokens,
     response_format: { type: "json_schema", json_schema: (schema as { schema: unknown }).schema },
@@ -169,10 +169,10 @@ async function glm(env: Env, system: string, user: string, schema: Record<string
 }
 const clip = (x: unknown, n: number) => JSON.stringify(x ?? null).slice(0, n);
 
-// Routes Ellie may open. Anything else she suggests is dropped.
+// Routes the AI assistant may open. Anything else it suggests is dropped.
 const ROUTE_OK = /^(today|patients(-(today|alert|watch|ok))?|calls|care|research|call-[A-Za-z0-9]+|live-[a-z0-9]+-[A-Za-z0-9]+|p-[a-z0-9]+-[A-Za-z0-9]+(\.(c1|c3|c4|c5))?)$/;
 
-// ---------------------------------------------------------------- Ellie: a small tool loop (JSON steps, GLM)
+// ---------------------------------------------------------------- AI assistant: a small tool loop (JSON steps, GLM)
 // Each step the model returns one flat object: a data tool to run (search_patients, get_patient, read_page),
 // an action that ends the turn (navigate, open_tab, start_call), or "answer". The worker runs data tools and
 // loops (max 4 model calls). The client pre-sends the page summary, the roster and the ids from earlier turns,
@@ -183,7 +183,7 @@ const TRI_RANK: Record<string, number> = { today: 0, alert: 1, watch: 2, ok: 3 }
 const shortId = (id: string) => id.split("-").slice(1).join("-");
 // ER/hospital chance on a roster row: C1 "Acute care risk 73%", C3 "ER/hospital 12%" (urgent rows).
 const hospRisk = (r: Row) => { const m = `${r.headline} ${r.tags.join(" ")}`.match(/(?:acute care risk|hospital risk|ER\/hospital)\s*(\d+(?:\.\d+)?)%/i); return m ? +m[1] : -1; };
-// Severity inside a status, worst first (same rule as ellie.js sev): urgent 7-day ER risk, call concerns, then each
+// Severity inside a status, worst first (same rule as assistant.js sev): urgent 7-day ER risk, call concerns, then each
 // program's own number (C1 next-year risk, C4 lowest time in range or most lows). Lists feed "the first one".
 const numIn = (s: string, re: RegExp) => { const m = s.match(re); return m ? +m[1] : null; };
 function sev(r: Row) {
@@ -227,7 +227,7 @@ async function getPatient(env: Env, id: string) {
   return { id, program: PROG_NAME[mod], ...rest };
 }
 
-const ELLIE_SCHEMA = { name: "ellie_step", strict: true, schema: { type: "object", additionalProperties: false,
+const ASSISTANT_SCHEMA = { name: "assistant_step", strict: true, schema: { type: "object", additionalProperties: false,
   required: ["tool", "query", "status", "program", "sort", "id", "route", "answer", "cites", "kind"], properties: {
     tool: { type: "string", enum: ["answer", "search_patients", "get_patient", "read_page", "navigate", "open_tab", "start_call"] },
     query: { type: "string" }, status: { type: "string", enum: ["", "today", "alert", "watch", "ok"] },
@@ -244,19 +244,19 @@ const RED_FLAGS: [RegExp, string][] = [
   [/\b(hopeless|suicid|kill (my|her|him|them)sel|end (my|it all)|no point (in )?living|self.?harm)/i, "Hopelessness or any thought of self-harm needs a person today. Stay with the patient, ask directly about thoughts of suicide, and connect them now: 988 (call or text, US) or the ER if they are in danger. Tell the care team and psycho-oncology today."],
 ];
 const MEDICAL_Q = /\b(what|should|is it|is this|can|do i|does|how|when|chemo|treatment|symptom|patient (has|says|reports))\b|\?/i;
-// Ellie never shows infrastructure text: any failure is a plain "busy" the client retries once.
-const ELLIE_BUSY = "Ellie is busy";
-async function ellie(env: Env, body: Record<string, unknown>) {
-  try { return await ellieTurn(env, body); } catch (e) { console.warn("ellie", (e as Error).message); return json({ error: ELLIE_BUSY }, 503); }
+// The AI assistant never shows infrastructure text: any failure is a plain "busy" the client retries once.
+const ASSISTANT_BUSY = "The AI assistant is busy";
+async function assistant(env: Env, body: Record<string, unknown>) {
+  try { return await assistantTurn(env, body); } catch (e) { console.warn("assistant", (e as Error).message); return json({ error: ASSISTANT_BUSY }, 503); }
 }
-async function ellieTurn(env: Env, body: Record<string, unknown>) {
+async function assistantTurn(env: Env, body: Record<string, unknown>) {
   const question = String(body.question || "").slice(0, 1_000).trim();
   if (!question) return json({ error: "question is required" }, 400);
   const rows: Row[] = (Array.isArray(body.roster) ? body.roster : []).slice(0, 2_000).filter(isRec).map((r) => ({
     id: String(r.id || ""), name: String(r.name || ""), mod: String(r.mod || String(r.id || "").split("-")[0]), tri: String(r.tri || r.status || "ok"),
     headline: String(r.headline || ""), tags: (Array.isArray(r.tags) ? r.tags : []).map(String) })).filter((r) => r.id);
   const hist = (Array.isArray(body.history) ? body.history : []).filter(isRec).slice(-8);
-  // Ids Ellie mentioned earlier, newest turn first, each turn in the order she listed them.
+  // Ids the assistant mentioned earlier, newest turn first, each turn in the order it listed them.
   const memory: string[] = [];
   for (const m of [...hist].reverse()) for (const id of Array.isArray(m.ids) ? m.ids : []) if (!memory.includes(String(id))) memory.push(String(id));
   const onScreen = isRec(body.patient) ? body.patient : null;
@@ -265,10 +265,10 @@ async function ellieTurn(env: Env, body: Record<string, unknown>) {
   const resolve = (x: unknown) => { const s = String(x || "").replace(/^#/, "").trim(); if (known.has(s)) return s; const lo = s.toLowerCase(); return [...known].find((k) => k.toLowerCase() === lo || shortId(k).toLowerCase() === lo) || ""; };
   const nameOf = (id: string) => rows.find((r) => r.id === id)?.name || (onScreen && onScreen.id === id ? String(onScreen.name || "") : "") || id;
   const memLines = memory.slice(0, 12).map((id, i) => `${i + 1}. ${id} (${nameOf(id)})`).join("\n");
-  const convo = hist.map((m) => `${m.role === "user" ? "Clinician" : "Ellie"}: ${String(m.text || "").slice(0, 400)}${Array.isArray(m.ids) && m.ids.length ? ` (patients named: ${m.ids.slice(0, 8).map((id) => nameOf(String(id))).join(", ")})` : ""}`).join("\n");
+  const convo = hist.map((m) => `${m.role === "user" ? "Clinician" : "Assistant"}: ${String(m.text || "").slice(0, 400)}${Array.isArray(m.ids) && m.ids.length ? ` (patients named: ${m.ids.slice(0, 8).map((id) => nameOf(String(id))).join(", ")})` : ""}`).join("\n");
   const page = clip(body.page, 3_200);
 
-  const system = `You are Ellie, the assistant inside Patient 360, a console for health coaches and care-team leads who look after cancer survivors (synthetic hackathon data). Your user is a clinician, never the patient. Call the people "patients", never "survivors".
+  const system = `You are the AI assistant inside Patient 360, a console for health coaches and care-team leads who look after cancer survivors (synthetic hackathon data). Your user is a clinician, never the patient. Call the people "patients", never "survivors".
 Each step, return ONE JSON object. Set "tool" to:
 - "search_patients": find patients in the roster. Fields: query (words, name or id; "" for all), status (today|alert|watch|ok or ""), program (c1 hospital risk | c3 rough weeks | c4 glucose | c5 coaching calls, or ""), sort ("hospital" = highest ER/hospital chance first, "priority" = most urgent first, or "").
 - "get_patient": the full record for one patient. Field: id.
@@ -337,7 +337,7 @@ ${memLines ? "RECENT PATIENTS (most recent list first):\n" + memLines + "\n" : "
   for (let i = 0; i < 4; i++) {
     const last = i === 3;
     const user = base + (results.length ? "\n\nTOOL RESULTS:\n" + results.join("\n") : "") + (last ? "\n\nYou must finish now: tool \"answer\" (or an action)." : "");
-    const r = await glm(env, system, user, ELLIE_SCHEMA, 900);
+    const r = await glm(env, system, user, ASSISTANT_SCHEMA, 900);
     if (!r) return noModel();
     const tool = String(r.tool || "answer");
     steps.push(tool);
@@ -388,7 +388,7 @@ ${memLines ? "RECENT PATIENTS (most recent list first):\n" + memLines + "\n" : "
   return noModel();
 }
 
-// ---------------------------------------------------------------- Ellie's insight: one line + up to 3 bullets per patient
+// ---------------------------------------------------------------- AI Insight: one line + up to 3 bullets per patient
 const insightMem = new Map<string, unknown>();
 const words15 = (s: unknown) => { const w = String(s || "").replace(/\s+/g, " ").trim().split(" ").filter(Boolean); return w.length > 15 ? w.slice(0, 15).join(" ").replace(/[,;:]$/, "") + "…" : w.join(" "); };
 async function insight(env: Env, body: Record<string, unknown>) {
@@ -397,11 +397,12 @@ async function insight(env: Env, body: Record<string, unknown>) {
   if (!p || !/^[a-z0-9]+-[A-Za-z0-9]+$/.test(id)) return json({ error: "patient with an id is required" }, 400);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(p)));
   const hash = [...new Uint8Array(digest)].slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
-  const key = `insight:${id}:${hash}`;
+  const key = `insight2:${id}:${hash}`; // v2: one sentence, no numbers (the tiles hold them)
   const hit = insightMem.get(key) ?? JSON.parse((await env.CALLS.get(key).catch(() => null)) || "null");
   if (hit) { insightMem.set(key, hit); return json({ ...(hit as object), cached: true }); }
-  const system = `You write "Ellie's insight" for a clinician (health coach or care-team lead) opening a cancer survivor's health chart. Use ONLY the patient data given, from every program it covers. If the data has "forEllie", that sentence is the hospital-risk bullet and is added for you: do not write another hospital-risk bullet. Return one headline sentence (what matters most right now, at most 20 words) and up to 3 bullets, each a recommendation or insight of at most 15 words, most important first. Lead with the action. Keep the numbers from the data. Call the person "the patient", never "survivor" or "participant". No diagnosis, no prescribing, no invented facts. Plain words.
-The chart already shows the program's headline (given as "headline"). Do NOT repeat it or restate the alert ("medical concern needs follow-up", "a person must follow up today"). Add what it hides: when "patientWords" has a flagged line, the headline must name that symptom or need in plain clinical words (e.g. "New shortness of breath on light exertion (kitchen walk); call today and tell the care team.") and may quote up to 8 of the patient's words. Otherwise name the driver or trend behind the numbers.`;
+  const system = `You write "AI Insight" for a clinician (health coach or care-team lead) opening a cancer survivor's health chart. Use ONLY the patient data given, from every program it covers. If the data has "forAssistant", that sentence is the hospital-risk bullet and is added for you: do not write another hospital-risk bullet. Return one headline sentence (what matters most right now, at most 20 words) and up to 3 bullets, each a recommendation or insight of at most 15 words, most important first. Lead with the action. Keep the numbers from the data. Call the person "the patient", never "survivor" or "participant". No diagnosis, no prescribing, no invented facts. Plain words.
+The chart already shows the program's headline (given as "headline"). Do NOT repeat it or restate the alert ("medical concern needs follow-up", "a person must follow up today"). Add what it hides: when "patientWords" has a flagged line, the headline must name that symptom or need in plain clinical words (e.g. "New shortness of breath on light exertion (kitchen walk); call today and tell the care team.") and may quote up to 8 of the patient's words. Otherwise name the driver or trend behind the numbers.
+THIS VERSION: the chart's tiles already show every number and the plan lists every action. Write the headline as ONE sentence (at most 25 words) about what changed or what is dangerous, in clinician voice (never "you" or "your"), with NO numbers, percentages or scores and NO action. Bullets: return an empty array.`;
   const schema = { name: "insight", strict: true, schema: { type: "object", additionalProperties: false, required: ["headline", "bullets"], properties: {
     headline: { type: "string" }, bullets: { type: "array", items: { type: "string" } } } } };
   const ask = () => glm(env, system, `PATIENT: ${clip(p, 6_000)}`, schema, 500);
@@ -409,8 +410,8 @@ The chart already shows the program's headline (given as "headline"). Do NOT rep
   if (!r || typeof r.headline !== "string" || !r.headline.trim()) r = await ask(); // GLM drops a JSON answer now and then
   if (!r || typeof r.headline !== "string" || !r.headline.trim()) return json({ error: "insight unavailable" }, 502);
   let bullets = (Array.isArray(r.bullets) ? r.bullets : []).map(words15).filter(Boolean).slice(0, 3);
-  // C1's forEllie line (risk in words + driver + caveat) is used verbatim so the caveat is never dropped.
-  if (typeof p.forEllie === "string" && p.forEllie.trim()) bullets = [p.forEllie.trim(), ...bullets.filter((b) => !/hospital risk|\bER\b/i.test(b))].slice(0, 3);
+  // C1.s forAssistant line (risk in words + driver + caveat) is used verbatim so the caveat is never dropped.
+  if (typeof p.forAssistant === "string" && p.forAssistant.trim()) bullets = [p.forAssistant.trim(), ...bullets.filter((b) => !/hospital risk|\bER\b/i.test(b))].slice(0, 3);
   const out = { id, headline: String(r.headline).trim().split(/(?<=[.!?])\s/)[0].slice(0, 220), bullets, model: GLM };
   insightMem.set(key, out);
   await env.CALLS.put(key, JSON.stringify(out)).catch(() => {});
@@ -427,20 +428,29 @@ async function recap(env: Env, body: Record<string, unknown>) {
   return json({ ...r, model: GLM });
 }
 
+/* Test data never reaches the app. A request carrying the test marker (cookie p360test=1 or header x-p360-test: 1, set
+   only by the E2E) reads and writes under the "test:" key prefix and every record it writes says test: true. Normal
+   reads skip anything marked test, and the E2E script's own saved calls from before this marker existed. */
+const isTestReq = (req: Request) => req.headers.get("x-p360-test") === "1" || /(?:^|;\s*)p360test=1(?:;|$)/.test(req.headers.get("cookie") || "");
+const ns = (req: Request) => (isTestReq(req) ? "test:" : "");
+const E2E_LINES = ["How have the last few days been for you?", "Honestly tired, but I want to get back to walking."];
+const legacyTestCall = (c: unknown) => isRec(c) && Array.isArray(c.lines) && c.lines.length === 3 && isRec(c.lines[0]) && isRec(c.lines[1]) && c.lines[0].text === E2E_LINES[0] && c.lines[1].text === E2E_LINES[1];
+const realOnly = (list: unknown[]) => list.filter((x) => !(isRec(x) && x.test) && !legacyTestCall(x));
+
 async function savedCalls(env: Env, req: Request, pid: string) {
   if (!/^[a-z0-9]+-[A-Za-z0-9]+$/.test(pid)) return json({ error: "bad patient id" }, 400);
-  const key = `calls:${pid}`;
+  const test = isTestReq(req), key = `${ns(req)}calls:${pid}`;
   const list: unknown[] = JSON.parse((await env.CALLS.get(key)) || "[]");
-  if (req.method === "GET") return new Response(JSON.stringify(list), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
+  if (req.method === "GET") return new Response(JSON.stringify(test ? list : realOnly(list)), { headers: { "content-type": "application/json", "cache-control": "no-store" } });
   const c = (await req.json()) as Record<string, unknown>;
   const lines = (Array.isArray(c.lines) ? c.lines : []).slice(0, 400).filter(isRec).map((l) => ({ speaker: l.speaker === "coach" ? "coach" : "participant", text: String(l.text || "").slice(0, 1_000), tag: l.tag ? String(l.tag) : null, flag: l.flag ? String(l.flag) : null }));
   if (!lines.length) return json({ error: "a call needs at least one line" }, 400);
-  const saved = { id: crypto.randomUUID(), pid, name: String(c.name || "").slice(0, 80), at: new Date().toISOString(), coach: String(c.coach || "").trim().slice(0, 60) || "Unknown coach", lines, score: typeof c.score === "number" ? c.score : null, note: String(c.note || "").slice(0, 2_000) };
+  const saved = { id: crypto.randomUUID(), pid, name: String(c.name || "").slice(0, 80), at: new Date().toISOString(), coach: String(c.coach || "").trim().slice(0, 60) || "Unknown coach", lines, score: typeof c.score === "number" ? c.score : null, note: String(c.note || "").slice(0, 2_000), ...(test ? { test: true } : {}) };
   await env.CALLS.put(key, JSON.stringify([saved, ...list].slice(0, 20)));
   // One cross-patient index so Today and the Calls list see every saved call (and its flagged lines) in one read.
-  const idx: unknown[] = JSON.parse((await env.CALLS.get("calls:index").catch(() => null)) || "[]");
-  const entry = { id: saved.id, pid, name: saved.name, at: saved.at, coach: saved.coach, score: saved.score, lines: lines.length, flags: lines.filter((l) => l.flag && l.flag !== "none").map((l) => ({ flag: l.flag, text: l.text })) };
-  await env.CALLS.put("calls:index", JSON.stringify([entry, ...idx].slice(0, 200))).catch(() => {});
+  const idx: unknown[] = JSON.parse((await env.CALLS.get(`${ns(req)}calls:index`).catch(() => null)) || "[]");
+  const entry = { ...(test ? { test: true } : {}), id: saved.id, pid, name: saved.name, at: saved.at, coach: saved.coach, score: saved.score, lines: lines.length, flags: lines.filter((l) => l.flag && l.flag !== "none").map((l) => ({ flag: l.flag, text: l.text })) };
+  await env.CALLS.put(`${ns(req)}calls:index`, JSON.stringify([entry, ...idx].slice(0, 200))).catch(() => {});
   return json(saved, 201);
 }
 
@@ -464,18 +474,27 @@ async function swr(url: URL, ctx: ExecutionContext, make: () => Promise<Response
   return new Response(hit.body, { status: 200, headers: { "content-type": "application/json", "cache-control": `public, max-age=${FRESH_S}`, "x-p360-cache": age > FRESH_S ? "stale" : "hit" } });
 }
 const noStore = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
-async function allSavedCalls(env: Env) { return noStore(JSON.parse((await env.CALLS.get("calls:index").catch(() => null)) || "[]")); }
+async function allSavedCalls(env: Env, req: Request) {
+  const idx: unknown[] = JSON.parse((await env.CALLS.get(`${ns(req)}calls:index`).catch(() => null)) || "[]");
+  if (isTestReq(req)) return noStore(idx);
+  // Index entries carry no line text: drop the ones whose saved call (per patient) is test data.
+  const pids = [...new Set(idx.filter(isRec).map((e) => String(e.pid)))];
+  const bad = new Set<string>();
+  await Promise.all(pids.map(async (pid) => { const l: unknown[] = JSON.parse((await env.CALLS.get(`calls:${pid}`).catch(() => null)) || "[]"); l.filter((c) => isRec(c) && (c.test || legacyTestCall(c))).forEach((c) => bad.add(String((c as Record<string, unknown>).id))); }));
+  return noStore(idx.filter((e) => isRec(e) && !e.test && !bad.has(String(e.id))));
+}
 
 // Hand-offs to the care team: who, when, which patient, the flagged line and a note. Newest first, in KV.
 async function handoffs(env: Env, req: Request) {
-  const list: unknown[] = JSON.parse((await env.CALLS.get("handoffs").catch(() => null)) || "[]");
-  if (req.method === "GET") return noStore(list);
+  const test = isTestReq(req);
+  const list: unknown[] = JSON.parse((await env.CALLS.get(`${ns(req)}handoffs`).catch(() => null)) || "[]");
+  if (req.method === "GET") return noStore(test ? list : realOnly(list));
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const pid = String(b.patientId || "");
   if (!/^[a-z0-9]+-[A-Za-z0-9]+$/.test(pid)) return json({ error: "patientId is required" }, 400);
   const h = { id: crypto.randomUUID(), at: new Date().toISOString(), patientId: pid, name: String(b.name || "").slice(0, 80), coach: String(b.coach || "").trim().slice(0, 60) || "Unknown coach",
-    to: String(b.to || "Care team").slice(0, 60), flag: String(b.flag || "").slice(0, 500), note: String(b.note || "").slice(0, 2_000) };
-  await env.CALLS.put("handoffs", JSON.stringify([h, ...list].slice(0, 300)));
+    to: String(b.to || "Care team").slice(0, 60), flag: String(b.flag || "").slice(0, 500), note: String(b.note || "").slice(0, 2_000), ...(test ? { test: true } : {}) };
+  await env.CALLS.put(`${ns(req)}handoffs`, JSON.stringify([h, ...list].slice(0, 300)));
   return json(h, 201);
 }
 
@@ -496,10 +515,11 @@ export default {
         return await swr(url, ctx, async () => json(await today(env, c5Calls)));
       }
       if (mod === "insight" && req.method === "POST") return await insight(env, (await req.json()) as Record<string, unknown>);
-      if (mod === "ellie" && req.method === "POST") return await ellie(env, (await req.json()) as Record<string, unknown>);
+      // /api/ellie is a silent alias for the judges panel and MCP until they move to /api/assistant.
+      if ((mod === "assistant" || mod === "ellie") && req.method === "POST") return await assistant(env, (await req.json()) as Record<string, unknown>);
       if (mod === "recap" && req.method === "POST") return await recap(env, (await req.json()) as Record<string, unknown>);
       if (mod === "stt" && req.method === "POST") return await (await import("./stt")).stt(env, req);
-      if (mod === "calls" && rest.length === 0 && req.method === "GET") return await allSavedCalls(env);
+      if (mod === "calls" && rest.length === 0 && req.method === "GET") return await allSavedCalls(env, req);
       if (mod === "calls" && rest.length === 1 && (req.method === "GET" || req.method === "POST")) return await savedCalls(env, req, rest[0]);
       if (mod === "handoffs" && rest.length === 0 && (req.method === "GET" || req.method === "POST")) return await handoffs(env, req);
       if ((mod === "c1" || mod === "c3" || mod === "c4") && req.method === "GET") {

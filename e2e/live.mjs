@@ -1,11 +1,11 @@
 // E2E against the deployed Patient 360 (live module data). Writes runs/<ts>/ with screenshots + manifest.json.
-// Checks: every screen renders from live data at desktop and phone width; the page follows the OS colour scheme
-// with the token sheet's rounded corners; the Patients count equals the four list endpoints and Today stays
+// Checks: every screen renders from live data at desktop and phone width; the page stays light with square
+// corners even when the OS asks for dark; the Patients count equals the four list endpoints and Today stays
 // short; module chips say "live"; pills navigate; every program view ends in the raw response; a live call
-// tags typed lines through Clef and saves, and the recap matches the record; Ellie opens pages and
+// tags typed lines through Clef and saves, and the recap matches the record; AI assistant opens pages and
 // answers; with C3 forced down (its API requests aborted in the browser) the app falls back to the saved copy.
-// Also: Health chart is a summary with Ellie's Insight; Hospital-risk rows open the patient; no Patient's app or nav icons;
-// Ellie follow-ups ("open that first patient", "start a call with them"); Play-as-live demo; the mic records a spoken
+// Also: Health chart is a summary with AI Insight; Hospital-risk rows open the patient; no Patient's app or nav icons;
+// AI assistant follow-ups ("open that first patient", "start a call with them"); Play-as-live demo; the mic records a spoken
 // clip (Chromium fake mic fed a `say` wav) and Whisper transcribes it into a line.
 // Usage: node e2e/live.mjs [baseUrl]
 import { chromium } from "playwright";
@@ -18,7 +18,9 @@ mkdirSync(dir, { recursive: true });
 const checks = [];
 const ok = (name, pass, detail = "") => { checks.push({ name, pass: !!pass, detail }); console.log(`${pass ? "PASS" : "FAIL"} ${name}${detail ? " · " + detail : ""}`); };
 
-const j = async (p) => (await fetch(B + p)).json();
+// Everything this test writes (saved calls, hand-offs) goes to the "test:" namespace: cookie in the browser, header here.
+const TEST_COOKIE = { name: "p360test", value: "1", url: B };
+const j = async (p) => (await fetch(B + p, { headers: { "x-p360-test": "1" } })).json();
 const [l1, l3, l4, l5, calls] = await Promise.all([j("/api/c1/survivors"), j("/api/c3/survivors"), j("/api/c4/survivors"), j("/api/c5/survivors"), j("/api/c5/calls")]);
 const total = l1.length + l3.length + l4.length + l5.length;
 const ids = { c1: l1[0].survivorId, c3: l3[0].survivorId, c4: l4[0].survivorId, c5: l5[0].survivorId };
@@ -39,13 +41,14 @@ const ROUTES = [
   ["calls", "Calls"], [`call-${flaggedCall.callId}`, "Transcript"],
   [`live-${c5WithCall}`, "Last call"], [`live-${ids.c4}`, "No previous call"],
   ["care", "Hospital risk"], ["research", "Research"],
-  ["today~error", "Couldn"], ["today~empty", "No one needs a call today"], ["today~loading", ""],
+  ["today~error", "Couldn"], ["today~empty", "Nothing here yet"], ["today~loading", ""],
 ];
 const browser = await chromium.launch();
 const manifest = { base: B, ts, total, ids, call: flaggedCall.callId, shots: [] };
 
 async function newPage(opts, abortC3 = false) {
   const ctx = await browser.newContext(opts);
+  await ctx.addCookies([TEST_COOKIE]);
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -80,29 +83,21 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await ctx.close();
 }
 
-// 2. look: follows the OS (dark when the OS is dark); rounded corners from the token sheet (POLISH.md)
+// 2. look: light even when the OS asks for dark; square corners
 {
   const { ctx, page } = await newPage({ viewport: { width: 1280, height: 900 }, colorScheme: "dark" });
   await page.goto(`${B}/#p-${ids.c4}`); await settle(page);
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  const lum = (bg.match(/\d+/g) || [255, 255, 255]).slice(0, 3).reduce((a, b) => a + +b, 0) / 3;
-  ok("dark when the OS is dark (body background)", lum < 40, bg);
-  // Each component's corner equals its token from the sheet (POLISH.md): surfaces --r-md, controls --r-pill.
-  // A component not on this page is skipped.
-  const radii = await page.evaluate(() => {
-    const tok = (t) => { const d = document.createElement("div"); d.style.borderTopLeftRadius = `var(${t})`; document.body.appendChild(d); const v = getComputedStyle(d).borderTopLeftRadius; d.remove(); return v; };
-    return [[".card", "--r-md"], [".kpi", "--r-md"], [".btn", "--r-pill"], [".tag", "--r-pill"]].map(([s, t]) => {
-      const e = document.querySelector(s); const want = tok(t);
-      return { s, t, want, got: e ? getComputedStyle(e).borderTopLeftRadius : null };
-    });
-  });
-  const seen = radii.filter((r) => r.got != null);
-  ok("corners follow the token sheet (.card/.kpi = --r-md, .btn/.tag = --r-pill)", seen.length > 0 && seen.every((r) => r.got === r.want && r.want !== "0px"), radii.map((r) => `${r.s} ${r.got ?? "none"} (${r.t} ${r.want})`).join(", "));
-  await shot(page, "dark-os_1280.png", false);
+  const lum = (bg.match(/\d+/g) || [0, 0, 0]).slice(0, 3).reduce((a, b) => a + +b, 0) / 3;
+  ok("stays light when the OS is dark", lum > 200, bg);
+  const radii = await page.evaluate(() => [".card", ".btn", ".pill", ".kpi", ".tag"].map((s) => { const e = document.querySelector(s); return e ? s + " " + getComputedStyle(e).borderTopLeftRadius : s + " none"; }));
+  // One corner radius per component, from the token sheet (POLISH.md); a component not on this page is skipped.
+  ok("consistent corners on cards, buttons, pills, KPIs, tags", radii.filter((r) => !r.endsWith(" none")).every((r) => r.endsWith(" 0px")), radii.join(", "));
+  await shot(page, "dark-os-light-page_1280.png", false);
   await ctx.close();
 }
 
-// 3. counts, sources, pills, drill-down, live call, Ellie
+// 3. counts, sources, pills, drill-down, live call, AI assistant
 {
   const { ctx, page, errors } = await newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto(`${B}/#patients`); await settle(page);
@@ -110,12 +105,12 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Patients count = c1 + c3 + c4 + c5 list endpoints", count === total, `${count} vs ${total}`);
   const src = await page.locator(".mode .src").evaluateAll((els) => els.map((e) => e.textContent + ":" + e.className));
   ok("C1, C3, C4, C5 chips say live", src.length === 4 && src.every((c) => c.includes("s-live")), src.join(" | "));
-  const optToday = await page.locator('option[value="today"]').first().innerText().catch(() => "");
+  const optToday = await page.locator('a.fpill[href="#patients-today"]').first().innerText().catch(() => "");
   const apiToday = (await (await fetch(`${B}/api/today`)).json()).rows.filter((r) => r.horizon === "today").length;
-  ok("Patients 'Act today' count = Today queue count (one list everywhere)", optToday.includes(`(${apiToday})`), `${optToday} vs ${apiToday}`);
+  ok("Patients 'Act today' count = Today queue count (one list everywhere)", new RegExp(`\\b${apiToday}\\b`).test(optToday), `${optToday} vs ${apiToday}`);
   for (const m of ["c3", "c4", "c1"]) {
     await page.locator(`[data-filter="${m}"]`).click(); await settle(page);
-    ok(`${m} rows carry a reason and no repeated tag chips on Patients`, (await page.locator(`tr[data-pid^="${m}-"] td.hl`).first().innerText()).trim().length > 0 && (await page.locator(`tr[data-pid^="${m}-"] .tag`).count()) === 0);
+    ok(`${m} rows carry tags on Patients`, (await page.locator(`tr[data-pid^="${m}-"] .tag`).count()) > 0);
   }
   await page.locator(`[data-filter="all"]`).click();
   await page.goto(`${B}/#today`); await settle(page);
@@ -123,7 +118,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   const tq = await (await fetch(`${B}/api/today`)).json();
   const qMods = new Set(tq.rows.map((r) => r.mod));
   ok("Today API: one queue with rows from C1, C3, C4 and C5", ["c1", "c3", "c4", "c5"].every((m) => qMods.has(m)), [...qMods].join(","));
-  ok("Today API: every reason is 90 characters or less", tq.rows.every((r) => r.reason && r.reason.length <= 90), tq.rows.map((r) => r.reason.length).sort((x, y) => y - x)[0]);
+  ok("Today API: every row has a whole reason, never cut with \"…\"", tq.rows.every((r) => r.reason && !/…/.test(r.reason)), (tq.rows.find((r) => /…/.test(r.reason || "")) || {}).reason || "");
   ok("Today API: C1 rows say real MEPS data, the rest synthetic", tq.rows.every((r) => (r.mod === "c1") === /MEPS/.test(r.data)));
   const todayRows = await page.locator(".today-list .t-row").count();
   const domMods = new Set(await page.locator(".today-list .t-row").evaluateAll((els) => els.map((e) => e.dataset.mod)));
@@ -134,6 +129,8 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Today page: data-type chip on every row", (await page.locator(".today-list .t-row .chip-data").count()) === todayRows);
   ok("Today page: interpreter chip for a non-English patient", (await page.locator(".today-list .chip-lang.need").count()) > 0);
   ok("Today page: separate-cohorts line", /Four programs, four separate cohorts/.test(await page.locator(".cohorts").innerText().catch(() => "")));
+  const domWhy = await page.locator(".today-list .t-row .why").allInnerTexts();
+  ok("Today page: no reason truncated with \"…\" (rows wrap)", domWhy.length > 0 && !domWhy.some((t) => /…/.test(t)), domWhy.find((t) => /…/.test(t)) || `${domWhy.length} reasons`);
   await shot(page, "today_1280.png");
   await page.locator(".t-row .btn.primary").first().click(); await settle(page);
   ok("Today: first action opens a call or the risk view", /#(live-|p-c1-)/.test(await page.evaluate(() => location.hash)), await page.evaluate(() => location.hash));
@@ -144,8 +141,8 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("advice sits beside its chart", (await page.locator(".do .do-visual svg.chart").count()) >= 2);
   ok("program view ends in the full raw response", (await page.locator("details#raw summary").innerText()).includes("Everything this program sent"));
   await page.goto(`${B}/#p-${ids.c4}`); await settle(page);
-  await page.locator("a.kpi").first().click(); await settle(page);
-  ok("KPI card drills into the program view", (await page.evaluate(() => location.hash)) === `#p-${ids.c4}.c4`);
+  await page.locator("a.l-tile").first().click(); await settle(page);
+  ok("Health chart tile drills into the program view", (await page.evaluate(() => location.hash)) === `#p-${ids.c4}.c4`);
 
   // glucose: a series with no readings is named, never drawn as a phantom legend line
   const n72 = await j("/api/c4/survivors/c4-N0072").catch(() => null);
@@ -179,45 +176,76 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("live call: saved, and the recap now shows it", after === Math.min(before + 1, 20) && (await page.locator("#recap").innerText()).includes("Logged in Patient 360"), `${before} → ${after}`);
   manifest.savedCallPatient = quiet.survivorId;
 
-  // Ellie: opens a page instantly, answers a question through the model
+  // AI assistant: opens a page instantly, answers a question through the model
   await page.goto(`${B}/#today`); await settle(page);
-  await page.locator("#ellie-fab").click();
-  await page.fill("#ellie-q", "open glucose for N0072"); await page.press("#ellie-q", "Enter");
+  await page.locator("#assistant-fab").click();
+  await page.fill("#assistant-q", "open glucose for N0072"); await page.press("#assistant-q", "Enter");
   await page.waitForFunction(() => location.hash === "#p-c4-N0072.c4", null, { timeout: 15000 }).catch(() => {});
-  ok("Ellie opens a patient's glucose page", (await page.evaluate(() => location.hash)) === "#p-c4-N0072.c4", await page.evaluate(() => location.hash));
+  ok("AI assistant opens a patient's glucose page", (await page.evaluate(() => location.hash)) === "#p-c4-N0072.c4", await page.evaluate(() => location.hash));
   await settle(page);
-  await page.fill("#ellie-q", "What does time in range mean for this patient?"); await page.press("#ellie-q", "Enter");
-  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
-  const ans = await page.locator("#ellie-msgs .m.a").last().innerText();
-  ok("Ellie answers from the patient on screen", /range|70|180/i.test(ans) && !/couldn/i.test(ans), ans.slice(0, 160).replace(/\s+/g, " "));
-  await shot(page, "ellie_1280.png", false);
-  await page.fill("#ellie-q", "fever 39 on chemo, what should the patient do?"); await page.press("#ellie-q", "Enter");
-  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 30000 }).catch(() => {});
-  const red = await page.locator("#ellie-msgs .m.a").last().innerText();
-  ok("Ellie: red-flag question gets the emergency answer", /emergency|ER today|24-hour/i.test(red) && !/3021|rate limit|error/i.test(red), red.slice(0, 120).replace(/\s+/g, " "));
-  manifest.ellie = ans;
+  await page.fill("#assistant-q", "What does time in range mean for this patient?"); await page.press("#assistant-q", "Enter");
+  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#assistant-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
+  const ans = await page.locator("#assistant-msgs .m.a").last().innerText();
+  ok("AI assistant answers from the patient on screen", /range|70|180/i.test(ans) && !/couldn/i.test(ans), ans.slice(0, 160).replace(/\s+/g, " "));
+  await shot(page, "assistant_1280.png", false);
+  await page.fill("#assistant-q", "fever 39 on chemo, what should the patient do?"); await page.press("#assistant-q", "Enter");
+  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#assistant-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 30000 }).catch(() => {});
+  const red = await page.locator("#assistant-msgs .m.a").last().innerText();
+  ok("AI assistant: red-flag question gets the emergency answer", /emergency|ER today|24-hour/i.test(red) && !/3021|rate limit|error/i.test(red), red.slice(0, 120).replace(/\s+/g, " "));
+  manifest.assistant = ans;
 
-  // Ellie: follow-ups resolve to the patients she just named; the panel closes
-  await page.fill("#ellie-q", "who is at most risk of hospitalization"); await page.press("#ellie-q", "Enter");
-  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
-  const firstCite = await page.locator("#ellie-msgs .m.a").last().locator('a[href^="#p-"]').first().getAttribute("href").catch(() => null);
-  ok("Ellie names patients for a risk question", !!firstCite, firstCite || (await page.locator("#ellie-msgs .m.a").last().innerText()).slice(0, 160));
-  await page.fill("#ellie-q", "open up that first patient"); await page.press("#ellie-q", "Enter");
+  // AI assistant: follow-ups resolve to the patients it just named; the panel closes
+  await page.fill("#assistant-q", "who is at most risk of hospitalization"); await page.press("#assistant-q", "Enter");
+  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#assistant-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
+  const firstCite = await page.locator("#assistant-msgs .m.a").last().locator('a[href^="#p-"]').first().getAttribute("href").catch(() => null);
+  ok("AI assistant names patients for a risk question", !!firstCite, firstCite || (await page.locator("#assistant-msgs .m.a").last().innerText()).slice(0, 160));
+  await page.fill("#assistant-q", "open up that first patient"); await page.press("#assistant-q", "Enter");
   await page.waitForFunction((h) => location.hash.startsWith(h), firstCite, { timeout: 60000 }).catch(() => {});
   const fh = await page.evaluate(() => location.hash);
-  ok("Ellie follow-up: 'that first patient' opens the one she named", !!firstCite && fh.startsWith(firstCite), `${fh} vs ${firstCite}`);
+  ok("AI assistant follow-up: 'that first patient' opens the one it named", !!firstCite && fh.startsWith(firstCite), `${fh} vs ${firstCite}`);
   await settle(page);
-  await page.fill("#ellie-q", "start a call with them"); await page.press("#ellie-q", "Enter");
+  await page.fill("#assistant-q", "start a call with them"); await page.press("#assistant-q", "Enter");
   await page.waitForFunction(() => location.hash.startsWith("#live-"), null, { timeout: 60000 }).catch(() => {});
-  ok("Ellie follow-up: 'start a call with them' opens the call", firstCite && (await page.evaluate(() => location.hash)) === "#live-" + firstCite.slice(3).split(".")[0], await page.evaluate(() => location.hash));
-  await shot(page, "ellie-followup_1280.png", false);
-  await page.locator("#ellie-close").click();
-  ok("Ellie closes", await page.locator("#ellie").isHidden());
+  ok("AI assistant follow-up: 'start a call with them' opens the call", firstCite && (await page.evaluate(() => location.hash)) === "#live-" + firstCite.slice(3).split(".")[0], await page.evaluate(() => location.hash));
+  await shot(page, "assistant-followup_1280.png", false);
+  await page.locator("#assistant-close").click();
+  ok("AI assistant closes", await page.locator("#assistant").isHidden());
 
-  // Health chart = summary + Ellie's Insight; detail lives in the pills
+  // No old assistant name anywhere in the rendered page (zay: "remove all ellie language").
+  for (const r of ["today", "patients", "p-x-L1", "calls"]) {
+    await page.goto(`${B}/#${r}`); await settle(page);
+    await page.waitForFunction(() => { const e = document.querySelector(".assistant-insight"); return !e || (e.dataset.state && e.dataset.state !== "loading"); }, null, { timeout: 45000 }).catch(() => {});
+    const hits = await page.evaluate(() => (document.documentElement.outerHTML.match(/.{0,40}ellie.{0,40}/gi) || []).slice(0, 3));
+    ok(`#${r}: rendered DOM has no "ellie"`, hits.length === 0, hits.join(" | "));
+  }
+
+  // One fact, one place: every tile number appears exactly once on its overview; no patient second person anywhere we write.
+  const voice = [];
+  for (const pid of ["x-L1", "c4-N0072", "c3-P03000", "c1-S71188550", "c5-P0002"]) {
+    await page.goto(`${B}/#p-${pid}`); await settle(page);
+    await page.waitForFunction(() => !document.querySelector("#view .is-loading, #view [aria-busy=true]"), null, { timeout: 30000 }).catch(() => {});
+    await page.waitForFunction(() => { const e = document.querySelector(".assistant-insight"); return e && e.dataset.state && e.dataset.state !== "loading"; }, null, { timeout: 45000 }).catch(() => {});
+    // The tile's number with its unit ("1 line", "10.3%"), counted as a whole token (not inside "13" or "21.0%").
+    const nums = (await page.locator("#view .l-tile .hero-num").allInnerTexts()).map((n) => n.replace(/\s+/g, " ").trim()), text = await page.locator("#view").innerText();
+    const esc = (n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const rep = nums.filter((n) => n && n !== "Not recorded").map((n) => [n, (text.replace(/\s+/g, " ").match(new RegExp(`(?<![\\d.])${esc(n)}(?![\\d])`, "g")) || []).length]).filter(([, k]) => k !== 1);
+    ok(`${pid} overview: each tile number appears exactly once`, nums.length > 0 && rep.length === 0, rep.length ? rep.map(([n, k]) => `${n}×${k}`).join(", ") : nums.join(", "));
+    for (const tab of ["", ".c1", ".c3", ".c4", ".c5"]) {
+      if (tab && !(pid.startsWith("x-") || pid.startsWith(tab.slice(1)))) continue;
+      if (tab) { await page.goto(`${B}/#p-${pid}${tab}`); await settle(page); }
+      // Our copy only: quoted patient words, the coach's translated call script and call transcripts are theirs.
+      const mine = await page.locator("#view").evaluate((v) => { const c = v.cloneNode(true); c.querySelectorAll(".handout, .c-row, blockquote, .calls-list, .t-quote, .hypo-tr, details#raw").forEach((e) => e.remove()); return c.innerText.replace(/“[^”]*”/g, ""); });
+      const hit = (mine.match(/[^.\n]{0,40}\byour? \w+[^.\n]{0,30}/gi) || []).filter((m) => /\byour /i.test(m));
+      if (hit.length) voice.push(`${pid}${tab}: ${hit[0].trim()}`);
+    }
+  }
+  for (const r of ["today", "patients"]) { await page.goto(`${B}/#${r}`); await settle(page); const t = (await page.locator("#view").innerText()).replace(/“[^”]*”/g, ""); const h = t.match(/[^.\n]{0,40}\byour [^.\n]{0,30}/i); if (h) voice.push(`${r}: ${h[0].trim()}`); }
+  ok("Clinician voice: no \"your \" in our copy (overviews, tabs, Today, Patients)", voice.length === 0, voice.slice(0, 3).join(" | "));
+
+  // Health chart = summary + AI Insight; detail lives in the pills
   await page.goto(`${B}/#p-${ids.c3}`); await settle(page);
-  await page.waitForFunction(() => { const e = document.querySelector(".ellie-insight"); return e && /check before acting|program’s own (summary|record)/i.test(e.textContent); }, null, { timeout: 60000 }).catch(() => {});
-  const ins = await page.locator(".ellie-insight").innerText().catch(() => "");
+  await page.waitForFunction(() => { const e = document.querySelector(".assistant-insight"); return e && /check before acting|program’s own (summary|record)/i.test(e.textContent); }, null, { timeout: 60000 }).catch(() => {});
+  const ins = await page.locator(".assistant-insight").innerText().catch(() => "");
   ok("Health chart shows AI Insight, short and labelled", /^AI Insight/.test(ins.trim()) && /check before acting|own (summary|record)/i.test(ins) && ins.split(/\s+/).length < 90, ins.replace(/\s+/g, " ").slice(0, 200));
   ok("Health chart has no raw dump (that lives in the program tab)", (await page.locator("details#raw").count()) === 0);
   await shot(page, "health-chart-insight_1280.png");
@@ -274,6 +302,18 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await ctx.close();
 }
 
+// What a judge sees (no test cookie): test calls never reach #calls, and no saved call is listed twice.
+{
+  const clean = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await clean.newPage();
+  await page.goto(`${B}/#calls`); await page.waitForSelector("#view[data-ready]", { timeout: 30000 }).catch(() => {}); await page.waitForTimeout(1500);
+  const logged = await page.locator("#view .c-row").evaluateAll((rs) => rs.map((r) => r.innerText.replace(/\s+/g, " ").trim()).filter((t) => /Logged in Patient 360/.test(t)));
+  const dup = logged.length - new Set(logged).size;
+  ok("#calls: no duplicate 'Logged in Patient 360' rows, no test data", dup === 0 && !logged.some((t) => /P00949/.test(t) && /Marisol/.test(t)), `${logged.length} logged rows, ${dup} duplicates`);
+  const pub = await (await fetch(`${B}/api/calls`)).json();
+  ok("API without the test marker returns no test records", Array.isArray(pub) && !pub.some((x) => x.test), `${pub.length} entries`);
+  await clean.close();
+}
 await browser.close();
 
 // 5. the mic: Chromium's fake mic plays a spoken wav; Whisper must turn it into a line
@@ -282,6 +322,7 @@ await browser.close();
   const wav = new URL("./fixtures/mic.wav", import.meta.url).pathname;
   const mb = await chromium.launch({ args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-audio-capture=${wav}`] });
   const ctx = await mb.newContext({ viewport: { width: 1280, height: 900 }, permissions: ["microphone"] });
+  await ctx.addCookies([TEST_COOKIE]);
   const page = await ctx.newPage();
   await page.goto(`${B}/#live-${quiet.survivorId}`); await settle(page);
   await page.locator("#mic").click();

@@ -14,7 +14,9 @@ type Rec = Record<string, unknown>;
 type TodayEnv = { C1: Fetcher; C3: Fetcher; C4: Fetcher; C5: Fetcher };
 
 const isRec = (x: unknown): x is Rec => !!x && typeof x === "object" && !Array.isArray(x);
-const cut = (s: string, n = 90) => (s.length > n ? s.slice(0, n - 1).replace(/[\s,;:·]+\S*$/, "") + "…" : s);
+// Reasons are shown whole (the row wraps to two lines); a reason is never cut with "…".
+const cut = (s: string) => s.replace(/\s+/g, " ").trim();
+const agoWords = (iso: unknown) => { const t = Date.parse(String(iso || "")); if (isNaN(t)) return ""; const d = Math.floor((Date.now() - t) / 864e5); return d < 1 ? "today" : d < 2 ? "yesterday" : d < 60 ? `${d} days ago` : `${Math.round(d / 30.4)} months ago`; };
 const r0 = (v: unknown, d = 0) => (typeof v === "number" ? Number(v.toFixed(d)) : null);
 const LANG: Record<string, string> = { "haitian creole": "Kreyòl", kreyol: "Kreyòl", "kreyòl": "Kreyòl", spanish: "Spanish", español: "Spanish", english: "English" };
 const lang = (s: unknown) => { const t = String(s || "").trim(); return t ? LANG[t.toLowerCase()] || t : ""; };
@@ -53,7 +55,7 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     const words = String(dBanner.quote || "").replace(/\s+/g, " ").replace(/^(oh,?\s+)?before you go,?\s+(and\s+)?/i, "").trim();
     const c = callList.find((x) => x.callId === dm.callId) || {};
     rows.push({ id: pid, mod: "c5", name: String(c.participantName || pid), status: "alert", headline: `${label} on call ${c.callNumber || ""}, replayed through Clef today`, updatedAt: dm.playedAt,
-      horizon: "today", rank, reason: cut(`${label}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: lang(dm.language) || langOf5.get(pid) || "", flaggedAt: dm.playedAt });
+      horizon: "today", rank, reason: cut(`${label}, call ${c.callNumber || ""}, replayed today: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: lang(dm.language) || langOf5.get(pid) || "", flaggedAt: dm.playedAt });
   }
   for (const [pid, c] of byP) {
     if (dm && pid === String(dm.survivorId)) continue;
@@ -62,7 +64,7 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     const [label, rank] = KIND[String(f.kind)] || KIND.medical;
     const words = String(f.text || "").replace(/\s+/g, " ").replace(/^(oh,?\s+)?before you go,?\s+(and\s+)?/i, "").trim();
     rows.push({ id: pid, mod: "c5", name: String(c.participantName || pid), status: "alert", headline: `${label} on call ${c.callNumber}`, updatedAt: c.date,
-      horizon: "today", rank, reason: cut(`${label}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: langOf5.get(pid) || "" });
+      horizon: "today", rank, reason: cut(`${label}, call ${c.callNumber}, ${agoWords(c.date)}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: langOf5.get(pid) || "" });
   }
 
   // C3: urgent first (7-day ER/hospital risk over its line), then rough-patch alerts.
@@ -112,7 +114,12 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     const driver = (String(x.headline).match(/driven by ([^,;]+)/i) || [])[1];
     const now = rf.careTeamToday === true;
     const flag = now ? String(rf.banner || (survey.find((s) => s.urgency === "today") || {}).text || "") : "";
-    const reason = now && flag ? `Red flag: ${flag.replace(/^[^:]*care team today[:.]?\s*/i, "")}`
+    // Each red-flag row names the person and the survey answer itself, so two rows never read the same.
+    const pf = isRec(d.profile) ? d.profile : {};
+    const who = [pf.age && `${pf.age}${String(pf.sex || "").charAt(0).toUpperCase()}`, Array.isArray(pf.cancerTypes) && pf.cancerTypes[0]].filter(Boolean).join(" ");
+    const answers = survey.filter((s) => s.urgency === "today").map((s) => String(s.text).split(":")[0].replace(/^Reported feeling /i, "").replace(/^Serious psychological distress/i, "serious distress").replace(/ of (\d+)\)/, "/$1)").trim()).filter(Boolean);
+    const reason = now && answers.length ? `Red flag${who ? ` (${who})` : ""}: ${answers.join("; ")}`
+      : now && flag ? `Red flag: ${flag.replace(/^[^:]*care team today[:.]?\s*/i, "")}`
       : `ER/hospital risk ${risk}% next year${visits ? `, ${visits.replace(/\(s\)/g, "s").replace(/^1 ER visits/, "1 ER visit").replace(/ 1 hospital stays/, " 1 hospital stay")}` : driver ? `, driven by ${driver}` : ""}`;
     rows.push({ ...base("c1", x), horizon: now ? "today" : "week", rank: now ? 910 + risk / 100 : 500 + risk / 10, reason: cut(reason), riskWords: d.riskWords || "", caveat: d.caveat || "",
       data: "Real survey data (MEPS)", language: "" });

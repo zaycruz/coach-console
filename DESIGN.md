@@ -20,7 +20,7 @@ The word is **patient** everywhere in the UI. The module APIs still say `survivo
 
 This follows the glucose team's page. Each screen answers one question first, and every number can be opened down to its source.
 
-**Two levels for each patient.** The **Health chart** (`#p-<id>`) is the summary: headline, status and why, the Ellie's Insight slot (`<div class="ellie-insight" data-pid="<id>">`, filled by `ellie.js`), one compact strip of key numbers, and the top two actions with no charts. The **program pills** (`#p-<id>.c1|c3|c4|c5`) hold the full detail: every action with the chart behind it, the detail panels, the evidence and the raw response. Each KPI card and action list on the Health chart links to its program pill, so nothing is lost.
+**Two levels for each patient.** The **Health chart** (`#p-<id>`) is the summary: headline, status and why, the AI Insight slot (`<div class="assistant-insight" data-pid="<id>">`, filled by `assistant.js`), one compact strip of key numbers, and the top two actions with no charts. The **program pills** (`#p-<id>.c1|c3|c4|c5`) hold the full detail: every action with the chart behind it, the detail panels, the evidence and the raw response. Each KPI card and action list on the Health chart links to its program pill, so nothing is lost.
 
 A program view has these layers:
 
@@ -41,7 +41,7 @@ Hash routes are plain tokens, so links work inside the claude.ai Artifact as wel
 |---|---|
 | `#today` | Who needs a person today: four counts, then at most 8 rows. Each row has one reason and one action: Start call (or Review risk for C1) and Open. |
 | `#patients[-today\|alert\|watch\|ok]` | Every patient (335 across C1/C3/C4/C5) with search, program and status filters, and tags. Shows 60 at a time. |
-| `#p-<id>` | Health chart: the summary (headline, status, Ellie's Insight, key numbers, top two actions). The pills are tabs: Health chart, Hospital risk, Rough weeks, Glucose, Coaching calls. |
+| `#p-<id>` | Health chart: the summary (headline, status, AI Insight, key numbers, top two actions). The pills are tabs: Health chart, Hospital risk, Rough weeks, Glucose, Coaching calls. |
 | `#p-<id>.<c1\|c3\|c4\|c5>` | One program's full view of the patient: every action with its chart, detail panels, evidence, everything the program sent. A program the patient isn't in shows "Not enrolled" and why. |
 | `#live-<id>` | Start a call with this patient. See section 4. |
 | `#calls`, `#call-<id>` | Supervisor-labelled calls. "Run Clef" re-tags every line and scores agreement. |
@@ -70,13 +70,13 @@ A patient with no call history gets "No previous call on record" and the program
 
 "End and save call" stores the call, and it becomes the next recap.
 
-## 5. Ellie
+## 5. AI assistant
 
-Ellie is a chat panel that is available on every screen. She can:
+The AI assistant is a chat panel that is available on every screen. It can:
 
 - **Open pages.** Commands like "open glucose for N0072" or "start a call with Yolanda" are parsed in the browser and open at once.
-- **Find and explain a patient.** `/api/ellie` runs a short tool loop (at most 4 model calls): `search_patients`, `get_patient` and `read_page` run in the Worker; `navigate`, `open_tab`, `start_call` and `answer` end the turn. Follow-ups such as "the first one" or "start a call with them" resolve against the patients Ellie last named.
-- **Ellie's insight.** Every health chart has an `.ellie-insight[data-pid]` slot that `POST /api/insight` fills with a headline and up to 3 short bullets, cached in KV.
+- **Find and explain a patient.** `/api/assistant` runs a short tool loop (at most 4 model calls): `search_patients`, `get_patient` and `read_page` run in the Worker; `navigate`, `open_tab`, `start_call` and `answer` end the turn. Follow-ups such as "the first one" or "start a call with them" resolve against the patients it last named.
+- **AI Insight.** Every health chart has an `.assistant-insight[data-pid]` slot that `POST /api/insight` fills with a one-sentence headline (no numbers, no action), cached in KV.
 - **Answer general medical questions.** These answers are labelled AI.
 
 The Worker accepts a page from the model only if it fits a known route and uses an ID it sent. It drops cited IDs it did not send. The model is the same GLM Clef uses (`@cf/zai-org/glm-5.3-flash`).
@@ -97,12 +97,12 @@ browser ──> patient-360 Worker ──┬─ C1 c1-acute-risk      (service b
   adapters.js (one mapping layer) ├─ C3 c3-rough-patch      (service binding, GET)
   fallback-data.js (saved copy)   ├─ C4 c4-glucose-guide    (service binding, GET)
                                   ├─ C5 coach-copilot-clef  (GET lists via adapter; POST turn/review/cue)
-                                  ├─ Workers AI (GLM): /api/ellie, /api/recap
+                                  ├─ Workers AI (GLM): /api/assistant, /api/recap
                                   └─ KV CALLS: /api/calls/:patientId
 ```
 
-- **One mapping layer.** All module knowledge lives in `public/adapters.js`. `app.js`, `call.js` and `ellie.js` only render the UI shape.
+- **One mapping layer.** All module knowledge lives in `public/adapters.js`. `app.js`, `call.js` and `assistant.js` only render the UI shape.
 - **Fallback.** A module that is down or missing a field falls back to the saved copy (`scripts/snapshot.mjs`) and is marked as such.
-- **The Artifact.** It runs on the saved copy alone (`SNAPSHOT_ONLY`). Ellie and live calls there link out to the live site.
+- **The Artifact.** It runs on the saved copy alone (`SNAPSHOT_ONLY`). The AI assistant and live calls there link out to the live site.
 
 Remaining asks per module: see `INTEGRATION.md`.

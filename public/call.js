@@ -18,7 +18,7 @@
 
   async function lastCall(p) {
     // Saved in-app calls (KV) and, for coaching-program patients, the labelled call history.
-    const fetched = SNAP ? [] : await fetch(`/api/calls/${encodeURIComponent(p.id)}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    const fetched = SNAP ? [] : await fetch(`/api/calls/${encodeURIComponent(p.id)}`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : [])).then((l) => (Array.isArray(l) ? l.filter((x) => !(x && x.test) || /(?:^|;\s*)p360test=1/.test(document.cookie)) : [])).catch(() => []);
     const saved = [...(justSaved[p.id] || []).filter((x) => !fetched.some((f) => f.id === x.id)), ...fetched].sort((a, b) => b.at.localeCompare(a.at));
     let labelled = null;
     if (p.mod === "c5") {

@@ -4,13 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Patient 360</title>
-<meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#F5F6F8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0B0D12" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<a class="skip" href="#view">Skip to content</a>
 <div class="shell">
   <nav class="rail" aria-label="Main">
     <a class="brand" href="#today">
@@ -30,7 +29,7 @@
   </nav>
   <div class="main">
     <header class="topbar">
-      <span class="pill-synthetic" title="Hospital risk: real MEPS 2017 survey respondents (IDs reassigned). Rough weeks, glucose and coaching calls: synthetic hackathon data." tabindex="0">Real (MEPS) + synthetic</span>
+      <span class="pill-synthetic" title="Hospital risk: real MEPS 2017 survey respondents (IDs reassigned). Rough weeks, glucose and coaching calls: synthetic hackathon data.">Real (MEPS) + synthetic data</span>
       <span class="mode" id="mode"></span>
     </header>
     <main id="view" tabindex="-1"></main>
@@ -41,6 +40,6 @@
 <script src="adapters.js"></script>
 <script src="app.js"></script>
 <script src="call.js"></script>
-<script src="ellie.js"></script>
+<script src="assistant.js"></script>
 </body>
 </html>

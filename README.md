@@ -1,8 +1,8 @@
 # Patient 360
 
 One clinician-facing record for a cancer-survivorship care team. It brings four hackathon programs into one place:
-hospital risk (C1), rough weeks from wearables (C3), glucose (C4) and coaching calls (C5). Ellie, an assistant
-built in, finds patients, explains their numbers, opens pages and starts calls.
+hospital risk (C1), rough weeks from wearables (C3), glucose (C4) and coaching calls (C5). A built-in AI assistant
+finds patients, explains their numbers, opens pages and starts calls.
 
 **Live:** https://patient-360.raava.dev
 
@@ -13,11 +13,11 @@ record is synthetic. Each program has its own cohort, so no patient appears in m
 
 | Path | What it is |
 |---|---|
-| `src/index.ts` | The Cloudflare Worker (`patient-360`). It serves `public/` and `/api/*`: it proxies C1, C3, C4 and C5 through service bindings and adds Ellie (`/api/ellie`), AI Insight (`/api/insight`), call recaps, saved calls and hand-offs (KV), and speech-to-text. |
-| `src/today.ts` | `GET /api/today`: one ranked queue across the four programs. Each row has a reason of 90 characters or less, its data type and the patient's language. |
+| `src/index.ts` | The Cloudflare Worker (`patient-360`). It serves `public/` and `/api/*`: it proxies C1, C3, C4 and C5 through service bindings and adds the AI assistant (`/api/assistant`), AI Insight (`/api/insight`), call recaps, saved calls and hand-offs (KV), and speech-to-text. |
+| `src/today.ts` | `GET /api/today`: one ranked queue across the four programs. Each row has a whole reason (never cut; it says how old a call flag is), its data type and the patient's language. |
 | `src/stt.ts` | `POST /api/stt`: Whisper on Workers AI for the in-call mic. |
-| `public/` | The app. Static files, no build step. `adapters.js` is the only file that knows module response shapes; `app.js` holds the pages; `call.js` the live call; `ellie.js` the assistant. `fallback-data.js` is a saved copy of the module APIs, used when a module is down. |
-| `e2e/live.mjs` | The end-to-end test against a deployed site: real browser, real module data, about 90 checks. |
+| `public/` | The app. Static files, no build step. `adapters.js` is the only file that knows module response shapes; `app.js` holds the pages; `call.js` the live call; `assistant.js` the AI assistant. `fallback-data.js` is a saved copy of the module APIs, used when a module is down. |
+| `e2e/live.mjs` | The end-to-end test against a deployed site: real browser, real module data, about 100 checks. |
 | `e2e/fixtures/` | A fixed mic clip for the speech test. |
 | `scripts/snapshot.mjs` | Rebuilds `public/fallback-data.js` from the live APIs. |
 | `scripts/persona-feedback.workflow.js` | The simulated-clinician feedback session run after each release (Claude Code workflow). |
@@ -61,7 +61,7 @@ What it covers:
 - the program views;
 - a live call through Clef, saved and recapped;
 - the mic, transcribed by Whisper;
-- Ellie's navigation, follow-ups and red-flag answers;
+- the AI assistant’s navigation, follow-ups and red-flag answers;
 - AI Insight;
 - the Play-as-live demo;
 - fallback to the saved copy when a module is down.

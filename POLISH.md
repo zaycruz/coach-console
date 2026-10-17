@@ -89,7 +89,7 @@ Short, warm and clinical.
 ### Patient 360
 | # | Screen | Now | To do |
 |---|---|---|---|
-| 1 | Shell: rail, topbar, phone tab bar | Square, Plex, dashed pill, mono source chips | Apply tokens. Make the topbar quiet: one "Real (MEPS) + synthetic" chip, and source status as one dot plus "All 4 programs live" (detail on hover/expand). Fix the phone tab bar covering content and the Ask Ellie button overlapping cards (bottom padding). |
+| 1 | Shell: rail, topbar, phone tab bar | Square, Plex, dashed pill, mono source chips | Apply tokens. Make the topbar quiet: one "Real (MEPS) + synthetic" chip, and source status as one dot plus "All 4 programs live" (detail on hover/expand). Fix the phone tab bar covering content and the AI assistant button overlapping cards (bottom padding). |
 | 2 | Today | Stat strip plus a long list of near-identical rows | Hero "8 to call today" with what it means. Rows: status glyph, name, a one-line reason with the number bolded, chips reduced to program dot plus language/interpreter, one primary action. "This week" collapsed after 5. |
 | 3 | Today loading / empty / error | Present | Skeleton rows, a calm empty state ("No one needs a call today ✓"), and an error state with a retry. |
 | 4 | Patients | Dense table | Status glyph column, name, program dot, reason, last data. Search and filters in one row. Phone: card rows. |
@@ -105,7 +105,7 @@ Short, warm and clinical.
 | 14 | Hospital risk (care) | Rosters, trust details | Hero "n at high 12-month risk (held-out)" plus the roster. Trust stays collapsed. |
 | 15 | Care-team inbox | List | Token pass and the empty state. |
 | 16 | Research | Placeholder | A clean "Coming later" empty state. |
-| 17 | Ellie | Fine as is (zay) | **Do not change its layout.** It only inherits colour and type tokens. |
+| 17 | AI assistant | Fine as is (zay) | **Do not change its layout.** It only inherits colour and type tokens. |
 | 18 | Global states | Mixed | Skeleton component, error box with retry, the rate-limit message ("Busy for a moment, try again in a minute") and an unknown-patient page. No raw errors anywhere. |
 | 19 | Dark mode | Light only | Tokens under `prefers-color-scheme: dark`. Charts read their colours from tokens. |
 
