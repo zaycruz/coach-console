@@ -15,7 +15,7 @@
   const MODS = A.MODULES;
   const view = document.getElementById("view");
   let previewState = "ready";
-  const ui = { filter: "all", q: "", limit: 25 };
+  const ui = { filter: "all", q: "", limit: 25, weekAll: false };
   const ALL = ["c1", "c3", "c4", "c5"];
   const memo = new Map();
   const once = (k, fn) => { if (!memo.has(k)) memo.set(k, fn().catch((e) => { memo.delete(k); throw e; })); return memo.get(k); };
@@ -198,7 +198,7 @@
       <section class="stack-s" id="today-now"><div class="sec-head"><h2>Call today · ${nowAll.length}</h2><p class="sub-s">Safety lines from calls, urgent 7-day ER risk, survey red flags. ${per(nowAll)}</p></div>
         <div class="roster-today" data-count="${now.length}">${now.length ? list(now) : `<div class="live-empty">Nobody needs a call today.</div>`}</div>
         ${nowAll.length > now.length ? `<a class="more-link" href="#patients-today">Show ${nowAll.length - now.length} more on the Patients list →</a>` : ""}</section>
-      ${week.length ? `<section class="stack-s" id="today-week"><div class="sec-head"><h2>This week · ${week.length}</h2><p class="sub-s">Glucose flags for the care team first, then rough weeks ahead and the highest next-year ER/hospital risk. ${per(week)}</p></div>${list(week)}</section>` : ""}${handed}`;
+      ${week.length ? `<section class="stack-s" id="today-week"><div class="sec-head"><h2>This week · ${week.length}</h2><p class="sub-s">Glucose flags for the care team first, then rough weeks ahead and the highest next-year ER/hospital risk. ${per(week)}</p></div>${list(ui.weekAll ? week : week.slice(0, 8))}${week.length > 8 && !ui.weekAll ? `<button class="more-link btn quiet" type="button" data-week-more>Show ${week.length - 8} more this week</button>` : ""}</section>` : ""}${handed}`;
   }
 
   // ------------------------------------------------------------------ Patients
@@ -304,7 +304,7 @@
     if (c && !p.handoff) {
       const days = daysSince(c.at), when = `${c.where}, ${A.ago(c.at)}`;
       // On today's list (a fresh flag, or the demo call replayed today) it is same-day work; an old flag nobody replayed is a loop to close.
-      if (p.tri === "today" || days == null || days <= 30) { add({ owner: "Nurse", due: "Today", mod: "c5", text: "Hand off the flagged line to the nurse today and log it" }); add({ owner: "Coach", due: "Today", mod: "c5", text: "If it comes up on a call: ask about it in their words, don’t assess, say “I’m sending this to your nurse today”, then hand off" }); }
+      if (p.tri === "today" || days == null || days <= 30) add({ owner: "Coach", due: "Today", mod: "c5", text: "Hand off the flagged line to the nurse today and log it. On a call: ask about it in their words, don’t assess, say “I’m sending this to your nurse today”" });
       else add({ owner: "Nurse", due: "Today", mod: "c5", text: `Close the loop: confirm the flag from ${when} was handed off and acted on` });
     }
     for (const v of mem) for (const pn of v.panels || []) for (const a of pn.advice || []) {
@@ -312,7 +312,8 @@
       let text = String(a.title || "").replace(/\.$/, "").replace(/\bthe top drivers below\b/i, `the top drivers on the ${MODS[v.mod].name} tab`).replace(/;?\s*escalate if symptoms are worsening/i, "; if anything new comes up, hand off to the nurse");
       if (c && /tell the care team|hand[- ]off|handed off/i.test(text)) continue; // the flagged-line step above covers it
       const owner = ownerFor(a, v.mod);
-      if (owner === "Coach" && COACH_SCOPE.test(text)) text += " · ask, don’t assess; hand off";
+      if (/pass on to the patient/i.test(a.tag || "")) text = `Pass on to the patient: ${text.charAt(0).toLowerCase() + text.slice(1)}`;
+      else if (owner === "Coach" && COACH_SCOPE.test(text)) text += " · ask, don’t assess; hand off";
       add({ owner, due: dueFor(a), mod: v.mod, text });
     }
     const D = { Today: 0, "This week": 1 };
@@ -325,6 +326,9 @@
   // Coach prep for a coaching-calls patient: the last call in the coach's own terms. Went well / Try next come from the
   // supervisor-labelled score parts (highest and lowest against target); the score itself stays on the call record.
   const PART = { reflectionsPerQuestion: "Reflections per question", complexReflectionPct: "Complex reflections", openQuestionPct: "Open questions", miConsistent: "Supportive moves vs persuading" };
+  // The same four MI parts, said the way a coach would say them.
+  const WELL = { reflectionsPerQuestion: "Reflected before asking the next question", complexReflectionPct: "Reflections added meaning, not just a restatement", openQuestionPct: "Open questions led the call", miConsistent: "Stayed supportive, no persuading or confronting" };
+  const TRY = { reflectionsPerQuestion: "Reflect what they said before asking the next question", complexReflectionPct: "When you reflect, add the meaning behind their words", openQuestionPct: "Ask open questions (what, how) instead of yes/no ones", miConsistent: "Ask permission before advice; avoid persuading" };
   const partVal = (k, p) => (k === "miConsistent" ? `${p.value} (supportive vs persuade/confront)` : `${p.value == null ? "–" : p.value}${/Pct/.test(k) ? "%" : ""} (target ${p.target}${/Pct/.test(k) ? "%" : ""})`);
   function coachPrep(p, calls) {
     const id = p.members ? p.members.c5 && p.members.c5.id : p.mod === "c5" ? p.id : null;
@@ -336,8 +340,8 @@
     const fl = (c.flags || [])[0];
     const ho = p.handoff;
     return `<section class="prep"><div class="sec-head"><h2>Last call · coach view</h2><p class="sub-s">Call ${c.callNumber} · ${fmtDate(c.date)} · ${esc(c.language)} · goal: ${esc(c.goalTopic)} · coach ${esc(c.coach.name)}</p></div>
-      <dl class="prep-dl">${best ? `<div><dt>Went well</dt><dd>${esc(PART[best[0]] || best[0])} ${esc(partVal(best[0], best[1]))}</dd></div>` : ""}${worst && worst !== best ? `<div><dt>Try next</dt><dd>${esc(PART[worst[0]] || worst[0])} ${esc(partVal(worst[0], worst[1]))}</dd></div>` : ""}
-        ${fl ? `<div class="prep-flag"><dt>Flagged moment · ${esc(fl.t)}</dt><dd>“${esc(fl.text)}” <span class="${ho ? "done" : "open-flag"}">${ho ? `✓ ${esc(ho.label)}` : "▲ not yet handed off"}</span></dd></div>` : ""}</dl>
+      <dl class="prep-dl">${best ? `<div><dt>Went well</dt><dd>${esc(WELL[best[0]] || best[0])}<span class="small muted"> · ${esc(PART[best[0]] || best[0])} ${esc(partVal(best[0], best[1]))}</span></dd></div>` : ""}${worst && worst !== best ? `<div><dt>Try next</dt><dd>${esc(TRY[worst[0]] || worst[0])}<span class="small muted"> · ${esc(PART[worst[0]] || worst[0])} ${esc(partVal(worst[0], worst[1]))}</span></dd></div>` : ""}
+        ${fl ? `<div class="prep-flag"><dt>Flagged moment</dt><dd>At ${esc(fl.t)} on call ${c.callNumber} (${esc(fl.kind || "safety")}) <span class="${ho ? "done" : "open-flag"}">${ho ? `✓ ${esc(ho.label)}` : "▲ not yet handed off"}</span></dd></div>` : ""}</dl>
       <p class="small"><a href="#call-${esc(c.callId)}">Call record and transcript →</a></p></section>`;
   }
   // Tier strip (Hospital risk tab): the three tiers as bands sized by share of development patients, each labelled with
@@ -347,9 +351,10 @@
     const W = 640, H = 96, pl = 8, pr = 8, y = 36, h = 18, hi = Math.max(0.6, t.value * 1.1, ...t.tiers.map((x) => x.from));
     const X = (v) => pl + Math.max(0, Math.min(1, v / hi)) * (W - pl - pr);
     const tiers = [...t.tiers].sort((a, b) => a.from - b.from);
-    const bands = tiers.map((x) => { const x0 = X(x.from), x1 = X(x.to >= 1 ? hi : x.to); return `<rect class="tb tb-${x.status}" x="${x0.toFixed(1)}" y="${y}" width="${Math.max(1, x1 - x0).toFixed(1)}" height="${h}"/><text class="tt" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 16}" text-anchor="middle">${GROUP[x.status] === "This week" ? "High tier" : GROUP[x.status] === "Watch" ? "Middle tier" : "Low tier"} · ${x.from > 0 ? pct(x.from) + "+" : "under " + pct(x.to)}</text><text class="tt tt2" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 32}" text-anchor="middle">${pct(x.rate)} of ${x.n} had an ER visit or stay</text>`; }).join("");
+    const bands = tiers.map((x) => { const x0 = X(x.from), x1 = X(x.to >= 1 ? hi : x.to); const range = x.from > 0 && x.to < 1 ? `${pct(x.from)}–${pct(x.to)}` : x.from > 0 ? `${pct(x.from)}+` : `under ${pct(x.to)}`; return `<rect class="tb" style="fill-opacity:${(0.12 + x.rate * 0.7).toFixed(2)}" x="${x0.toFixed(1)}" y="${y}" width="${Math.max(1, x1 - x0).toFixed(1)}" height="${h}"/><text class="tt" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 16}" text-anchor="middle">${GROUP[x.status] === "This week" ? "High tier" : GROUP[x.status] === "Watch" ? "Middle tier" : "Low tier"} · ${range}</text><text class="tt tt2" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 32}" text-anchor="middle">${pct(x.rate)} of ${x.n} had an ER visit or stay</text>`; }).join("");
+    const mine = tiers.find((x) => t.value >= x.from && (x.to >= 1 || t.value < x.to));
     const mark = (v, label, cls) => `<line class="tm ${cls}" x1="${X(v).toFixed(1)}" x2="${X(v).toFixed(1)}" y1="${y - 14}" y2="${y + h + 2}"/><text class="tl ${cls}" x="${X(v).toFixed(1)}" y="${y - 18}" text-anchor="${X(v) > W - 80 ? "end" : "middle"}">${esc(label)} ${pct(v)}</text>`;
-    return `<figure class="fig"><figcaption><span>Where this patient sits among the risk tiers</span><span class="muted">${t.dev ? `${t.dev} development patients, cross-validated` : ""}</span></figcaption>
+    return `<figure class="fig"><figcaption><span>Where this patient sits among the risk tiers${mine ? `: ${pct(mine.rate)} of the ${mine.n} patients in this tier had an ER visit or stay` : ""}</span><span class="muted">${t.dev ? `${t.dev} development patients, cross-validated · darker = more had one` : ""}</span></figcaption>
       <svg class="chart tiers" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`This patient ${pct(t.value)}; ${tiers.map((x) => `${x.status} tier from ${pct(x.from)}: ${pct(x.rate)} of ${x.n} had an event`).join("; ")}`)}">${bands}${t.base != null ? mark(t.base, "average patient", "avg") : ""}${mark(t.value, "this patient", "me")}</svg></figure>`;
   }
   // The tab hero: the number at 44 px, its status and comparison, and the one full visual the tab owns (the four-band bar for glucose).
@@ -367,7 +372,7 @@
     const evs = p.evidence || [], mine = evs.filter((g) => !g.scientists), sci = evs.filter((g) => g.scientists);
     const grp = (g) => `<details ${g.open ? "open" : ""} class="ev-g"><summary>${esc(g.group)} <span class="muted">(${g.rows.length})</span></summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Measure</th><th>Value</th><th>95% CI</th><th>n</th></tr></thead><tbody>${g.rows.map((r) => `<tr><td>${esc(r.label)}${r.caveat ? `<span class="cav">${esc(r.caveat)}</span>` : ""}</td><td class="mono">${esc(r.value)}</td><td class="mono">${esc(r.ci || "–")}</td><td class="mono">${esc(r.n === "" ? "–" : r.n)}</td></tr>`).join("")}</tbody></table></div></details>`;
     return `<section class="card sure" id="sure"><h2>How sure</h2><dl class="sure-dl">
-      ${h.sure ? `<div><dt>Accuracy</dt><dd>${esc(h.sure)}</dd></div>` : ""}
+      ${h.sureFull || h.sure ? `<div><dt>Accuracy</dt><dd>${esc(h.sureFull || h.sure)}</dd></div>` : ""}
       <div><dt>Source</dt><dd>${esc(src)}</dd></div>
       ${p.fit ? `<div><dt>For people like this patient</dt><dd class="tone-${esc(p.fit.tone)}"><span class="g" aria-hidden="true">${TONE_GLYPH[p.fit.tone] || "–"}</span> ${esc(p.fit.text)}</dd></div>` : ""}
       ${h.age ? `<div><dt>Data window</dt><dd>${esc(h.age)}</dd></div>` : ""}
@@ -408,11 +413,11 @@
   // Header actions: one primary (Start call); Log outcome and Hand off to nurse are outline. A done hand-off shows who and when.
   function actionsHtml(p, callId) {
     const flag = p.concern ? p.concern.text : p.headline;
-    return `<a class="btn primary" href="#live-${esc(callId)}">Start call</a><button class="btn" type="button" data-log data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Log outcome</button>${p.handoff ? `<span class="done" title="${esc(p.handoff.note || "")}">✓ ${esc(p.handoff.label)}</span>` : p.tri === "today" || p.concern ? `<button class="btn" type="button" data-handoff data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Hand off to nurse</button>` : ""}`;
+    return `<a class="btn primary" href="#live-${esc(callId)}">Start call</a><button class="btn" type="button" title="After a call: reached, no answer, left message; who it went to; next contact" data-log data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Log outcome</button>${p.handoff ? `<span class="done" title="${esc(p.handoff.note || "")}">✓ ${esc(p.handoff.label)}</span>` : p.tri === "today" || p.concern ? `<button class="btn" type="button" title="Send the flagged line to the nurse now, with a note" data-handoff data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Hand off to nurse</button>` : ""}`;
   }
   function headHtml(p, id, callId) {
-    const idn = identityLine(p.identity);
     const lang = p.identity && p.identity.language && p.identity.language !== "English" ? p.identity.language : "";
+    const idn = identityLine(lang ? { ...p.identity, language: null } : p.identity);
     const script = p.handout && p.handout.langs && p.handout.langs.some((l) => l.lang !== "en") ? `<a class="small" href="#p-${esc(id)}.${esc(p.mod)}">Call script · ${p.handout.langs.filter((l) => l.lang !== "en").map((l) => l.name).join(" / ")} →</a>` : "";
     return `<header class="p-head pp-head"><div class="pp-id"><h1>${esc(String(p.name).split(" · linked")[0])}</h1>${idn ? `<p class="pp-ident">${esc(idn)}</p>` : ""}
       <div class="row pp-st"><span data-lk-status>${statusPill(p.tri)}</span>${lang ? `<span class="chip-lang need">Interpreter · ${esc(lang)}</span>` : ""}${script}${p.lastSaved ? `<span class="small muted">Last call logged ${esc(A.ago(p.lastSaved.at))} by ${esc(p.lastSaved.coach)}${p.lastSaved.flags && p.lastSaved.flags.length ? ` · ${p.lastSaved.flags.length} line${p.lastSaved.flags.length === 1 ? "" : "s"} flagged` : ""} · <a href="#live-${esc(callId)}">recap</a></span>` : ""}</div></div>
@@ -555,7 +560,7 @@
     const lang = o.lang || (p.identity && p.identity.language);
     const panels = p.panels.filter((pn) => pn.id !== "redflags");
     const sections = panels.map((pn) => { const vis = panelVisual(pn); return vis ? `<section class="card stack" id="pn-${esc(pn.id)}"><h2>${esc(pn.title)}</h2><div class="${pn.small ? "multiples" : "stack"}">${vis}</div></section>` : ""; }).join("");
-    const kp = (p.kpis || []).filter((k) => !k.hero && !(p.hero && String(k.value) === String(p.hero.value)));
+    const kp = p.mod === "c1" ? [] : (p.kpis || []).filter((k) => !k.hero && !(p.hero && String(k.value) === String(p.hero.value)) && !(p.mod === "c5" && /score/i.test(k.label)));
     return `${p.mod === "c1" ? redFlagsCard(p) : ""}${heroCard(p.hero, p.mod, p)}${kp.length ? kpiCards(kp) : ""}${p.mod === "c4" ? c4Safety(p, lang) : ""}
       ${p.mod === "c3" ? signalRows(p.signals) : ""}${sections}
       ${p.mod === "c4" ? handout(p, lang) : ""}${p.mod === "c5" ? `<p class="agree-link small"><a href="#calls-agreement">How well Clef’s coach score matches supervisors →</a></p>` : ""}
@@ -584,7 +589,7 @@
     const best = parts[0], worst = parts[parts.length - 1];
     const fl = c.flags[0];
     return `<a class="c-row" href="#call-${esc(c.callId)}"><span>${withName ? `<b>${esc(c.participantName)}</b> · call ${c.callNumber}` : `<b>Call ${c.callNumber} · week ${c.week}</b>`}<span class="small muted" style="display:block">${fmtDate(c.date)} · coach ${esc(c.coach.name)} · ${esc(c.language)} · goal: ${esc(c.goalTopic)}</span></span>
-      <span class="small c-ww">${best ? `<b>Went well</b> ${esc(PART[best[0]] || best[0])}` : ""}${worst && worst !== best ? `<br><b>Try next</b> ${esc(PART[worst[0]] || worst[0])}` : ""}</span>
+      <span class="small c-ww">${!quiet && best ? `<b>Went well</b> ${esc(WELL[best[0]] || best[0])}` : ""}${!quiet && worst && worst !== best ? `<br><b>Try next</b> ${esc(TRY[worst[0]] || worst[0])}` : ""}</span>
       <span class="small c-flag">${fl && !quiet ? `“${esc(String(fl.text).slice(0, 70))}${String(fl.text).length > 70 ? "…" : ""}” · ${esc(A.ago(c.date))}` : ""}</span>${c.flags.length && !quiet ? `<span class="open-flag">▲ Open flag</span>` : `<span></span>`}</a>`;
   }
 
@@ -951,6 +956,7 @@
     if (el.hasAttribute("data-log")) { e.preventDefault(); logOutcome(el); return; }
     if (el.dataset.filter) { ui.filter = el.dataset.filter; ui.limit = 60; render(); }
     if (el.hasAttribute("data-more")) { ui.limit += 25; render(); }
+    if (el.hasAttribute("data-week-more")) { ui.weekAll = true; render(); }
     if (el.hasAttribute("data-retry")) { memo.clear(); if (location.hash.includes("~")) location.hash = location.hash.split("~")[0]; else render(); }
     if (el.hasAttribute("data-run")) { const { arg } = parse(); runLive(await A.call(arg)); }
     const href = el.getAttribute("href");
