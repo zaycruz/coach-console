@@ -9,6 +9,22 @@ finds patients, explains their numbers, opens pages and starts calls.
 Hospital-risk patients are real MEPS 2017 survey respondents, with IDs reassigned by the organisers. Every other
 record is synthetic. Each program has its own cohort, so no patient appears in more than one program.
 
+## How it works
+
+**The whole system:** each challenge module is its own Cloudflare Worker with a small JSON contract; Patient 360 and the MCP server read only those contracts.
+
+![Survivorship 360 architecture](docs/architecture.png)
+
+**This Worker:** the browser files, every `/api/*` route in `src/index.ts`, the service bindings to C1, C3, C4 and C5, KV, the edge cache and the snapshot fallback.
+
+![Patient 360 architecture](docs/arch-p360.png)
+
+**Every model, AI and ML:** every model call in the system, where it runs, its input and output, the screen that shows it, and what happens when it fails.
+
+![Every model, AI and ML](docs/ai-ml-map.png)
+
+Method in full, with every choice and why: [METHODOLOGY.md](METHODOLOGY.md).
+
 ## Layout
 
 | Path | What it is |
