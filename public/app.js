@@ -173,7 +173,7 @@
     return `<li class="q-row" data-pid="${esc(it.id)}" data-mod="${it.mod}"><span class="q-n ${it.horizon}">${i + 1}</span>
       <div class="q-main"><div class="q-top"><a class="q-name" href="#p-${esc(it.id)}">${esc(first)}</a>${who ? `<span class="q-who">${esc(who)}</span>` : ""}<span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span>${lang}${real}</div>
         <p class="q-why">${esc(String(it.reason || it.headline).replace(/^Red flag \((?:[^()]|\([^()]*\))*\):/, "Red flag:"))}</p>
-        <p class="q-meta">${[age, stale ? "<b>Close the loop: confirm it was handed off</b>" : "", logged, noOwner ? "" : `<span class="chip-own">${ownerOf(it)}</span>`].filter(Boolean).join(" · ")}</p></div>
+        <p class="q-meta">${[/\bago\b/.test(String(it.reason || "")) ? "" : age, stale && !/^Close the loop/.test(String(it.reason || "")) ? "<b>Close the loop: confirm it was handed off</b>" : "", logged, noOwner ? "" : `<span class="chip-own">${ownerOf(it)}</span>`].filter(Boolean).join(" · ")}</p></div>
       <div class="acts"><a class="btn${it.horizon === "today" ? " primary" : ""}" href="#live-${esc(it.id)}">Start call</a><button class="btn${it.horizon === "today" ? "" : " quiet"}" type="button" data-log data-pid="${esc(it.id)}" data-name="${esc(first)}" data-flag="${esc(r && r.concern ? r.concern.text : "")}">Log outcome</button></div></li>`;
   }
   async function renderToday() {
