@@ -1,0 +1,528 @@
+{
+  "base": "https://patient-360.raava.dev",
+  "ts": "2026-10-17T16-39-16",
+  "total": 335,
+  "ids": {
+    "c1": "c1-S71188550",
+    "c3": "c3-P03000",
+    "c4": "c4-N0072",
+    "c5": "c5-P0002"
+  },
+  "call": "CALL00646",
+  "shots": [
+    "today_1280.png",
+    "patients_1280.png",
+    "p-c3-P03000_1280.png",
+    "p-c3-P03000.c3_1280.png",
+    "p-c4-N0072_1280.png",
+    "p-c4-N0072.c4_1280.png",
+    "p-c5-P0002_1280.png",
+    "p-c5-P0002.c5_1280.png",
+    "p-c1-S71188550_1280.png",
+    "p-c1-S71188550.c1_1280.png",
+    "p-c4-N0072.c3_1280.png",
+    "p-c4-N0072.c1_1280.png",
+    "calls_1280.png",
+    "call-CALL00646_1280.png",
+    "live-c5-P0117_1280.png",
+    "live-c4-N0072_1280.png",
+    "care_1280.png",
+    "research_1280.png",
+    "today~error_1280.png",
+    "today~empty_1280.png",
+    "today~loading_1280.png",
+    "today_390.png",
+    "patients_390.png",
+    "p-c3-P03000_390.png",
+    "p-c3-P03000.c3_390.png",
+    "p-c4-N0072_390.png",
+    "p-c4-N0072.c4_390.png",
+    "p-c5-P0002_390.png",
+    "p-c5-P0002.c5_390.png",
+    "p-c1-S71188550_390.png",
+    "p-c1-S71188550.c1_390.png",
+    "p-c4-N0072.c3_390.png",
+    "p-c4-N0072.c1_390.png",
+    "calls_390.png",
+    "call-CALL00646_390.png",
+    "live-c5-P0117_390.png",
+    "live-c4-N0072_390.png",
+    "care_390.png",
+    "research_390.png",
+    "today~error_390.png",
+    "today~empty_390.png",
+    "today~loading_390.png",
+    "dark-os-light-page_1280.png",
+    "today_1280.png",
+    "live-recap_1280.png",
+    "live-call-tagged_1280.png",
+    "ellie_1280.png",
+    "ellie-followup_1280.png",
+    "health-chart-insight_1280.png",
+    "play-as-live_1280.png",
+    "call-live-clef_1280.png",
+    "fallback-c3-down_patients.png",
+    "fallback-c3-down_patient.png",
+    "mic-transcribed_1280.png"
+  ],
+  "savedCallPatient": "c3-P00949",
+  "ellie": "For N0072, time in range is the share of CGM readings between 70-180 mg/dL: she's at 63% (weeks 1-2, n=973 readings), below the usual target of over 70% and well short of the ideal 90%+. Her average sugar is 178 mg/dL with 10.9% of readings above 250 mg/dL, though lows are absent (0% below 70). This supports the on-screen advice to share these readings with her care team.\nAI · CHECK BEFORE ACTING N0072",
+  "copilot": {
+    "liveTags": 4,
+    "agree": "95% coach moves (22 lines)\n95% patient talk (22)\n100% needs-a-person calls (22)"
+  },
+  "checks": [
+    {
+      "name": "list endpoints answer",
+      "pass": true,
+      "detail": "c1 199, c3 60, c4 50, c5 26"
+    },
+    {
+      "name": "today @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "patients @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P03000 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P03000.c3 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c4 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002.c5 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c1-S71188550 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c1-S71188550.c1 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c3 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c1 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calls @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "call-CALL00646 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "live-c5-P0117 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "live-c4-N0072 @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "care @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "research @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~error @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~empty @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~loading @1280",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "patients @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P03000 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P03000.c3 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c4 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002.c5 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c1-S71188550 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c1-S71188550.c1 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c3 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c1 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calls @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "call-CALL00646 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "live-c5-P0117 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "live-c4-N0072 @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "care @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "research @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~error @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~empty @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~loading @390",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "phone: every pill can be reached",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "stays light when the OS is dark",
+      "pass": true,
+      "detail": "rgb(243, 245, 248)"
+    },
+    {
+      "name": "square corners on cards, buttons, pills, KPIs, tags",
+      "pass": true,
+      "detail": ".card 0px, .btn 0px, .pill 0px, .kpi 0px, .tag 0px"
+    },
+    {
+      "name": "Patients count = c1 + c3 + c4 + c5 list endpoints",
+      "pass": true,
+      "detail": "335 vs 335"
+    },
+    {
+      "name": "C1, C3, C4, C5 chips say live",
+      "pass": true,
+      "detail": "Hospital risk · live:src s-live | Rough weeks · live:src s-live | Glucose · live:src s-live | Coaching calls · live:src s-live"
+    },
+    {
+      "name": "c3 rows carry tags on Patients",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "c4 rows carry tags on Patients",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "c1 rows carry tags on Patients",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Today API: one queue with rows from C1, C3, C4 and C5",
+      "pass": true,
+      "detail": "c5,c3,c4,c1"
+    },
+    {
+      "name": "Today API: every reason is 90 characters or less",
+      "pass": true,
+      "detail": 84
+    },
+    {
+      "name": "Today API: C1 rows say real MEPS data, the rest synthetic",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Today page: rows from all four programs",
+      "pass": true,
+      "detail": "22 rows, c5,c3,c4,c1"
+    },
+    {
+      "name": "Today page: data-type chip on every row",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Today page: interpreter chip for a non-English patient",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Today page: separate-cohorts line",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Today: first action opens a call or the risk view",
+      "pass": true,
+      "detail": "#live-c5-P0975"
+    },
+    {
+      "name": "pill click opens the program view",
+      "pass": true,
+      "detail": "#p-c4-N0072.c4"
+    },
+    {
+      "name": "advice sits beside its chart",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "program view ends in the full raw response",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "KPI card drills into the program view",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "glucose: empty series says so instead of a phantom legend",
+      "pass": true,
+      "detail": "weeks 11-12"
+    },
+    {
+      "name": "recap date = latest call on record",
+      "pass": true,
+      "detail": "2025-09-02 vs 2025-09-02"
+    },
+    {
+      "name": "AI hand-off note arrives, labelled as AI",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "live call: typed lines get Clef tags",
+      "pass": true,
+      "detail": "3 of 3"
+    },
+    {
+      "name": "live call: saved, and the recap now shows it",
+      "pass": true,
+      "detail": "3 → 4"
+    },
+    {
+      "name": "Ellie opens a patient's glucose page",
+      "pass": true,
+      "detail": "#p-c4-N0072.c4"
+    },
+    {
+      "name": "Ellie answers from the patient on screen",
+      "pass": true,
+      "detail": "For N0072, time in range is the share of CGM readings between 70-180 mg/dL: she's at 63% (weeks 1-2, n=973 readings), below the usual target of over 70% and wel"
+    },
+    {
+      "name": "Ellie: red-flag question gets the emergency answer",
+      "pass": true,
+      "detail": "A temperature of 38°C (100.4°F) or higher during or soon after chemotherapy is an emergency until proven otherwise (poss"
+    },
+    {
+      "name": "Ellie names patients for a risk question",
+      "pass": true,
+      "detail": "#p-c3-P03000"
+    },
+    {
+      "name": "Ellie follow-up: 'that first patient' opens the one she named",
+      "pass": true,
+      "detail": "#p-c3-P03000 vs #p-c3-P03000"
+    },
+    {
+      "name": "Ellie follow-up: 'start a call with them' opens the call",
+      "pass": true,
+      "detail": "#live-c3-P03000"
+    },
+    {
+      "name": "Ellie closes",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Health chart shows AI Insight, short and labelled",
+      "pass": true,
+      "detail": "AI Insight AI · CHECK BEFORE ACTING Wearable signals point to trouble this week: call today and ask about fever, fluids, and sleep in Spanish. Worn ~19.9 h/day; sleep worse: 82% efficiency, 3.0 waking"
+    },
+    {
+      "name": "Health chart has no raw dump (that lives in the program tab)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Hospital risk: clicking a row opens that patient's C1 view",
+      "pass": true,
+      "detail": "#p-c1-S71188550.c1"
+    },
+    {
+      "name": "no Patient's app link and no nav icons",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Play as live: lines stream into a fixed scrolling box",
+      "pass": true,
+      "detail": "3 lines, auto 305"
+    },
+    {
+      "name": "call review: live Clef tags arrive",
+      "pass": true,
+      "detail": "4 tagged lines"
+    },
+    {
+      "name": "call review: agreement with supervisor computed",
+      "pass": true,
+      "detail": "95% coach moves (22 lines) 95% patient talk (22) 100% needs-a-person calls (22)"
+    },
+    {
+      "name": "no page errors in the flows",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "C3 down: Patients still complete from the saved copy",
+      "pass": true,
+      "detail": "335 vs 335"
+    },
+    {
+      "name": "C3 down: banner says saved copy",
+      "pass": true,
+      "detail": "! C3 Rough weeks isn’t answering (Failed to fetch). Showing the saved copy from Oct 17, 2026."
+    },
+    {
+      "name": "C3 down: status chip turns amber",
+      "pass": true,
+      "detail": "src s-fallback"
+    },
+    {
+      "name": "C3 down: patient page renders from the saved copy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "C3 down: C4 pages stay live",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "C3 down: no page errors",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mic: a spoken line is recorded and transcribed",
+      "pass": true,
+      "detail": "00:00 COACH MARISOL hi how have you been feeling since our last call hi how have you been feeling since our last call hi how have you been feeling since Clef…"
+    }
+  ],
+  "passed": 90,
+  "failed": 0
+}
