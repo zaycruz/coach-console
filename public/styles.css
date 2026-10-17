@@ -965,3 +965,8 @@ button.more-link { align-self: flex-start; padding-left: 0; }
 .tiles.one .t-cmp { flex: 1 1 220px; }
 .tiles.one .t-sure { flex-basis: 100%; margin-top: 0; padding-top: 0; }
 @media (max-width: 760px) { .tiles.one { grid-template-columns: minmax(0, 1fr); } .tiles.one .tile { flex-direction: column; align-items: stretch; } }
+
+/* trend guide on hover: a vertical line and a dot on every series at the nearest point */
+.chart .hover-guide[hidden] { display: none; }
+.chart .hg-line { stroke: var(--ink-2); stroke-width: 1; stroke-dasharray: 2 3; pointer-events: none; }
+.chart .hg-dot { stroke: var(--surface); stroke-width: 2; pointer-events: none; }
