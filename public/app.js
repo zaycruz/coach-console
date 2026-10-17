@@ -173,7 +173,7 @@
       <div class="q-main"><div class="q-top"><a class="q-name" href="#p-${esc(it.id)}">${esc(first)}</a>${who ? `<span class="q-who">${esc(who)}</span>` : ""}<span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span>${lang}${real}</div>
         <p class="q-why">${esc(String(it.reason || it.headline).replace(/^Red flag \([^)]*\):/, "Red flag:"))}</p>
         <p class="q-meta">${[age, stale ? "<b>Close the loop: confirm it was handed off</b>" : "", logged, `<span class="chip-own">${ownerOf(it)}</span>`].filter(Boolean).join(" · ")}</p></div>
-      <div class="acts"><a class="btn primary" href="#live-${esc(it.id)}">Start call</a><button class="btn" type="button" data-log data-pid="${esc(it.id)}" data-name="${esc(first)}" data-flag="${esc(r && r.concern ? r.concern.text : "")}">Log outcome</button></div></li>`;
+      <div class="acts"><a class="btn${it.horizon === "today" ? " primary" : ""}" href="#live-${esc(it.id)}">Start call</a><button class="btn${it.horizon === "today" ? "" : " quiet"}" type="button" data-log data-pid="${esc(it.id)}" data-name="${esc(first)}" data-flag="${esc(r && r.concern ? r.concern.text : "")}">Log outcome</button></div></li>`;
   }
   async function renderToday() {
     const date = new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
@@ -267,7 +267,7 @@
     const f = (v) => (g.pct ? pct(v, g.d || 0) : num(v) + (g.unit || ""));
     const anchor = (x) => (x > W - 44 ? "end" : x < 44 ? "start" : "middle");
     const marks = (g.marks || []).map((m, i) => { const x = X(m.v); const above = i % 2 === 0; return `<line class="gm" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${y - 4}" y2="${y + h + 4}"/><text class="gt" x="${x.toFixed(1)}" y="${above ? y - 7 : y + h + 14}" text-anchor="${anchor(x)}">${esc(m.label)} ${f(m.v)}</text>`; }).join("");
-    const end = g.marks && g.marks.some((m) => X(m.v) > W - 44) ? "" : `<text class="gt end" x="${W - pr}" y="${y + h + 14}" text-anchor="end">${f(max)}</text>`;
+    const end = g.marks && g.marks.some((m) => X(m.v) > W - 76) ? "" : `<text class="gt end" x="${W - pr}" y="${y + h + 14}" text-anchor="end">${f(max)}</text>`;
     return `<svg class="gauge" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${f(g.value)} on a scale to ${f(max)}; ${(g.marks || []).map((m) => `${m.label} ${f(m.v)}`).join(", ")}`)}"><rect class="gtrack" x="${pl}" y="${y}" width="${W - pl - pr}" height="${h}"/><rect class="gv" x="${pl}" y="${y}" width="${Math.max(2, X(g.value) - pl).toFixed(1)}" height="${h}"/>${marks}${end}</svg>`;
   }
   // Call dots: one per call, oldest first; a flagged call is red. The latest 14 calls.
@@ -412,8 +412,10 @@
   }
   function headHtml(p, id, callId) {
     const idn = identityLine(p.identity);
+    const lang = p.identity && p.identity.language && p.identity.language !== "English" ? p.identity.language : "";
+    const script = p.handout && p.handout.langs && p.handout.langs.some((l) => l.lang !== "en") ? `<a class="small" href="#p-${esc(id)}.${esc(p.mod)}">Call script · ${p.handout.langs.filter((l) => l.lang !== "en").map((l) => l.name).join(" / ")} →</a>` : "";
     return `<header class="p-head pp-head"><div class="pp-id"><h1>${esc(String(p.name).split(" · linked")[0])}</h1>${idn ? `<p class="pp-ident">${esc(idn)}</p>` : ""}
-      <div class="row pp-st"><span data-lk-status>${statusPill(p.tri)}</span>${p.lastSaved ? `<span class="small muted">Last call logged ${esc(A.ago(p.lastSaved.at))} by ${esc(p.lastSaved.coach)}${p.lastSaved.flags && p.lastSaved.flags.length ? ` · ${p.lastSaved.flags.length} line${p.lastSaved.flags.length === 1 ? "" : "s"} flagged` : ""} · <a href="#live-${esc(callId)}">recap</a></span>` : ""}</div></div>
+      <div class="row pp-st"><span data-lk-status>${statusPill(p.tri)}</span>${lang ? `<span class="chip-lang need">Interpreter · ${esc(lang)}</span>` : ""}${script}${p.lastSaved ? `<span class="small muted">Last call logged ${esc(A.ago(p.lastSaved.at))} by ${esc(p.lastSaved.coach)}${p.lastSaved.flags && p.lastSaved.flags.length ? ` · ${p.lastSaved.flags.length} line${p.lastSaved.flags.length === 1 ? "" : "s"} flagged` : ""} · <a href="#live-${esc(callId)}">recap</a></span>` : ""}</div></div>
       <div class="row pp-acts" data-lk-acts>${actionsHtml(p, callId)}</div></header>${profileBox(p)}`;
   }
 
@@ -575,7 +577,7 @@
   }
 
   // A call row in the coach's terms: who, call n, date, language, goal; Went well / Try next; the open flag with its age. No score here.
-  function callRow(c, withName) {
+  function callRow(c, withName, quiet) {
     if (c.saved) return `<a class="c-row" href="${esc(c.href)}"><span><b>${withName ? esc(c.participantName) + " · " : ""}Logged in Patient 360</b><span class="small muted" style="display:block">${fmtDate(c.date)} · coach ${esc(c.coach.name)}${c.flags.length ? ` · “${esc(c.flags[0].text.slice(0, 90))}”` : ""}</span></span>
       <span class="small">${c.flags.length ? (c.flags.length === 1 ? "1 line flagged" : `${c.flags.length} lines flagged`) : `${c.lines} lines`}</span><span></span>${c.status === "alert" ? `<span class="open-flag">▲ Open flag</span>` : ""}</a>`;
     const parts = Object.entries(c.scoreParts || {}).filter(([, v]) => v && v.max).map(([k, v]) => [k, v, v.points / v.max]).sort((a, b) => b[2] - a[2]);
@@ -583,7 +585,7 @@
     const fl = c.flags[0];
     return `<a class="c-row" href="#call-${esc(c.callId)}"><span>${withName ? `<b>${esc(c.participantName)}</b> · call ${c.callNumber}` : `<b>Call ${c.callNumber} · week ${c.week}</b>`}<span class="small muted" style="display:block">${fmtDate(c.date)} · coach ${esc(c.coach.name)} · ${esc(c.language)} · goal: ${esc(c.goalTopic)}</span></span>
       <span class="small c-ww">${best ? `<b>Went well</b> ${esc(PART[best[0]] || best[0])}` : ""}${worst && worst !== best ? `<br><b>Try next</b> ${esc(PART[worst[0]] || worst[0])}` : ""}</span>
-      <span class="small c-flag">${fl ? `“${esc(String(fl.text).slice(0, 70))}${String(fl.text).length > 70 ? "…" : ""}” · ${esc(A.ago(c.date))}` : ""}</span>${c.flags.length ? `<span class="open-flag">▲ Open flag</span>` : `<span></span>`}</a>`;
+      <span class="small c-flag">${fl && !quiet ? `“${esc(String(fl.text).slice(0, 70))}${String(fl.text).length > 70 ? "…" : ""}” · ${esc(A.ago(c.date))}` : ""}</span>${c.flags.length && !quiet ? `<span class="open-flag">▲ Open flag</span>` : `<span></span>`}</a>`;
   }
 
   // ------------------------------------------------------------------ Calls (coach-first)
@@ -610,7 +612,7 @@
     return `${head}${sourceBanner(["c5"])}
       ${open.length ? `<section class="stack-s"><div class="sec-head"><h2>Open flags · ${open.length}</h2><p class="sub-s">A flagged line with no hand-off logged yet, newest first. Open the patient to hand it off.</p></div><div class="calls-list">${open.map((c) => callRow(c, true)).join("")}</div></section>` : `<p class="muted">No open flags: every flagged line has a hand-off logged.</p>`}
       ${logged.length ? `<section class="stack-s"><h2>Logged in Patient 360 · ${logged.length}</h2><div class="calls-list">${logged.map((c) => callRow(c, true)).join("")}</div></section>` : ""}
-      <section class="stack-s"><div class="sec-head"><h2>All calls · ${sorted.length}</h2><p class="sub-s">Supervisor-labelled set, newest first.</p></div><div class="calls-list">${sorted.map((c) => callRow(c, true)).join("")}</div></section>
+      <section class="stack-s"><div class="sec-head"><h2>All calls · ${sorted.length}</h2><p class="sub-s">Supervisor-labelled set, newest first.</p></div><div class="calls-list">${sorted.map((c) => callRow(c, true, true)).join("")}</div></section>
       ${demo}${fit ? `<section class="stack-s"><h2>Research</h2>${fit}</section>` : ""}`;
   }
   // Same table classes as the C1 fairness table. Every number sits next to the A-vs-B row it is compared with.
@@ -840,7 +842,7 @@
 
   // ------------------------------------------------------------------ later
   async function renderCare() {
-    const head = `<header class="page-head"><div><p class="eyebrow">Challenge 1 · for the care-team lead</p><h1>Hospital risk</h1><p class="sub">Who is likely to need the ER or a hospital bed: this week from wearables, and over the next 12 months from survey answers (data years 2017 survey, 2018 outcome). Highest first.</p></div></header>`;
+    const head = `<header class="page-head"><div><h1>Hospital risk</h1><p class="sub">Who is likely to need the ER or a hospital bed: this week from wearables, and over the next 12 months from survey answers (data years 2017 survey, 2018 outcome). Highest first.</p></div></header>`;
     const f = forced("hospital risk", "No risk scores yet.");
     if (f) return head + f;
     const [{ rows }, m] = await Promise.all([once("roster", A.roster), once("m:c1", () => A.metrics("c1")).catch(() => null)]);
@@ -853,7 +855,7 @@
     const thead = `<thead><tr><th>Status</th><th>Patient</th><th>Why</th></tr></thead>`;
     // Next 7 days (C3 wearables) above the 12-month C1 list: same outcome, different horizon.
     const soon = rows.filter((x) => x.mod === "c3" && /ER or hospital risk/i.test(x.headline || "")).sort((a, b) => (a.prio ?? 0) - (b.prio ?? 0) || RANK[a.tri] - RANK[b.tri]);
-    const week = `<section class="stack-s"><h2>Next 7 days · from the Rough weeks program · ${soon.length}</h2><p class="small muted">ER or hospital risk this week, from watch signals against the person’s own usual. Several times their usual risk within a week means a same-day call (Act today). The 12-month list below is for outreach planning, so a high yearly risk is Alert, not Act today.</p>${soon.length ? `<div class="ptable-wrap"><table class="ptable">${thead}<tbody>${soon.map((it) => careRow(it, "c3", it.headline)).join("")}</tbody></table></div>` : `<p class="muted small">No one is over the 7-day urgent line.</p>`}</section>`;
+    const week = `<section class="stack-s"><h2>Next 7 days · ${soon.length} patient${soon.length === 1 ? "" : "s"} · from the Rough weeks program</h2><p class="small muted">ER or hospital risk this week, from watch signals against the person’s own usual. Several times their usual risk within a week means a same-day call (Act today). The 12-month list below is for outreach planning, so a high yearly risk is Alert, not Act today.</p>${soon.length ? `<div class="ptable-wrap"><table class="ptable">${thead}<tbody>${soon.map((it) => careRow(it, "c3", it.headline)).join("")}</tbody></table></div>` : `<p class="muted small">No one is over the 7-day urgent line.</p>`}</section>`;
     const tiers = m && m.tiers && m.tiers.tiers ? m.tiers.tiers : [];
     const fin = m && m.finalModel ? m.finalModel.key || m.finalModel.name : null;
     const fm = m && m.metrics ? (fin && m.metrics[fin]) || m.metrics.logistic : null, bm = m && m.metrics && m.metrics.baseline;
@@ -862,7 +864,7 @@
     const dev = m && m.data && m.data.devSurvivors;
     const strip = tiers.length ? `<div class="stat-strip">${tiers.map((t) => `<a href="#patients-${t.status}"><span class="n">${range(t)}</span><span class="l">${GROUP[t.status]}: risk ${range(t)} · ${pct(t.observedRate)} of these had an ER visit or stay (${t.n} of ${dev || "the"} development patients, cross-validated; not the ${list.length} below)</span></a>`).join("")}${fm && fm.auroc ? `<div><span class="n">${num(fm.auroc.value, 2)}</span><span class="l">AUROC of the deployed ${esc(fmName)} (0.5 = chance; 95% CI ${num(fm.auroc.ci95[0], 2)}–${num(fm.auroc.ci95[1], 2)})${bm && bm.auroc ? ` · baseline ${num(bm.auroc.value, 2)}` : ""} · cross-validated</span></div>` : ""}</div>${dev ? `<p class="small muted">Tier rates and AUROC: ${dev} development patients, repeated 5-fold cross-validation. The list below: ${list.length} new patients scored by the deployed model.</p>` : ""}` : "";
     const table = `<div class="ptable-wrap"><table class="ptable">${thead}<tbody>${list.slice(0, ui.limit / 4).map((it) => careRow(it, "c1", c1h(it.headline))).join("")}</tbody></table>${list.length > ui.limit / 4 ? `<button class="r-more" data-more>Show 15 more of ${list.length}</button>` : ""}</div>`;
-    const year = `<section class="stack-s"><h2>Next 12 months · survey model (C1) · ${list.length} patients</h2><p class="small muted">“Driven by” names the top driver other than health spending; the model also uses spending, a cost proxy for need. Open a patient to see every driver.</p>${table}</section>`;
+    const year = `<section class="stack-s"><h2>Next 12 months · ${list.length} patients</h2><p class="small muted">“Driven by” names the top driver other than health spending; the model also uses spending, a cost proxy for need. Open a patient to see every driver.</p>${table}</section>`;
     // Factors: a forest-style list, rate with vs without each factor, highest rate ratio first.
     const pf = m && Array.isArray(m.plainFactors) ? m.plainFactors : [];
     const fobj = pf.filter((x) => x && typeof x === "object" && x.rateRatio != null).sort((a, b) => b.rateRatio - a.rateRatio);

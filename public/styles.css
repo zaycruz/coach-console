@@ -860,3 +860,8 @@ dialog.sheet q { display: block; font-style: normal; color: var(--ink-2); border
   .assistant-fab svg { width: 18px; height: 18px; }
   :root { --fab: 24px; }
 }
+
+.btn.quiet { border-color: transparent; background: transparent; color: var(--link); }
+.btn.quiet:hover { background: var(--surface-2); }
+.pp-st .chip-lang { margin-left: 4px; }
+#today-now .sec-head { padding: 12px 16px; background: var(--alert-soft); border-left: 3px solid var(--alert); }
