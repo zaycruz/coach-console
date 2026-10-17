@@ -127,6 +127,13 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await page.locator("[data-week-more]").click({ timeout: 2000 }).then(() => settle(page)).catch(() => {});
   const todayRows = await page.locator(".queue .q-row").count();
   const domMods = new Set(await page.locator(".queue .q-row").evaluateAll((els) => els.map((e) => e.dataset.mod)));
+  // One fixed rule: every coaching-call medical or distress flag is on Call today (unless handed off in this test namespace).
+  const safetyPids = [...new Set(calls.filter((c) => (c.flags || []).some((f) => f.kind === "medical" || f.kind === "distress")).map((c) => c.survivorId))];
+  const todayIds = new Set(tq.rows.filter((r) => r.horizon === "today").map((r) => r.id));
+  const missing = safetyPids.filter((id) => !todayIds.has(id) && !handedIds.has(id));
+  ok("Today API: every coaching-call medical/distress flag is Call today", missing.length === 0, `${safetyPids.length} flagged patients, missing: ${missing.join(", ") || "none"}`);
+  const stale = tq.rows.filter((r) => r.mod === "c5" && r.horizon === "today" && /months ago|years ago/.test(String(r.reason)));
+  ok("Today API: stale coaching-call flags read 'Close the loop' with the same reason format", stale.every((r) => /^Close the loop · (Medical concern|Distress), call \d+, .+ ago: “/.test(String(r.reason))), stale.map((r) => r.reason.slice(0, 50)).join(" | ") || "none stale");
   const apiMods = new Set(tq.rows.filter((r) => !handedIds.has(r.id)).map((r) => r.mod));
   ok("Today page: rows from every program the queue holds", todayRows >= 4 && [...apiMods].every((m) => domMods.has(m)), `${todayRows} rows, ${[...domMods].join(",")} vs ${[...apiMods].join(",")}`);
   const nowN = tq.rows.filter((r) => r.horizon === "today" && !handedIds.has(r.id)).length;

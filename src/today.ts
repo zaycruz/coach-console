@@ -57,14 +57,17 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     rows.push({ id: pid, mod: "c5", name: String(c.participantName || pid), status: "alert", headline: `${label} on call ${c.callNumber || ""}, replayed through Clef today`, updatedAt: dm.playedAt,
       horizon: "today", rank, reason: cut(`${label}, call ${c.callNumber || ""}, replayed today: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: lang(dm.language) || langOf5.get(pid) || "", flaggedAt: dm.playedAt });
   }
+  // One fixed rule: every coaching-call medical or distress flag is Call today, whatever its age. A fresh flag (30 days) is a
+  // hand-off; an older one reads "Close the loop" with the same reason format and age. A social-need flag is This week.
   for (const [pid, c] of byP) {
     if (dm && pid === String(dm.survivorId)) continue;
-    if (!(now - Date.parse(String(c.date)) < FRESH_MS)) continue;
-    const f = (c.flags as Rec[])[0];
-    const [label, rank] = KIND[String(f.kind)] || KIND.medical;
+    const f = (c.flags as Rec[])[0], kind = String(f.kind);
+    const [label, rank] = KIND[kind] || KIND.medical;
+    const fresh = now - Date.parse(String(c.date)) < FRESH_MS, safety = kind === "medical" || kind === "distress";
     const words = String(f.text || "").replace(/\s+/g, " ").replace(/^(oh,?\s+)?before you go,?\s+(and\s+)?/i, "").trim();
-    rows.push({ id: pid, mod: "c5", name: String(c.participantName || pid), status: "alert", headline: `${label} on call ${c.callNumber}`, updatedAt: c.date,
-      horizon: "today", rank, reason: cut(`${label}, call ${c.callNumber}, ${agoWords(c.date)}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: langOf5.get(pid) || "" });
+    const verb = safety && !fresh ? "Close the loop · " : "";
+    rows.push({ id: pid, mod: "c5", name: String(c.participantName || pid), status: "alert", headline: `${label} on call ${c.callNumber}${fresh ? "" : ", not yet closed"}`, updatedAt: c.date,
+      horizon: safety ? "today" : "week", rank: safety ? rank - (fresh ? 0 : 5) : 450, reason: cut(`${verb}${label}, call ${c.callNumber}, ${agoWords(c.date)}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: langOf5.get(pid) || "", flaggedAt: c.date });
   }
 
   // C3: urgent first (7-day ER/hospital risk over its line), then rough-patch alerts.

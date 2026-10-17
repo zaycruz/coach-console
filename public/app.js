@@ -307,7 +307,7 @@
     if (c && !p.handoff) {
       const days = daysSince(c.at), when = `${c.where}, ${A.ago(c.at)}`;
       // On today's list (a fresh flag, or the demo call replayed today) it is same-day work; an old flag nobody replayed is a loop to close.
-      if (p.tri === "today" || days == null || days <= 30) add({ owner: "Coach", due: "Today", mod: "c5", text: "Hand off the flagged line to the nurse today and log it. On a call: ask about it in their words, don’t assess, say “I’m sending this to your nurse today”" });
+      if (days == null || days <= 30) add({ owner: "Coach", due: "Today", mod: "c5", text: "Hand off the flagged line to the nurse today and log it. On a call: ask about it in their words, don’t assess, say “I’m sending this to your nurse today”" });
       else add({ owner: "Coach", due: "Today", mod: "c5", text: `Close the loop: confirm the flag from ${when} was handed off; if not, hand off to the nurse today` });
     }
     for (const v of mem) for (const pn of v.panels || []) for (const a of pn.advice || []) {
@@ -669,25 +669,17 @@
     return p ? Object.values(p).reduce((s, x) => s + x.points, 0) : null;
   }
 
-  // The four score parts from the live tags, plus the coach-line count and the tagged lines behind each part.
-  function liveParts(lines) {
+  // For the score display: t-0003's liveParts plus the coach-line count and the last persuade/confront line. Same formula, no new numbers.
+  function liveRead(lines) {
     const tagged = lines.filter((l) => l.speaker === "coach" && l.live && l.live.tag);
-    const c = tagged.map((l) => l.live.tag), n = (t) => c.filter((x) => x === t).length;
-    const oq = n("open question"), cq = n("closed question"), sr = n("simple reflection"), cr = n("complex reflection");
-    const ad = c.filter((t) => FAMILY[t] === "s").length, na = n("persuade") + n("confront"), q = oq + cq, r = sr + cr;
-    const parts = {
-      reflectionsPerQuestion: { value: q ? +(r / q).toFixed(2) : null, target: 2, points: Math.round(30 * Math.min((q ? r / q : r ? 2 : 0) / 2, 1)), max: 30 },
-      complexReflectionPct: { value: r ? Math.round((100 * cr) / r) : null, target: 40, points: Math.round(20 * Math.min((r ? cr / r : 0) / 0.4, 1)), max: 20 },
-      openQuestionPct: { value: q ? Math.round((100 * oq) / q) : null, target: 50, points: Math.round(20 * Math.min((q ? oq / q : 0) / 0.5, 1)), max: 20 },
-      miConsistent: { value: `${ad} vs ${na}`, target: "no persuade or confront", points: Math.round(30 * (ad + na ? ad / (ad + na) : 1)), max: 30 },
-    };
-    const score = c.length < 4 ? null : Object.values(parts).reduce((t, p) => t + p.points, 0);
+    const parts = liveParts(lines);
+    const score = parts ? Object.values(parts).reduce((t, p) => t + p.points, 0) : null;
     const lastBad = [...tagged].reverse().find((l) => l.live.tag === "persuade" || l.live.tag === "confront");
     return { score, parts, coachLines: tagged.length, lastBad: lastBad ? { tag: lastBad.live.tag, t: lastBad.t } : null };
   }
   // One line naming the part that moved most between two readings (the display never invents a number).
   function scoreMoveLine(prev, now) {
-    if (!prev || !now) return "";
+    if (!prev || !now || !prev.parts || !now.parts) return "";
     const d = Object.keys(now.parts).map((k) => [k, now.parts[k].points - prev.parts[k].points]).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
     if (!d || !d[1]) return "";
     const down = d[1] < 0;
@@ -1006,7 +998,7 @@
   window.addEventListener("hashchange", () => { if (parse().route === "line") return; toast.hidden = true; window.scrollTo(0, 0); render().then(() => view.focus({ preventScroll: true })); });
   // Shared with call.js and assistant.js, which load after this file and add their own routes.
   window.P360 = { NAME, routes: {}, render, esc, fmtDate, pct, num, post, once, memo, A, MODS, SNAP, LIVE_URL, COPILOT_URL, statusPill, modChip, tagsHtml, loadingBox, errorBox, emptyBox, forced, sourceBanner, showToast, notWired, parse,
-    FAMILY, FLAG_TEXT, liveScore, liveParts, scoreMoveLine, lineHtml, flagBanner, cueTrigger, panelVisual, adviceCard, sortRows, current: () => current };
+    FAMILY, FLAG_TEXT, liveScore, liveParts, liveRead, scoreMoveLine, lineHtml, flagBanner, cueTrigger, panelVisual, adviceCard, sortRows, current: () => current };
 
   // ------------------------------------------------------------------ coach name stamped on saved calls and hand-offs (no sign-in in the demo)
   let coachName = "";

@@ -84,7 +84,7 @@
   // The score shows only after 6 coach lines (early swings are the formula with too few lines), is labelled "So far", and when it
   // moves by 5 or more one line names the part that moved. Every value comes from liveParts; nothing here is invented.
   function scoreBox() {
-    const lp = call && P.liveParts ? P.liveParts(call.lines) : null;
+    const lp = call && P.liveRead ? P.liveRead(call.lines) : null;
     const ready = lp && lp.coachLines >= 6 && lp.score != null;
     let moved = "";
     if (call) {
