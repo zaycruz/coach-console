@@ -156,7 +156,7 @@
     flags: (s.flags || []).map((f) => ({ kind: f.flag, text: f.text })), lines: s.lines, score: s.score, status: (s.flags || []).some((f) => SAFETY[f.flag]) ? "alert" : "ok" });
 
   // One Act today list everywhere: the Today queue's "today" rows decide who is Act today on Patients, the patient page,
-  // linked records and Ellie. Anything a program calls "today" that the queue does not hold reads as Alert.
+  // linked records and the AI assistant. Anything a program calls "today" that the queue does not hold reads as Alert.
   let actQ = null, actAt = 0;
   const actToday = () => {
     if (!actQ || Date.now() - actAt > 60e3) { actAt = Date.now(); actQ = fetchJSON("/api/today").then((tq) => (tq && Array.isArray(tq.rows) ? new Map(tq.rows.filter((r) => r.horizon === "today").map((r) => [r.id, r])) : null)).catch(() => null); }
@@ -337,7 +337,7 @@
       : m && Array.isArray(m.fairness) ? { tone: "green", text: "No reliability gap found for this patient's age, sex, race, insurance or cancer groups (cross-validated: tested on patients held back from training, in turns)." }
       : { tone: "neutral", text: "Subgroup check not available right now (the model card did not load)." };
     return {
-      name: demoName(d.displayName), headline, caution, forEllie: d.forEllie || "", hero, fit,
+      name: demoName(d.displayName), headline, caution, forAssistant: d.forAssistant ?? d.forEllie ?? "", hero, fit,
       tags: [caution && { label: caution.label, tone: caution.soft ? "info" : "warn" }, { label: `ER/hospital ${pct(d.risk)} · 12 months`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...pos.slice(0, 3).map((x) => ({ label: x.label + (cost(x) ? " (cost proxy)" : ""), tone: "warn" }))].filter(Boolean),
       kpis: [{ hero: true, value: isNum(d.risk) ? pct(d.risk) : NR, label: "Next-year ER or hospital risk (from 2017 survey)", sub: d.riskWords || (r.baseRate != null ? `average patient ${pct(r.baseRate)}` : ""), good: d.status === "alert" ? false : d.status === "ok" ? true : null }, use.erVisits != null && { value: String(use.erVisits), label: "ER visits, data year 2017", sub: "most survivors had none · real MEPS", good: use.erVisits === 0 ? true : null }, use.hospitalStays != null && { value: String(use.hospitalStays), label: "Hospital stays, data year 2017", sub: "most survivors had none · real MEPS", good: use.hospitalStays === 0 ? true : null }].filter(Boolean),
       panels, evidence: null,
@@ -613,7 +613,7 @@
       identity: c5 ? c5.identity : { age: null, sex: null, cancer: L.who.split(" · ")[1] + " cancer", language: null },
       facts: [...facts, ["Linked records", LMODS.map((m) => L[m]).join(", ")]],
       callId: L.c5, headline: worst.hero && worst.hero.top ? worst.hero.top.text : worst.headline,
-      forEllie: (members.c1 && members.c1.forEllie) || "",
+      forAssistant: (members.c1 && members.c1.forAssistant) || "",
       tags: ok.map((m) => ({ label: `${MODULES[m.mod].name}: ${m.hero ? m.hero.value + " · " + m.hero.st.word : m.tri}`, tone: m.tri === "today" || m.tri === "alert" ? "risk" : m.tri === "watch" ? "warn" : "info" })),
       kpis: ok.filter((m) => m.hero).map((m) => ({ value: m.hero.value + (m.hero.unit || ""), label: `${MODULES[m.mod].name}: ${m.hero.label}`, sub: m.hero.compare, good: null })),
       panels: ok.map((m) => ({ id: m.mod, title: `${MODULES[m.mod].name}: ${m.headline}`, advice: m.panels.flatMap((pn) => pn.advice || []).slice(0, 2) })),

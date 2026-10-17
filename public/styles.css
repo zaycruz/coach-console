@@ -346,27 +346,27 @@ a.kpi .ks::after { content: " · details ›"; color: var(--link); }
 .btn.rec { background: var(--alert); border-color: var(--alert); color: #fff; }
 .line.interim { opacity: .6; }
 .live-empty { padding: 28px 12px; color: var(--ink-3); text-align: center; }
-/* Ellie */
-.ellie-fab { position: fixed; right: 24px; bottom: 24px; z-index: 40; font: inherit; font-weight: 600; background: var(--navy); color: #fff; border: 0; padding: 12px 18px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; box-shadow: 0 6px 20px rgba(11, 42, 74, .25); }
-.ellie-fab:hover { background: var(--navy-2); }
-.ellie { position: fixed; right: 24px; bottom: 24px; z-index: 41; width: min(420px, calc(100vw - 32px)); height: min(620px, calc(100vh - 48px)); background: var(--surface); border: 1px solid var(--line-2); box-shadow: 0 12px 40px rgba(11, 42, 74, .22); display: flex; flex-direction: column; }
-.ellie header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--navy); color: #fff; }
-.ellie header b { flex: 1; }
-.ellie header button { font: inherit; background: transparent; color: #fff; border: 1px solid #2f5277; padding: 2px 10px; cursor: pointer; }
-.ellie .msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-.ellie .m { max-width: 90%; padding: 9px 12px; font-size: .9rem; line-height: 1.45; white-space: pre-wrap; }
-.ellie .m.u { align-self: flex-end; background: var(--accent-soft); }
-.ellie .m.a { align-self: flex-start; background: var(--surface-2); border-left: 3px solid var(--navy); }
-.ellie .m .meta { display: block; margin-top: 6px; font-size: .74rem; color: var(--ink-3); white-space: normal; }
-.ellie .m .meta a { margin-right: 8px; }
-.ellie form { display: flex; border-top: 1px solid var(--line); }
-.ellie input { flex: 1; min-width: 0; font: inherit; padding: 12px 14px; border: 0; outline: none; }
-.ellie form button { font: inherit; font-weight: 600; border: 0; background: var(--accent); color: #fff; padding: 0 16px; cursor: pointer; }
-.ellie .sugg { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
-.ellie .sugg button { font: inherit; font-size: .78rem; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); padding: 3px 8px; cursor: pointer; }
+/* AI assistant */
+.assistant-fab { position: fixed; right: 24px; bottom: 24px; z-index: 40; font: inherit; font-weight: 600; background: var(--navy); color: #fff; border: 0; padding: 12px 18px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; box-shadow: 0 6px 20px rgba(11, 42, 74, .25); }
+.assistant-fab:hover { background: var(--navy-2); }
+.assistant { position: fixed; right: 24px; bottom: 24px; z-index: 41; width: min(420px, calc(100vw - 32px)); height: min(620px, calc(100vh - 48px)); background: var(--surface); border: 1px solid var(--line-2); box-shadow: 0 12px 40px rgba(11, 42, 74, .22); display: flex; flex-direction: column; }
+.assistant header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--navy); color: #fff; }
+.assistant header b { flex: 1; }
+.assistant header button { font: inherit; background: transparent; color: #fff; border: 1px solid #2f5277; padding: 2px 10px; cursor: pointer; }
+.assistant .msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.assistant .m { max-width: 90%; padding: 9px 12px; font-size: .9rem; line-height: 1.45; white-space: pre-wrap; }
+.assistant .m.u { align-self: flex-end; background: var(--accent-soft); }
+.assistant .m.a { align-self: flex-start; background: var(--surface-2); border-left: 3px solid var(--navy); }
+.assistant .m .meta { display: block; margin-top: 6px; font-size: .74rem; color: var(--ink-3); white-space: normal; }
+.assistant .m .meta a { margin-right: 8px; }
+.assistant form { display: flex; border-top: 1px solid var(--line); }
+.assistant input { flex: 1; min-width: 0; font: inherit; padding: 12px 14px; border: 0; outline: none; }
+.assistant form button { font: inherit; font-weight: 600; border: 0; background: var(--accent); color: #fff; padding: 0 16px; cursor: pointer; }
+.assistant .sugg { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
+.assistant .sugg button { font: inherit; font-size: .78rem; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2); padding: 3px 8px; cursor: pointer; }
 @media (max-width: 760px) {
-  .ellie-fab { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); right: 12px; padding: 10px 14px; }
-  .ellie { right: 0; bottom: 0; width: 100vw; height: calc(100vh - 64px); }
+  .assistant-fab { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); right: 12px; padding: 10px 14px; }
+  .assistant { right: 0; bottom: 0; width: 100vw; height: calc(100vh - 64px); }
   .stat-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stat-strip > *:nth-child(3) { border-left: 0; }
   .stat-strip > *:nth-child(n+3) { border-top: 1px solid var(--line); }
@@ -375,30 +375,30 @@ a.kpi .ks::after { content: " · details ›"; color: var(--link); }
   .ptable .hide-s { display: none; }
 }
 
-.ellie[hidden], .ellie-fab[hidden] { display: none; }
+.assistant[hidden], .assistant-fab[hidden] { display: none; }
 
-/* ellie */
+/* assistant */
 /* The FAB stays on screen and toggles the panel; on desktop the panel sits above it. */
-.ellie-fab { z-index: 42; }
-.ellie-fab.on { background: var(--navy-2); }
-.ellie { bottom: 84px; height: min(620px, calc(100vh - 108px)); }
+.assistant-fab { z-index: 42; }
+.assistant-fab.on { background: var(--navy-2); }
+.assistant { bottom: 84px; height: min(620px, calc(100vh - 108px)); }
 @media (max-width: 760px) {
-  .ellie { bottom: 0; height: calc(100vh - 64px); }
-  .ellie-fab.on { display: none; }
+  .assistant { bottom: 0; height: calc(100vh - 64px); }
+  .assistant-fab.on { display: none; }
 }
-/* Ellie's insight on the health chart */
-.ellie-insight:empty { display: none; }
-.ellie-insight { border: 1px solid var(--line); border-left: 3px solid var(--m-c5); background: var(--surface); padding: 12px 14px; }
-.ellie-insight .ei-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .82rem; margin-bottom: 6px; }
-.ellie-insight .ei-src { font-size: .72rem; color: var(--ink-3); }
-.ellie-insight .ei-line { margin: 0; font-weight: 600; line-height: 1.4; }
-.ellie-insight .ei-list { margin: 6px 0 0; padding-left: 18px; font-size: .88rem; line-height: 1.45; color: var(--ink-2); }
-.ellie-insight .ei-skel i { display: block; height: 10px; margin: 8px 0; background: linear-gradient(90deg, var(--line) 0%, var(--surface-2) 50%, var(--line) 100%); background-size: 200% 100%; animation: ei-shimmer 1.2s linear infinite; }
-.ellie-insight .ei-skel i:nth-child(1) { width: 85%; }
-.ellie-insight .ei-skel i:nth-child(2) { width: 65%; }
-.ellie-insight .ei-skel i:nth-child(3) { width: 50%; }
+/* AI Insight on the health chart */
+.assistant-insight:empty { display: none; }
+.assistant-insight { border: 1px solid var(--line); border-left: 3px solid var(--m-c5); background: var(--surface); padding: 12px 14px; }
+.assistant-insight .ei-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: .82rem; margin-bottom: 6px; }
+.assistant-insight .ei-src { font-size: .72rem; color: var(--ink-3); }
+.assistant-insight .ei-line { margin: 0; font-weight: 600; line-height: 1.4; }
+.assistant-insight .ei-list { margin: 6px 0 0; padding-left: 18px; font-size: .88rem; line-height: 1.45; color: var(--ink-2); }
+.assistant-insight .ei-skel i { display: block; height: 10px; margin: 8px 0; background: linear-gradient(90deg, var(--line) 0%, var(--surface-2) 50%, var(--line) 100%); background-size: 200% 100%; animation: ei-shimmer 1.2s linear infinite; }
+.assistant-insight .ei-skel i:nth-child(1) { width: 85%; }
+.assistant-insight .ei-skel i:nth-child(2) { width: 65%; }
+.assistant-insight .ei-skel i:nth-child(3) { width: 50%; }
 @keyframes ei-shimmer { to { background-position: -200% 0; } }
-@media (prefers-reduced-motion: reduce) { .ellie-insight .ei-skel i { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .assistant-insight .ei-skel i { animation: none; } }
 
 /* calls: scrolling transcripts, mic state, call replay, demo calls (owned by the calls work; call.js + renderCalls/renderCall) */
 .transcript.scroll { max-height: min(62vh, 620px); overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--line); background: var(--surface); }

@@ -204,7 +204,7 @@
   // ------------------------------------------------------------------ Patient 360
   /* Patient page (Whoop pattern): header = name, one identity line, status pill, actions; other facts under "Profile".
      Health chart = one hero card (number, status word + glyph, what it means, what to do, sparkline, source), then
-     Ellie's AI Insight, up to 3 KPI tiles, then Do next. Program tabs open with the same hero; depth sits in expanders.
+     AI Insight, up to 3 KPI tiles, then Do next. Program tabs open with the same hero; depth sits in expanders.
      Linked demo records (x-L1..x-L5) join one record from each program; every tab renders that program's member. */
   const PILLS = [["overview", "Health chart"], ["c1", "Hospital risk"], ["c3", "Rough weeks"], ["c4", "Glucose"], ["c5", "Coaching calls"]];
   const NR = "Not recorded";
@@ -330,12 +330,12 @@
       <p class="hero-num sm"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${h.st ? stBadge(h.st) : ""}${h.compare ? `<p class="lt-cmp">${esc(h.compare)}</p>` : ""}
       ${h.reason ? `<p class="lt-means">${esc(h.reason)}</p>` : ""}<span class="lt-open">Open →</span></a>`;
   }
-  // Below the tiles: Ellie's insight across all four programs, then one next step per program, worst first.
+  // Below the tiles: AI Insight across all four programs, then one next step per program, worst first.
   function linkedRest(p) {
     const RANKT = { today: 0, alert: 1, watch: 2, ok: 3 };
     const ok = ALL.map((m) => p.members[m]).filter((v) => v && !v.error).sort((a, b) => RANKT[a.tri] - RANKT[b.tri]);
     const steps = ok.map((v) => [v, firstStep(v)]).filter(([, a]) => a);
-    return `<div class="ellie-insight" data-pid="${esc(p.id)}"></div>${doNext(steps)}`;
+    return `<div class="assistant-insight" data-pid="${esc(p.id)}"></div>${doNext(steps)}`;
   }
 
   // The overview's one list of actions: the program's top step (the hero's "what to do" when the program flags today), once each.
@@ -433,13 +433,13 @@
     return `<section class="card sigs"><div class="sec-head"><h2>Signals against their own usual</h2><p class="small muted">Band = their usual range (middle 80% of days in the 5 weeks before). Dot = this week’s average. ▲ marks a signal that moves this week’s forecast.</p></div>${sigs.map(row).join("")}</section>`;
   }
 
-  /* Health chart = the summary: hero card, Ellie's insight, at most 3 KPI tiles, the top two actions.
+  /* Health chart = the summary: hero card, AI Insight, at most 3 KPI tiles, the top two actions.
      Charts, detail panels, evidence and the raw response live on the program pill (moduleView). */
   function overview(p) {
     const others = ALL.filter((m) => m !== p.mod).map((m) => MODS[m].name);
     return `<section class="stack-s"><h2 class="sec-t">Health chart · one number per program</h2><div class="l-tiles">${linkedTile(p.id, p.mod, p)}</div>
       <p class="small muted">Not enrolled in ${esc(others.join(", "))}.</p></section>
-      <div class="ellie-insight" data-pid="${esc(p.id)}"></div>${doNext([[p, firstStep(p)]].filter(([, a]) => a))}`;
+      <div class="assistant-insight" data-pid="${esc(p.id)}"></div>${doNext([[p, firstStep(p)]].filter(([, a]) => a))}`;
   }
 
   function moduleView(p, o = {}) {
@@ -837,7 +837,7 @@
     searchT = setTimeout(async () => { await render(); const s = document.getElementById("search"); if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); } }, 200);
   });
   window.addEventListener("hashchange", () => { if (parse().route === "line") return; toast.hidden = true; window.scrollTo(0, 0); render().then(() => view.focus({ preventScroll: true })); });
-  // Shared with call.js and ellie.js, which load after this file and add their own routes.
+  // Shared with call.js and assistant.js, which load after this file and add their own routes.
   window.P360 = { NAME, routes: {}, render, esc, fmtDate, pct, num, post, once, memo, A, MODS, SNAP, LIVE_URL, COPILOT_URL, statusPill, modChip, tagsHtml, loadingBox, errorBox, emptyBox, forced, sourceBanner, showToast, notWired, parse,
     FAMILY, FLAG_TEXT, liveScore, lineHtml, flagBanner, cueTrigger, panelVisual, adviceCard, sortRows, current: () => current };
 

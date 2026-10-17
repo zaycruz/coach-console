@@ -2,10 +2,10 @@
 // Checks: every screen renders from live data at desktop and phone width; the page stays light with square
 // corners even when the OS asks for dark; the Patients count equals the four list endpoints and Today stays
 // short; module chips say "live"; pills navigate; every program view ends in the raw response; a live call
-// tags typed lines through Clef and saves, and the recap matches the record; Ellie opens pages and
+// tags typed lines through Clef and saves, and the recap matches the record; AI assistant opens pages and
 // answers; with C3 forced down (its API requests aborted in the browser) the app falls back to the saved copy.
-// Also: Health chart is a summary with Ellie's Insight; Hospital-risk rows open the patient; no Patient's app or nav icons;
-// Ellie follow-ups ("open that first patient", "start a call with them"); Play-as-live demo; the mic records a spoken
+// Also: Health chart is a summary with AI Insight; Hospital-risk rows open the patient; no Patient's app or nav icons;
+// AI assistant follow-ups ("open that first patient", "start a call with them"); Play-as-live demo; the mic records a spoken
 // clip (Chromium fake mic fed a `say` wav) and Whisper transcribes it into a line.
 // Usage: node e2e/live.mjs [baseUrl]
 import { chromium } from "playwright";
@@ -97,7 +97,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await ctx.close();
 }
 
-// 3. counts, sources, pills, drill-down, live call, Ellie
+// 3. counts, sources, pills, drill-down, live call, AI assistant
 {
   const { ctx, page, errors } = await newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto(`${B}/#patients`); await settle(page);
@@ -176,47 +176,55 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("live call: saved, and the recap now shows it", after === Math.min(before + 1, 20) && (await page.locator("#recap").innerText()).includes("Logged in Patient 360"), `${before} → ${after}`);
   manifest.savedCallPatient = quiet.survivorId;
 
-  // Ellie: opens a page instantly, answers a question through the model
+  // AI assistant: opens a page instantly, answers a question through the model
   await page.goto(`${B}/#today`); await settle(page);
-  await page.locator("#ellie-fab").click();
-  await page.fill("#ellie-q", "open glucose for N0072"); await page.press("#ellie-q", "Enter");
+  await page.locator("#assistant-fab").click();
+  await page.fill("#assistant-q", "open glucose for N0072"); await page.press("#assistant-q", "Enter");
   await page.waitForFunction(() => location.hash === "#p-c4-N0072.c4", null, { timeout: 15000 }).catch(() => {});
-  ok("Ellie opens a patient's glucose page", (await page.evaluate(() => location.hash)) === "#p-c4-N0072.c4", await page.evaluate(() => location.hash));
+  ok("AI assistant opens a patient's glucose page", (await page.evaluate(() => location.hash)) === "#p-c4-N0072.c4", await page.evaluate(() => location.hash));
   await settle(page);
-  await page.fill("#ellie-q", "What does time in range mean for this patient?"); await page.press("#ellie-q", "Enter");
-  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
-  const ans = await page.locator("#ellie-msgs .m.a").last().innerText();
-  ok("Ellie answers from the patient on screen", /range|70|180/i.test(ans) && !/couldn/i.test(ans), ans.slice(0, 160).replace(/\s+/g, " "));
-  await shot(page, "ellie_1280.png", false);
-  await page.fill("#ellie-q", "fever 39 on chemo, what should the patient do?"); await page.press("#ellie-q", "Enter");
-  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 30000 }).catch(() => {});
-  const red = await page.locator("#ellie-msgs .m.a").last().innerText();
-  ok("Ellie: red-flag question gets the emergency answer", /emergency|ER today|24-hour/i.test(red) && !/3021|rate limit|error/i.test(red), red.slice(0, 120).replace(/\s+/g, " "));
-  manifest.ellie = ans;
+  await page.fill("#assistant-q", "What does time in range mean for this patient?"); await page.press("#assistant-q", "Enter");
+  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#assistant-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
+  const ans = await page.locator("#assistant-msgs .m.a").last().innerText();
+  ok("AI assistant answers from the patient on screen", /range|70|180/i.test(ans) && !/couldn/i.test(ans), ans.slice(0, 160).replace(/\s+/g, " "));
+  await shot(page, "assistant_1280.png", false);
+  await page.fill("#assistant-q", "fever 39 on chemo, what should the patient do?"); await page.press("#assistant-q", "Enter");
+  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#assistant-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 30000 }).catch(() => {});
+  const red = await page.locator("#assistant-msgs .m.a").last().innerText();
+  ok("AI assistant: red-flag question gets the emergency answer", /emergency|ER today|24-hour/i.test(red) && !/3021|rate limit|error/i.test(red), red.slice(0, 120).replace(/\s+/g, " "));
+  manifest.assistant = ans;
 
-  // Ellie: follow-ups resolve to the patients she just named; the panel closes
-  await page.fill("#ellie-q", "who is at most risk of hospitalization"); await page.press("#ellie-q", "Enter");
-  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
-  const firstCite = await page.locator("#ellie-msgs .m.a").last().locator('a[href^="#p-"]').first().getAttribute("href").catch(() => null);
-  ok("Ellie names patients for a risk question", !!firstCite, firstCite || (await page.locator("#ellie-msgs .m.a").last().innerText()).slice(0, 160));
-  await page.fill("#ellie-q", "open up that first patient"); await page.press("#ellie-q", "Enter");
+  // AI assistant: follow-ups resolve to the patients it just named; the panel closes
+  await page.fill("#assistant-q", "who is at most risk of hospitalization"); await page.press("#assistant-q", "Enter");
+  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#assistant-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
+  const firstCite = await page.locator("#assistant-msgs .m.a").last().locator('a[href^="#p-"]').first().getAttribute("href").catch(() => null);
+  ok("AI assistant names patients for a risk question", !!firstCite, firstCite || (await page.locator("#assistant-msgs .m.a").last().innerText()).slice(0, 160));
+  await page.fill("#assistant-q", "open up that first patient"); await page.press("#assistant-q", "Enter");
   await page.waitForFunction((h) => location.hash.startsWith(h), firstCite, { timeout: 60000 }).catch(() => {});
   const fh = await page.evaluate(() => location.hash);
-  ok("Ellie follow-up: 'that first patient' opens the one she named", !!firstCite && fh.startsWith(firstCite), `${fh} vs ${firstCite}`);
+  ok("AI assistant follow-up: 'that first patient' opens the one it named", !!firstCite && fh.startsWith(firstCite), `${fh} vs ${firstCite}`);
   await settle(page);
-  await page.fill("#ellie-q", "start a call with them"); await page.press("#ellie-q", "Enter");
+  await page.fill("#assistant-q", "start a call with them"); await page.press("#assistant-q", "Enter");
   await page.waitForFunction(() => location.hash.startsWith("#live-"), null, { timeout: 60000 }).catch(() => {});
-  ok("Ellie follow-up: 'start a call with them' opens the call", firstCite && (await page.evaluate(() => location.hash)) === "#live-" + firstCite.slice(3).split(".")[0], await page.evaluate(() => location.hash));
-  await shot(page, "ellie-followup_1280.png", false);
-  await page.locator("#ellie-close").click();
-  ok("Ellie closes", await page.locator("#ellie").isHidden());
+  ok("AI assistant follow-up: 'start a call with them' opens the call", firstCite && (await page.evaluate(() => location.hash)) === "#live-" + firstCite.slice(3).split(".")[0], await page.evaluate(() => location.hash));
+  await shot(page, "assistant-followup_1280.png", false);
+  await page.locator("#assistant-close").click();
+  ok("AI assistant closes", await page.locator("#assistant").isHidden());
+
+  // No old assistant name anywhere in the rendered page (zay: "remove all ellie language").
+  for (const r of ["today", "patients", "p-x-L1", "calls"]) {
+    await page.goto(`${B}/#${r}`); await settle(page);
+    await page.waitForFunction(() => { const e = document.querySelector(".assistant-insight"); return !e || (e.dataset.state && e.dataset.state !== "loading"); }, null, { timeout: 45000 }).catch(() => {});
+    const hits = await page.evaluate(() => (document.documentElement.outerHTML.match(/.{0,40}ellie.{0,40}/gi) || []).slice(0, 3));
+    ok(`#${r}: rendered DOM has no "ellie"`, hits.length === 0, hits.join(" | "));
+  }
 
   // One fact, one place: every tile number appears exactly once on its overview; no patient second person anywhere we write.
   const voice = [];
   for (const pid of ["x-L1", "c4-N0072", "c3-P03000", "c1-S71188550", "c5-P0002"]) {
     await page.goto(`${B}/#p-${pid}`); await settle(page);
     await page.waitForFunction(() => !document.querySelector("#view .is-loading, #view [aria-busy=true]"), null, { timeout: 30000 }).catch(() => {});
-    await page.waitForFunction(() => { const e = document.querySelector(".ellie-insight"); return e && e.dataset.state && e.dataset.state !== "loading"; }, null, { timeout: 45000 }).catch(() => {});
+    await page.waitForFunction(() => { const e = document.querySelector(".assistant-insight"); return e && e.dataset.state && e.dataset.state !== "loading"; }, null, { timeout: 45000 }).catch(() => {});
     // The tile's number with its unit ("1 line", "10.3%"), counted as a whole token (not inside "13" or "21.0%").
     const nums = (await page.locator("#view .l-tile .hero-num").allInnerTexts()).map((n) => n.replace(/\s+/g, " ").trim()), text = await page.locator("#view").innerText();
     const esc = (n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -234,10 +242,10 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   for (const r of ["today", "patients"]) { await page.goto(`${B}/#${r}`); await settle(page); const t = (await page.locator("#view").innerText()).replace(/“[^”]*”/g, ""); const h = t.match(/[^.\n]{0,40}\byour [^.\n]{0,30}/i); if (h) voice.push(`${r}: ${h[0].trim()}`); }
   ok("Clinician voice: no \"your \" in our copy (overviews, tabs, Today, Patients)", voice.length === 0, voice.slice(0, 3).join(" | "));
 
-  // Health chart = summary + Ellie's Insight; detail lives in the pills
+  // Health chart = summary + AI Insight; detail lives in the pills
   await page.goto(`${B}/#p-${ids.c3}`); await settle(page);
-  await page.waitForFunction(() => { const e = document.querySelector(".ellie-insight"); return e && /check before acting|program’s own (summary|record)/i.test(e.textContent); }, null, { timeout: 60000 }).catch(() => {});
-  const ins = await page.locator(".ellie-insight").innerText().catch(() => "");
+  await page.waitForFunction(() => { const e = document.querySelector(".assistant-insight"); return e && /check before acting|program’s own (summary|record)/i.test(e.textContent); }, null, { timeout: 60000 }).catch(() => {});
+  const ins = await page.locator(".assistant-insight").innerText().catch(() => "");
   ok("Health chart shows AI Insight, short and labelled", /^AI Insight/.test(ins.trim()) && /check before acting|own (summary|record)/i.test(ins) && ins.split(/\s+/).length < 90, ins.replace(/\s+/g, " ").slice(0, 200));
   ok("Health chart has no raw dump (that lives in the program tab)", (await page.locator("details#raw").count()) === 0);
   await shot(page, "health-chart-insight_1280.png");
