@@ -566,10 +566,11 @@
   function moduleView(p, o = {}) {
     const lang = o.lang || (p.identity && p.identity.language);
     const panels = p.panels.filter((pn) => pn.id !== "redflags");
-    const sections = panels.map((pn) => { const vis = panelVisual(pn); return vis ? `<section class="card stack" id="pn-${esc(pn.id)}"><h2>${esc(pn.title)}</h2><div class="${pn.small ? "multiples" : "stack"}">${vis}</div></section>` : ""; }).join("");
+    // Charts two-up (zay: less scrolling); a section of small multiples or a table spans both columns.
+    const sections = panels.map((pn) => { const vis = panelVisual(pn); return vis ? `<section class="card stack${pn.small || pn.table || pn.bars ? " wide" : ""}" id="pn-${esc(pn.id)}"><h2>${esc(pn.title)}</h2><div class="${pn.small ? "multiples" : "stack"}">${vis}</div></section>` : ""; }).join("");
     const kp = p.mod === "c1" ? [] : (p.kpis || []).filter((k) => !k.hero && !(p.hero && String(k.value) === String(p.hero.value)) && !(p.mod === "c5" && /score/i.test(k.label)));
     return `${p.mod === "c1" ? redFlagsCard(p) : ""}${heroCard(p.hero, p.mod, p)}${kp.length ? kpiCards(kp) : ""}${p.mod === "c4" ? c4Safety(p, lang) : ""}
-      ${p.mod === "c3" ? signalRows(p.signals) : ""}${sections}
+      ${p.mod === "c3" ? signalRows(p.signals) : ""}${sections ? `<div class="chart-grid">${sections}</div>` : ""}
       ${p.mod === "c4" ? handout(p, lang) : ""}${p.mod === "c5" ? `<p class="agree-link small"><a href="#calls-agreement">How well Clef’s coach score matches supervisors →</a></p>` : ""}
       ${howSure(p)}${rawData(p)}${p.footnote ? `<p class="footnote">${esc(p.footnote)}</p>` : ""}`;
   }

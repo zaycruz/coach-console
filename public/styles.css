@@ -37,9 +37,9 @@
   --r: 0;
   --gutter: 16px;
   /* type roles, six sizes, weights 400 and 600 only */
-  --t-12: 12px; --t-14: 14px; --t-16: 16px; --t-20: 20px; --t-28: 28px; --t-44: 44px;
-  /* 8-pt grid */
-  --s-1: 8px; --s-2: 16px; --s-3: 24px; --s-4: 32px; --s-5: 40px;
+  --t-12: 12px; --t-14: 13px; --t-16: 15px; --t-20: 18px; --t-28: 26px; --t-44: 40px;
+  /* 8-pt grid, one step tighter */
+  --s-1: 8px; --s-2: 12px; --s-3: 20px; --s-4: 28px; --s-5: 32px;
   --fab: 72px; /* reserved space under the assistant button */
 }
 
@@ -893,3 +893,25 @@ button.more-link { align-self: flex-start; padding-left: 0; }
 
 .score-move, .disagree { color: var(--ink-2); font-size: var(--t-14); }
 .disagree a { margin-right: 2px; }
+
+/* ==== iteration 2 (zay, after the 15:47 deploy) ==== */
+/* navigation pane: a quiet gradient with a glass active item */
+.rail { background: linear-gradient(180deg, #123a63 0%, #0b2a4a 48%, #071d35 100%); overflow: hidden; }
+.rail::before { content: ""; position: absolute; inset: 0; background: radial-gradient(520px 280px at 18% -4%, rgba(111, 177, 255, .22), transparent 62%); pointer-events: none; }
+.rail > * { position: relative; }
+.nav-link { transition: background 150ms ease; }
+.nav-link:hover { background: rgba(255, 255, 255, .07); }
+.nav-link.active { background: linear-gradient(180deg, rgba(255, 255, 255, .17), rgba(255, 255, 255, .08)); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .24), inset 0 -1px 0 rgba(0, 0, 0, .18); border-left-color: #8cc4ff; }
+.topbar { background: rgba(255, 255, 255, .88); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+/* program tabs: charts two-up to cut scrolling; wide sections span both columns */
+.chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
+.chart-grid > .card { min-width: 0; }
+.chart-grid > .card.wide { grid-column: 1 / -1; }
+@media (max-width: 1000px) { .chart-grid { grid-template-columns: minmax(0, 1fr); } }
+/* live call: the cues column matches the transcript column height; cues scroll inside */
+.call-layout { align-items: stretch; }
+.call-side { position: static; max-height: none; overflow: visible; display: flex; flex-direction: column; }
+.call-side > .card:last-child { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+#cues { flex: 1; max-height: none; min-height: 120px; overflow-y: auto; }
+.tile { min-height: 176px; }
+.q-row { min-height: 64px; }

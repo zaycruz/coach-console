@@ -392,7 +392,7 @@
     const take = (re) => recs.filter((r) => !used.has(r) && re.test(r.title + " " + r.text)).map((r) => (used.add(r), r));
     const signalPanels = ev.filter((e) => C3_SIGNALS[e.signal] && c[C3_SIGNALS[e.signal].key]).map((e) => {
       const s = C3_SIGNALS[e.signal];
-      return { id: e.signal, title: s.title, lead: e.text, charts: [{ x, series: [series(s.key, s.title)], ticks: doses, h: 170, title: `${s.title}, last 42 days`, note: `${s.unit} · ticks = treatment days`, d: s.d }], advice: take(s.words) };
+      return { id: e.signal, title: s.title, lead: e.text, charts: [{ x, series: [series(s.key, s.title)], ticks: doses, h: 170, title: `${s.title}, last 42 days`, note: `${s.unit} · ticks = treatment days · gaps = watch not worn`, d: s.d }], advice: take(s.words) };
     });
     const riskAdvice = recs.filter((r) => !used.has(r));
     if (!has(d, "risk")) note("c3", "risk (not provided)");
@@ -403,7 +403,7 @@
       advice: riskAdvice,
     };
     const shownKeys = new Set(signalPanels.map((p) => C3_SIGNALS[p.id].key));
-    const rest = Object.values(C3_SIGNALS).filter((s) => !shownKeys.has(s.key) && c[s.key]).map((s) => ({ x, series: [series(s.key, s.title, "var(--ink-3)")], ticks: doses, h: 120, title: s.title, note: s.unit, d: s.d }));
+    const rest = Object.values(C3_SIGNALS).filter((s) => !shownKeys.has(s.key) && c[s.key]).map((s) => ({ x, series: [series(s.key, s.title, "var(--ink-3)")], ticks: doses, h: 120, title: s.title, note: `${s.unit} · gaps = watch not worn`, d: s.d }));
     if (c.watchWornHours) rest.push({ x, series: [series("watchWornHours", "Watch worn", "var(--ink-3)")], h: 120, title: "Watch worn", note: "hours a day" });
     if (c.selfReportedFeeling) rest.push({ x, series: [{ values: c.selfReportedFeeling, color: "var(--ink-3)", label: "Daily check-in", dots: true }], min: 1, max: 5, h: 120, title: "Daily check-in, 1–5", note: "context only, not a model input" });
     const panels = [risk, ...signalPanels];
