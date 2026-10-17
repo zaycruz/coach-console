@@ -67,7 +67,7 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     const words = String(f.text || "").replace(/\s+/g, " ").replace(/^(oh,?\s+)?before you go,?\s+(and\s+)?/i, "").trim();
     const verb = safety && !fresh ? "Close the loop · " : "";
     rows.push({ id: pid, mod: "c5", name: String(c.participantName || pid), status: "alert", headline: `${label} on call ${c.callNumber}${fresh ? "" : ", not yet closed"}`, updatedAt: c.date,
-      horizon: safety ? "today" : "week", rank: safety ? rank - (fresh ? 0 : 5) : 450, reason: cut(`${verb}${label}, call ${c.callNumber}, ${agoWords(c.date)}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: langOf5.get(pid) || "", flaggedAt: c.date });
+      horizon: safety ? "today" : "week", rank: safety ? (fresh ? rank : rank - 60) : 450, reason: cut(`${verb}${label}, call ${c.callNumber}, ${agoWords(c.date)}: “${words.charAt(0).toUpperCase() + words.slice(1)}”`), data: "Synthetic", language: langOf5.get(pid) || "", flaggedAt: c.date });
   }
 
   // C3: urgent first (7-day ER/hospital risk over its line), then rough-patch alerts.
