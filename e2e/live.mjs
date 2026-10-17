@@ -1,6 +1,6 @@
 // E2E against the deployed Patient 360 (live module data). Writes runs/<ts>/ with screenshots + manifest.json.
-// Checks: every screen renders from live data at desktop and phone width; the page stays light with square
-// corners even when the OS asks for dark; the Patients count equals the four list endpoints and Today stays
+// Checks: every screen renders from live data at desktop and phone width; the page follows the OS colour scheme
+// with the token sheet's rounded corners; the Patients count equals the four list endpoints and Today stays
 // short; module chips say "live"; pills navigate; every program view ends in the raw response; a live call
 // tags typed lines through Clef and saves, and the recap matches the record; Ellie opens pages and
 // answers; with C3 forced down (its API requests aborted in the browser) the app falls back to the saved copy.
@@ -39,7 +39,7 @@ const ROUTES = [
   ["calls", "Calls"], [`call-${flaggedCall.callId}`, "Transcript"],
   [`live-${c5WithCall}`, "Last call"], [`live-${ids.c4}`, "No previous call"],
   ["care", "Hospital risk"], ["research", "Research"],
-  ["today~error", "Couldn"], ["today~empty", "Nothing here yet"], ["today~loading", ""],
+  ["today~error", "Couldn"], ["today~empty", "No one needs a call today"], ["today~loading", ""],
 ];
 const browser = await chromium.launch();
 const manifest = { base: B, ts, total, ids, call: flaggedCall.callId, shots: [] };
@@ -80,17 +80,25 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await ctx.close();
 }
 
-// 2. look: light even when the OS asks for dark; square corners
+// 2. look: follows the OS (dark when the OS is dark); rounded corners from the token sheet (POLISH.md)
 {
   const { ctx, page } = await newPage({ viewport: { width: 1280, height: 900 }, colorScheme: "dark" });
   await page.goto(`${B}/#p-${ids.c4}`); await settle(page);
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  const lum = (bg.match(/\d+/g) || [0, 0, 0]).slice(0, 3).reduce((a, b) => a + +b, 0) / 3;
-  ok("stays light when the OS is dark", lum > 200, bg);
-  const radii = await page.evaluate(() => [".card", ".btn", ".pill", ".kpi", ".tag"].map((s) => { const e = document.querySelector(s); return e ? s + " " + getComputedStyle(e).borderTopLeftRadius : s + " none"; }));
-  // One corner radius per component, from the token sheet (POLISH.md); a component not on this page is skipped.
-  ok("consistent corners on cards, buttons, pills, KPIs, tags", radii.filter((r) => !r.endsWith(" none")).every((r) => r.endsWith(" 0px")), radii.join(", "));
-  await shot(page, "dark-os-light-page_1280.png", false);
+  const lum = (bg.match(/\d+/g) || [255, 255, 255]).slice(0, 3).reduce((a, b) => a + +b, 0) / 3;
+  ok("dark when the OS is dark (body background)", lum < 40, bg);
+  // Each component's corner equals its token from the sheet (POLISH.md): surfaces --r-md, controls --r-pill.
+  // A component not on this page is skipped.
+  const radii = await page.evaluate(() => {
+    const tok = (t) => { const d = document.createElement("div"); d.style.borderTopLeftRadius = `var(${t})`; document.body.appendChild(d); const v = getComputedStyle(d).borderTopLeftRadius; d.remove(); return v; };
+    return [[".card", "--r-md"], [".kpi", "--r-md"], [".btn", "--r-pill"], [".tag", "--r-pill"]].map(([s, t]) => {
+      const e = document.querySelector(s); const want = tok(t);
+      return { s, t, want, got: e ? getComputedStyle(e).borderTopLeftRadius : null };
+    });
+  });
+  const seen = radii.filter((r) => r.got != null);
+  ok("corners follow the token sheet (.card/.kpi = --r-md, .btn/.tag = --r-pill)", seen.length > 0 && seen.every((r) => r.got === r.want && r.want !== "0px"), radii.map((r) => `${r.s} ${r.got ?? "none"} (${r.t} ${r.want})`).join(", "));
+  await shot(page, "dark-os_1280.png", false);
   await ctx.close();
 }
 

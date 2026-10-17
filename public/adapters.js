@@ -21,10 +21,21 @@
   const modOfPath = (p) => p.split("/")[2];
   const note = (mod, what) => (missing[mod] = missing[mod] || new Set()).add(what);
 
-  async function fetchJSON(path, required) {
+  /* Saved copy first. Every GET races the live module against a short budget (FAST_MS). If live answers in time it
+     is used; if not, and the saved copy (fallback-data.js) has this path, the saved copy is returned at once and
+     the live answer keeps loading in the background. When it lands it is cached and "p360:refresh" fires, so the
+     page re-renders with live data. A failure in the background marks the module "fallback", as before. */
+  const FAST_MS = 350, LIVE_TTL = 60000;
+  const liveCache = new Map(), inflight = new Map();
+  let bg = 0;
+  const pending = () => bg;
+  const fire = (path, ok) => window.dispatchEvent(new CustomEvent("p360:refresh", { detail: { path, ok } }));
+  if (!SNAP_ONLY) setTimeout(() => loadFallback().catch(() => {}), 0); // warm the saved copy without blocking first paint
+  function liveFetch(path, required) {
+    if (inflight.has(path)) return inflight.get(path);
     const mod = modOfPath(path);
-    let err = null;
-    if (!SNAP_ONLY) {
+    const p = (async () => {
+      let err = null;
       try {
         const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
         const r = await fetch(path, { signal: ctl.signal }); clearTimeout(t);
@@ -32,11 +43,39 @@
         if (r.ok && body) {
           health[mod] = { source: "live", at: new Date().toISOString() };
           if (required) await fillMissing(mod, path, body, required);
+          liveCache.set(path, { body, at: Date.now() });
           return body;
         }
         if (r.status === 404 && body && body.error) { const e = new Error(body.error); e.notFound = true; throw e; }
         err = new Error(`HTTP ${r.status}`);
       } catch (e) { if (e.notFound) throw e; err = err || new Error(e.name === "AbortError" ? "timed out" : e.message); }
+      throw err;
+    })();
+    inflight.set(path, p);
+    p.then(() => inflight.delete(path), () => inflight.delete(path));
+    return p;
+  }
+  async function fetchJSON(path, required) {
+    const mod = modOfPath(path);
+    let err = null;
+    if (!SNAP_ONLY) {
+      const hit = liveCache.get(path);
+      if (hit && Date.now() - hit.at < LIVE_TTL) return hit.body;
+      const lp = liveFetch(path, required);
+      const early = fb && fb[path];
+      if (early) {
+        const r = await Promise.race([lp.then((b) => ({ b }), (e) => ({ e })), new Promise((res) => setTimeout(() => res(null), FAST_MS))]);
+        if (r && r.b) return r.b;
+        if (r && r.e && r.e.notFound) throw r.e;
+        if (!r) {
+          bg++;
+          lp.then(() => { bg--; fire(path, true); }, (e) => { bg--; health[mod] = { source: "fallback", error: e.message, at: fb && fb.__capturedAt }; fire(path, false); });
+          return early;
+        }
+        err = r.e;
+      } else {
+        try { return await lp; } catch (e) { if (e.notFound) throw e; err = e; }
+      }
     }
     let saved = null;
     try { saved = (await loadFallback())[path]; } catch (e) { /* no saved copy */ }
@@ -646,5 +685,5 @@
     ].filter(Boolean);
     return { calls: n, headline, rows, flagLead: "Clef’s safety flags compared with the supervisors’ flags on the same held-out calls.", flags, method, label: "Synthetic data, Crane Lab" };
   }
-  window.Adapter = { MODULES, linked, IDENTITY_KEYS, today, roster, patient, calls, call, advice, metrics, agreement, agreementView, health, missing, triage, demoName, shortName, c1Headline, fairFlag, context, remember, local, ago, savedAsCall, handoffLabel };
+  window.Adapter = { MODULES, linked, IDENTITY_KEYS, today, roster, patient, calls, call, advice, metrics, agreement, agreementView, health, missing, triage, demoName, shortName, c1Headline, fairFlag, context, remember, local, ago, savedAsCall, handoffLabel, pending };
 })();
