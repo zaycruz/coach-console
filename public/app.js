@@ -222,7 +222,9 @@
       ${p.lastSaved ?`<p class="small muted">Last call logged ${esc(A.ago(p.lastSaved.at))} by ${esc(p.lastSaved.coach)}${p.lastSaved.flags && p.lastSaved.flags.length ? ` · ${p.lastSaved.flags.length} line${p.lastSaved.flags.length === 1 ? "" : "s"} flagged` : ""} · <a href="#live-${esc(id)}">recap</a></p>` : ""}</div>
       <div class="row">${p.handoff ? `<span class="tag t-good" title="${esc(p.handoff.note || "")}">✓ ${esc(p.handoff.label)}</span>` : p.tri === "today" ? `<button class="btn danger" data-handoff data-pid="${esc(id)}" data-name="${esc(p.name)}" data-flag="${esc(p.concern ? p.concern.text : p.headline)}">Escalate to care team</button>` : ""}<a class="btn primary" href="#live-${esc(id)}">Start call</a></div></header>
       <nav class="pills" aria-label="Patient views">${pills}</nav>${sourceBanner([p.mod])}`;
-    const body = tab === "overview" ? overview(p) : tab === p.mod ? moduleView(p) : notEnrolled(tab);
+    let body = tab === "overview" ? overview(p) : tab === p.mod ? moduleView(p) : notEnrolled(tab);
+    // C5 tab: one line to the supervisor-agreement check on the Calls page, only when that check loads.
+    if (tab === "c5" && p.mod === "c5" && (await once("agreement", A.agreement).catch(() => null))) body += `<p class="small muted">How closely does Clef’s coach score match supervisors? <a href="#calls-agreement">See the check on held-out calls →</a></p>`;
     const miss = p.missing && p.missing.length ? `<details class="more tech"><summary>Technical details</summary><p class="footnote">Fields this program does not send yet: ${esc(p.missing.join("; "))}.</p></details>` : "";
     return head + body + miss;
   }
@@ -297,7 +299,7 @@
   }
 
   // ------------------------------------------------------------------ Calls
-  async function renderCalls() {
+  async function renderCalls(arg) {
     const head = `<header class="page-head"><div><h1>Calls</h1><p class="sub">Supervisor-labelled coaching calls, concerns first. Open one to run Clef and compare it with the supervisor.</p></div>
       <a class="btn" href="${COPILOT_URL}" target="_blank" rel="noopener">Clef app ↗</a></header>`;
     const f = forced("calls", "No calls reviewed yet.");
@@ -315,7 +317,23 @@
     // Calls saved in Patient 360 (any program), newest first, above the labelled set.
     const logged = (await A.context().catch(() => ({ saved: [] }))).saved.map(A.savedAsCall);
     const loggedHtml = logged.length ? `<section class="stack-s"><h2>Logged in Patient 360 · ${logged.length}</h2><div class="calls-list">${logged.map((c) => callRow(c, true)).join("")}</div></section><h2>Supervisor-labelled calls</h2>` : "";
-    return `${head}${sourceBanner(["c5"])}${demo}${loggedHtml}<div class="calls-list">${calls.map((c) => callRow(c, true)).join("")}</div>`;
+    // Supervisor agreement (C5 /agreement): hidden when the endpoint fails. #calls-agreement opens it.
+    const fit = supervisorFit(await once("agreement", A.agreement).catch(() => null), arg === "agreement");
+    return `${head}${sourceBanner(["c5"])}${fit}${demo}${loggedHtml}<div class="calls-list">${calls.map((c) => callRow(c, true)).join("")}</div>`;
+  }
+  // Same table classes as the C1 fairness table. Every number sits next to the A-vs-B row it is compared with.
+  function supervisorFit(v, open) {
+    if (!v) return "";
+    const cell = (val, ci) => `${esc(val)}${ci ? `<span class="cav">${esc(ci)}</span>` : ""}`;
+    const rows = v.rows.map((r) => `<tr><td>${r.yard ? `<b>${esc(r.pair)}</b>` : esc(r.pair)}${r.note ? `<span class="cav">${esc(r.note)}</span>` : ""}</td><td class="mono">${esc(r.n)}</td><td class="mono">${cell(r.r, r.ci)}</td><td class="mono">${esc(r.mae)}</td><td class="mono">${cell(r.icc, r.iccCi)}</td></tr>`).join("");
+    const flags = v.flags.length ? `<p class="fig-t">Safety flags</p><p class="small muted">${esc(v.flagLead)}</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Measure</th><th>Rate (95% CI)</th></tr></thead><tbody>${v.flags.map((f) => `<tr><td>${esc(f.label)}<span class="cav">${esc(f.count)}</span></td><td class="mono">${cell(f.rate, f.ci)}</td></tr>`).join("")}</tbody></table></div>` : "";
+    return `<details class="more" id="agreement"${open ? " open" : ""}><summary>How well Clef’s coach score matches supervisors</summary>
+      <div class="stack-s"><p>${esc(v.headline)}</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Pair</th><th>n</th><th>Pearson r (95% CI)</th><th>MAE</th><th>ICC (95% CI)</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <p class="small muted">Compare each Clef row with the Supervisor A vs Supervisor B row. Pearson r: 1 = scores rise and fall together perfectly, 0 = unrelated. MAE: average gap in points on the supervisors’ 1–5 scale; lower is closer. ICC: agreement on the score itself. – = not computed for that pair.</p>
+      ${flags}
+      <details class="more tech"><summary>Method</summary>${v.method.map((m) => `<p class="footnote">${esc(m)}</p>`).join("")}</details>
+      <p class="footnote">${esc(v.label)}.</p></div></details>`;
   }
 
   /* Call review: supervisor labels first; "Run Clef" sends each line through /api/c5/turn
@@ -591,7 +609,7 @@
       else if (route === "p") html = arg ? await renderPatient360(arg) : await renderToday();
       else if (route === "patients") html = await renderPatients(arg);
       else if (P360.routes[route]) html = await P360.routes[route](arg);
-      else if (route === "calls") html = await renderCalls();
+      else if (route === "calls") html = await renderCalls(arg);
       else if (route === "call") html = await renderCall(arg);
       else if (route === "care") html = await renderCare();
       else if (route === "research") html = renderResearch();

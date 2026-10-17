@@ -411,5 +411,59 @@
 
   // Program-level metrics (C1 care-team page, C3 model card). Same live → saved-copy fallback.
   async function metrics(mod) { return fetchJSON(`/api/${mod}/metrics`, []); }
-  window.Adapter = { MODULES, today, roster, patient, calls, call, advice, metrics, health, missing, triage, demoName, shortName, c1Headline, fairFlag, context, remember, local, ago, savedAsCall, handoffLabel };
+
+  // ---- C5 supervisor agreement (GET /api/c5/agreement): Clef's coach score against Supervisors A and B on
+  // held-out calls, with supervisor-vs-supervisor as the yardstick. Resolves to the UI shape (agreementView) or throws.
+  // It is a side panel: its success or failure must not change the C5 "isn't answering" banner, so health.c5 is restored.
+  async function agreement() {
+    const prev = health.c5;
+    try {
+      const v = agreementView(await fetchJSON("/api/c5/agreement"));
+      if (!v) throw new Error("agreement: unexpected shape");
+      return v;
+    } finally { if (prev) health.c5 = prev; else delete health.c5; }
+  }
+  // Pure: endpoint body -> { calls, headline, rows, flagLead, flags, method, label }, or null when a needed pair is missing.
+  function agreementView(d) {
+    const cs = d && Array.isArray(d.correlations) ? d.correlations : [];
+    const pair = (re) => cs.find((c) => c && re.test(String(c.pair || "")) && c.pearson != null);
+    const cA = pair(/^app score vs supervisor a$/i), cB = pair(/^app score vs supervisor b$/i), cAB = pair(/^supervisor a vs supervisor b$/i);
+    if (!cA || !cB || !cAB) return null;
+    const cM = pair(/^app score vs mean of a and b$/i), cH = pair(/^human-label score vs mean/i), cAH = pair(/^app score vs human-label/i);
+    const mae = d.mae || {}, icc = d.supervisorIcc || {}, fl = d.flags || {};
+    const f2 = (v) => num(v, 2);
+    const range = (a, f) => (Array.isArray(a) && a[0] != null && a[1] != null ? `${f(a[0])}–${f(a[1])}` : "");
+    // The verb comes from the intervals: "more/less closely" only when both Clef intervals clear the A-vs-B interval.
+    const lo = (c) => (Array.isArray(c.pearsonCi95) ? c.pearsonCi95[0] : c.pearson), hi = (c) => (Array.isArray(c.pearsonCi95) ? c.pearsonCi95[1] : c.pearson);
+    const verb = lo(cA) > hi(cAB) && lo(cB) > hi(cAB) ? "more closely than" : hi(cA) < lo(cAB) && hi(cB) < lo(cAB) ? "less closely than" : "about as closely as";
+    const n = d.calls || cAB.n;
+    const headline = `On ${num(n)} held-out calls, Clef’s coach score agrees with each supervisor ${verb} the two supervisors agree with each other: correlation ${f2(cA.pearson)} with Supervisor A and ${f2(cB.pearson)} with Supervisor B, against ${f2(cAB.pearson)} between A and B (1 = perfect agreement, 0 = none).`;
+    const row = (c, label, note, extra) => ({ pair: label, note: note || "", n: num(c.n), r: f2(c.pearson), ci: range(c.pearsonCi95, f2), mae: "–", icc: "–", iccCi: "", ...extra });
+    const maeAB = mae.maeAvsB ?? icc.mae;
+    const rows = [
+      row(cA, "Clef vs Supervisor A", "", mae.maeVsA != null ? { mae: f2(mae.maeVsA) } : {}),
+      row(cB, "Clef vs Supervisor B", "", mae.maeVsB != null ? { mae: f2(mae.maeVsB) } : {}),
+      cM && row(cM, "Clef vs average of A and B", ""),
+      row(cAB, "Supervisor A vs Supervisor B", "The yardstick: how much two people agree", { yard: true, mae: maeAB != null ? f2(maeAB) : "–", icc: icc.icc21 != null ? f2(icc.icc21) : "–", iccCi: range(icc.ci95, f2) }),
+      cH && row(cH, "Same formula on human line labels vs average of A and B", "Reference: the most this score formula reaches with human tags"),
+      cAH && row(cAH, "Clef vs the same formula on human line labels", "Reference: how closely Clef’s tags reproduce the human tags"),
+    ].filter(Boolean);
+    const pctS = (v) => (v == null ? "–" : (v * 100).toFixed(v > 0 && v < 0.1 ? 1 : 0) + "%");
+    const pctR = (a) => range(a, pctS).replace("%–", "–");
+    const per10k = (v) => num(v * 1e4, 0);
+    const fa = fl.falseAlarmsPerLine;
+    const flags = [
+      fl.recall && { label: "Concerns caught (recall)", count: `${num(fl.recall.k)} of ${num(fl.recall.n)} lines supervisors flagged`, rate: pctS(fl.recall.rate), ci: pctR(fl.recall.ci95) },
+      fa && fa.n && { label: "False alarms per line", count: `${num(fa.k)} of ${num(fa.n)} patient lines`, rate: `${num((fa.k / fa.n) * 1e4, 1)} per 10,000`, ci: Array.isArray(fa.ci95) ? `${per10k(fa.ci95[0])}–${per10k(fa.ci95[1])} per 10,000` : "" },
+      fl.callsWithFalseAlarm && { label: "Calls with a false alarm", count: `${num(fl.callsWithFalseAlarm.k)} of ${num(fl.callsWithFalseAlarm.n)} held-out calls (every validation call, not only the ${num(n)} rated)`, rate: pctS(fl.callsWithFalseAlarm.rate), ci: pctR(fl.callsWithFalseAlarm.ci95) },
+      fl.coachConductAgreement && { label: "Coach handled the safety issue: Clef agrees with supervisors", count: `${num(fl.coachConductAgreement.k)} of ${num(fl.coachConductAgreement.n)} calls supervisors rated`, rate: pctS(fl.coachConductAgreement.rate), ci: pctR(fl.coachConductAgreement.ci95) },
+    ].filter(Boolean);
+    const method = [
+      ...String(d.method || "").split(/\n\s*\n/).map((s) => s.replace(/\s*\n\s*/g, " ").trim()).filter(Boolean),
+      mae.note ? `MAE (mean absolute error): ${String(mae.note).replace(/\s*\([^)]*below\)/, "")}${mae.slope != null ? ` (slope ${mae.slope}, intercept ${mae.intercept})` : ""}. It is the average gap in points on the supervisors’ 1–5 scale. ICC(2,1) is computed for A vs B only.` : "",
+      fl.source ? `Flags: ${fl.source}. The 95% intervals on flag rates are Wilson score intervals.` : "",
+    ].filter(Boolean);
+    return { calls: n, headline, rows, flagLead: "Clef’s safety flags compared with the supervisors’ flags on the same held-out calls.", flags, method, label: "Synthetic data, Crane Lab" };
+  }
+  window.Adapter = { MODULES, today, roster, patient, calls, call, advice, metrics, agreement, agreementView, health, missing, triage, demoName, shortName, c1Headline, fairFlag, context, remember, local, ago, savedAsCall, handoffLabel };
 })();
