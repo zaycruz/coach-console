@@ -240,7 +240,7 @@
     const sp = h.spark ? spark(h.spark) : "";
     return `<section class="hero-card tone-${esc(h.st.tone)}" aria-label="${esc(h.label)}">${top}
       <div class="hero-grid"><div class="hero-fig"><p class="eyebrow">${mod ? `<span class="dot m-${mod}"></span>${esc(MODS[mod].challenge)} ${esc(MODS[mod].name)} · ` : ""}${esc(h.label)}</p>
-        <p class="hero-num"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${stBadge(h.st)}${h.compare ? `<p class="hero-cmp">${esc(h.compare)}</p>` : ""}</div>
+        <p class="hero-num"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${stBadge(h.st)}${h.why && noTop !== true ? `<p class="hero-why">${esc(h.why)}</p>` : ""}${h.compare ? `<p class="hero-cmp">${esc(h.compare)}</p>` : ""}</div>
         ${sp ? `<figure class="hero-spark">${sp}<figcaption>${esc(h.spark.note || "")}</figcaption></figure>` : ""}</div>
       ${h.bar && h.bar.length ? tirBar(h.bar) : ""}
       <dl class="hero-wm"><div><dt>What it means</dt><dd>${esc(h.means || NR)}${h.caveat ? `<span class="hero-cav">${esc(h.caveat)}</span>` : ""}</dd></div><div><dt>What to do</dt><dd>${esc(h.todo || "No action from this program right now.")}</dd></div></dl>
@@ -325,7 +325,7 @@
     const href = `#p-${id}.${m}`;
     if (!v || v.error) return `<a class="l-tile tone-neutral" href="${esc(href)}"><p class="eyebrow"><span class="dot m-${m}"></span>${esc(MODS[m].challenge)} ${esc(MODS[m].name)}</p><p class="lt-label">Couldn’t load this program</p><p class="lt-means">${esc((v && v.error) || "No answer")}</p><span class="lt-open">Try the tab →</span></a>`;
     const h = v.hero || {};
-    const label = { c1: "12-month ER or hospital risk", c3: "7-day rough-week risk", c4: "Time in range (70–180 mg/dL)", c5: "Last call score" }[m];
+    const label = h.tileLabel || { c1: "12-month ER or hospital risk", c3: "7-day rough-week risk", c4: "Time in range (70–180 mg/dL)", c5: "Last call score" }[m];
     return `<a class="l-tile tone-${esc(h.st ? h.st.tone : "neutral")}" href="${esc(href)}"><p class="eyebrow"><span class="dot m-${m}"></span>${esc(MODS[m].challenge)} ${esc(MODS[m].name)}</p><p class="lt-label">${esc(label)}</p>
       <p class="hero-num sm"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${h.st ? stBadge(h.st) : ""}${h.compare ? `<p class="lt-cmp">${esc(h.compare.split(" · ")[0])}</p>` : ""}
       ${h.top ? `<p class="lt-top tone-${esc(h.top.tone)}"><span class="g" aria-hidden="true">${TONE_GLYPH[h.top.tone] || "▲"}</span>${esc(h.top.text)}</p>` : `<p class="lt-means">${esc(h.means || "")}</p>`}<span class="lt-open">Open →</span></a>`;
@@ -448,7 +448,7 @@
     const ev = mine.length ? `<details class="more" id="ev"><summary>Evidence behind every number</summary><p class="small muted">95% CI: the range the true value likely sits in. n: how many readings or people it rests on.</p>${mine.map(grp).join("")}</details>` : "";
     const sciHtml = sci.length ? `<details class="more" id="sci"><summary>For scientists · program-wide, trial and real-data results</summary><p class="small muted">Whole-program effects (same person, with and without), the randomized trial, and checks on real data (CGMacros, NHANES). They back the advice above; they are not this patient’s numbers.</p>${sci.map((g) => grp({ ...g, open: false })).join("")}</details>` : "";
     const kp = (p.kpis || []).filter((k) => !k.hero);
-    return `${p.mod === "c1" ? redFlagsCard(p) : ""}${p.mod === "c4" ? c4Safety(p, lang) : ""}${heroCard(p.hero, p.mod, p.mod === "c4" && !!p.careFlag)}${fitLine(p)}
+    return `${p.mod === "c1" ? redFlagsCard(p) : ""}${p.mod === "c4" ? c4Safety(p, lang) : ""}${heroCard(p.hero, p.mod, p.mod === "c4" && !!p.careFlag)}${fitLine(p)}${p.mod === "c5" ? `<p class="agree-link small"><a href="#calls-agreement">How well Clef’s coach score matches supervisors →</a></p>` : ""}
       ${p.mod === "c3" ? signalRows(p.signals) : ""}${kp.length ? kpiCards(kp) : ""}
       ${p.mod === "c4" ? handout(p, lang) : ""}
       <h2 class="sec-t">What to do</h2>${doCards(p) || `<p class="muted">No actions from this program right now.</p>`}${moreHtml}${ev}${sciHtml}${rawData(p)}${p.footnote ? `<p class="footnote">${esc(p.footnote)}</p>` : ""}`;

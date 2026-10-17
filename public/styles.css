@@ -620,3 +620,5 @@ a.l-tile:hover { text-decoration: none; border-color: var(--accent); box-shadow:
 }
 @media (prefers-reduced-motion: reduce) { .l-tile { transition: none; } }
 .next-acts .card > .eyebrow { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.hero-card .hero-why { margin: 6px 0 0; color: var(--red, var(--alert)); font-weight: 600; max-width: 60ch; }
+.agree-link { margin: -4px 0 0; }
