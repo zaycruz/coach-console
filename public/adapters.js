@@ -253,6 +253,16 @@
     const rows = Object.entries(sc).map(([k, v]) => [scoreNames[k] || k, v == null ? "not answered" : num(v, 1)]);
     const useRows = [["ER visits", use.erVisits], ["Hospital stays", use.hospitalStays], ["Office visits", use.officeVisits], ["Prescription fills", use.rxFills]].filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]);
     if (rows.length || useRows.length) panels.push({ id: "survey", title: "Survey answers and care use (data year 2017)", charts: [], advice: [], table: { head: ["Measure", "Data year 2017"], rows: [...useRows, ...rows] } });
+    // Red-flag routing first (C1 redFlags): the symptoms that mean "call today" whatever the tier, then this
+    // patient's survey-based follow-ups and any social-needs referral.
+    const rf = d.redFlags || null;
+    if (rf && (rf.banner || (rf.callTodayIf || []).length)) {
+      const sn = rf.socialNeeds && rf.socialNeeds.needed ? [{ title: rf.socialNeeds.text, text: "", tag: "Social needs" }] : [];
+      panels.unshift({ id: "redflags", title: rf.careTeamToday ? "Call the care team today" : "Red flags: call the care team or go to the ER today",
+        lead: [rf.banner, rf.callTodayText, rf.asOf && `(${rf.asOf}.)`].filter(Boolean).join(" "), list: rf.callTodayIf || [], charts: [],
+        advice: [...(rf.fromSurvey || []).map((x) => ({ title: x.text, text: "", tag: x.urgency === "today" ? "Today" : x.urgency === "this-week" ? "This week" : "From the survey" })), ...sn],
+        asOf: rf.asOf || "" });
+    }
     return {
       name: demoName(d.displayName), headline, caution, forEllie: d.forEllie || "",
       tags: [caution && { label: caution.label, tone: caution.soft ? "info" : "warn" }, { label: `ER/hospital ${pct(d.risk)} · 12 months`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...pos.slice(0, 3).map((x) => ({ label: x.label + (cost(x) ? " (cost proxy)" : ""), tone: "warn" }))].filter(Boolean),
