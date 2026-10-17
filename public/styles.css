@@ -876,3 +876,6 @@ button.more-link { align-self: flex-start; padding-left: 0; }
 .tag-real, .chip-lang, .chip-data { display: inline-flex; align-items: center; font: 600 var(--t-12)/20px var(--font-body); padding: 0 8px; border: 1px solid var(--line-2); color: var(--ink-2); background: var(--surface); white-space: nowrap; }
 .chip-lang.need { border-color: var(--watch); color: var(--ink); background: var(--surface); }
 .tag-real { border-color: var(--line-2); }
+
+.t-same { font-size: var(--t-12); color: var(--ink-3); }
+#today-now .sec-head { background: transparent; padding: 0 0 0 12px; }

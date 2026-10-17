@@ -159,7 +159,7 @@
   // Today = one ranked queue (GET /api/today) with this session's overlay. Numbered rows, one reason line that wraps,
   // the flag's age, the owner, and two actions. The queue is sorted worst first by the API's own rank.
   const ownerOf = (it) => (it.horizon === "today" ? "Nurse" : it.mod === "c4" ? "Care team" : "Coach");
-  function queueRow(it, i, r) {
+  function queueRow(it, i, r, noOwner) {
     const first = String(it.name).split(" · ")[0];
     const who = r && r.name ? String(r.name).split(" · ").filter((x) => x !== first && !/^[A-Z]\d{3,}/.test(x)).join(" · ") : "";
     const at = it.flaggedAt || (r && r.concern && r.concern.at) || "";
@@ -172,7 +172,7 @@
     return `<li class="q-row" data-pid="${esc(it.id)}" data-mod="${it.mod}"><span class="q-n ${it.horizon}">${i + 1}</span>
       <div class="q-main"><div class="q-top"><a class="q-name" href="#p-${esc(it.id)}">${esc(first)}</a>${who ? `<span class="q-who">${esc(who)}</span>` : ""}<span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span>${lang}${real}</div>
         <p class="q-why">${esc(String(it.reason || it.headline).replace(/^Red flag \([^)]*\):/, "Red flag:"))}</p>
-        <p class="q-meta">${[age, stale ? "<b>Close the loop: confirm it was handed off</b>" : "", logged, `<span class="chip-own">${ownerOf(it)}</span>`].filter(Boolean).join(" · ")}</p></div>
+        <p class="q-meta">${[age, stale ? "<b>Close the loop: confirm it was handed off</b>" : "", logged, noOwner ? "" : `<span class="chip-own">${ownerOf(it)}</span>`].filter(Boolean).join(" · ")}</p></div>
       <div class="acts"><a class="btn${it.horizon === "today" ? " primary" : ""}" href="#live-${esc(it.id)}">Start call</a><button class="btn${it.horizon === "today" ? "" : " quiet"}" type="button" data-log data-pid="${esc(it.id)}" data-name="${esc(first)}" data-flag="${esc(r && r.concern ? r.concern.text : "")}">Log outcome</button></div></li>`;
   }
   async function renderToday() {
@@ -192,13 +192,15 @@
     const hToday = handoffs.filter((h) => sameDay(h.at));
     const handedN = hToday.filter((h) => h.to !== "Called").length;
     const counts = `<p class="counts"><a href="#today-now"><b>${nowAll.length}</b> to call</a><span class="sep" aria-hidden="true">·</span><a href="#today-week"><b>${week.length}</b> this week</a><span class="sep" aria-hidden="true">·</span><a href="#inbox"><b>${handedN}</b> handed off</a><span class="sep" aria-hidden="true">·</span><a href="#inbox"><b>${hToday.length}</b> logged today</a></p>`;
-    const list = (rows) => `<ol class="queue">${rows.map((it, i) => queueRow(it, i, byId.get(it.id))).join("")}</ol>`;
+    const owners = (rows) => new Set(rows.map(ownerOf));
+    const list = (rows) => { const one = owners(rows).size === 1; return `<ol class="queue">${rows.map((it, i) => queueRow(it, i, byId.get(it.id), one)).join("")}</ol>`; };
+    const ownerLine = (rows) => (owners(rows).size === 1 && rows.length ? ` Owner: ${[...owners(rows)][0]}.` : "");
     const handed = hToday.length ? `<details class="more"><summary>Logged today (${hToday.length})</summary><div class="today-list">${hToday.map(handoffRow).join("")}</div><p class="small" style="margin-top:8px"><a href="#inbox">Care-team inbox, every hand-off →</a></p></details>` : "";
     return `${head}${failBanners(failed)}${sourceBanner(ALL)}${counts}
-      <section class="stack-s" id="today-now"><div class="sec-head"><h2>Call today · ${nowAll.length}</h2><p class="sub-s">Safety lines from calls, urgent 7-day ER risk, survey red flags. ${per(nowAll)}</p></div>
+      <section class="stack-s" id="today-now"><div class="sec-head"><h2>Call today</h2><p class="sub-s">Safety lines from calls, urgent 7-day ER risk, survey red flags.${ownerLine(nowAll)} ${per(nowAll)}</p></div>
         <div class="roster-today" data-count="${now.length}">${now.length ? list(now) : `<div class="live-empty">Nobody needs a call today.</div>`}</div>
         ${nowAll.length > now.length ? `<a class="more-link" href="#patients-today">Show ${nowAll.length - now.length} more on the Patients list →</a>` : ""}</section>
-      ${week.length ? `<section class="stack-s" id="today-week"><div class="sec-head"><h2>This week · ${week.length}</h2><p class="sub-s">Glucose flags for the care team first, then rough weeks ahead and the highest next-year ER/hospital risk. ${per(week)}</p></div>${list(ui.weekAll ? week : week.slice(0, 8))}${week.length > 8 && !ui.weekAll ? `<button class="more-link btn quiet" type="button" data-week-more>Show ${week.length - 8} more this week</button>` : ""}</section>` : ""}${handed}`;
+      ${week.length ? `<section class="stack-s" id="today-week"><div class="sec-head"><h2>This week</h2><p class="sub-s">Glucose flags for the care team first, then rough weeks ahead and the highest next-year ER/hospital risk.${ownerLine(week)} ${per(week)}</p></div>${list(ui.weekAll ? week : week.slice(0, 8))}${week.length > 8 && !ui.weekAll ? `<button class="more-link btn quiet" type="button" data-week-more>Show ${week.length - 8} more this week</button>` : ""}</section>` : ""}${handed}`;
   }
 
   // ------------------------------------------------------------------ Patients
@@ -279,13 +281,13 @@
   }
   // One tile per program on the Health chart: label, what is measured, the number, its status, one glance mark, a numbers-only
   // comparison, the accuracy figure and the data window. The whole tile is the link to the tab, where the full chart and evidence live.
-  function tile(href, m, v) {
+  function tile(href, m, v, headTri) {
     if (!v || v.error) return `<a class="tile tone-neutral" href="${esc(href)}"><p class="t-prog"><span class="dot m-${m}"></span>${esc(MODS[m].name)}</p><p class="t-label">Couldn’t load this program</p><p class="t-cmp">${esc((v && v.error) || "No answer")}</p></a>`;
     const h = v.hero || {};
     const label = h.tileLabel || h.label || "";
     const mark = h.gauge ? gauge(h.gauge) : h.dots ? callDots(h.dots) : "";
     return `<a class="tile" href="${esc(href)}" aria-label="${esc(`${MODS[m].name}: ${label} ${h.value || NR}${h.unit || ""}, ${statusLabel[v.tri] || ""}`)}"><p class="t-prog"><span class="dot m-${m}"></span>${esc(MODS[m].name)}</p>
-      <p class="t-label">${esc(label)}</p><div class="t-numrow"><p class="t-num"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${statusPill(v.tri)}</div>
+      <p class="t-label">${esc(label)}</p><div class="t-numrow"><p class="t-num"><span class="hv">${esc(h.value || NR)}</span>${h.unit ? `<span class="hu">${esc(h.unit)}</span>` : ""}</p>${headTri && v.tri === headTri ? `<span class="t-same">sets the overall status</span>` : statusPill(v.tri)}</div>
       <div class="t-mark">${mark}</div>${h.cmp ? `<p class="t-cmp">${esc(h.cmp)}</p>` : ""}
       <p class="t-sure">${esc([h.sure, h.age].filter(Boolean).join(" · "))}</p></a>`;
   }
@@ -305,7 +307,7 @@
       const days = daysSince(c.at), when = `${c.where}, ${A.ago(c.at)}`;
       // On today's list (a fresh flag, or the demo call replayed today) it is same-day work; an old flag nobody replayed is a loop to close.
       if (p.tri === "today" || days == null || days <= 30) add({ owner: "Coach", due: "Today", mod: "c5", text: "Hand off the flagged line to the nurse today and log it. On a call: ask about it in their words, don’t assess, say “I’m sending this to your nurse today”" });
-      else add({ owner: "Nurse", due: "Today", mod: "c5", text: `Close the loop: confirm the flag from ${when} was handed off and acted on` });
+      else add({ owner: "Coach", due: "Today", mod: "c5", text: `Close the loop: confirm the flag from ${when} was handed off; if not, hand off to the nurse today` });
     }
     for (const v of mem) for (const pn of v.panels || []) for (const a of pn.advice || []) {
       if (pn.id === "redflags" && !/today/i.test(a.tag || "")) continue;
@@ -351,10 +353,10 @@
     const W = 640, H = 96, pl = 8, pr = 8, y = 36, h = 18, hi = Math.max(0.6, t.value * 1.1, ...t.tiers.map((x) => x.from));
     const X = (v) => pl + Math.max(0, Math.min(1, v / hi)) * (W - pl - pr);
     const tiers = [...t.tiers].sort((a, b) => a.from - b.from);
-    const bands = tiers.map((x) => { const x0 = X(x.from), x1 = X(x.to >= 1 ? hi : x.to); const range = x.from > 0 && x.to < 1 ? `${pct(x.from)}–${pct(x.to)}` : x.from > 0 ? `${pct(x.from)}+` : `under ${pct(x.to)}`; return `<rect class="tb" style="fill-opacity:${(0.12 + x.rate * 0.7).toFixed(2)}" x="${x0.toFixed(1)}" y="${y}" width="${Math.max(1, x1 - x0).toFixed(1)}" height="${h}"/><text class="tt" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 16}" text-anchor="middle">${GROUP[x.status] === "This week" ? "High tier" : GROUP[x.status] === "Watch" ? "Middle tier" : "Low tier"} · ${range}</text><text class="tt tt2" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 32}" text-anchor="middle">${pct(x.rate)} of ${x.n} had an ER visit or stay</text>`; }).join("");
+    const bands = tiers.map((x) => { const x0 = X(x.from), x1 = X(x.to >= 1 ? hi : x.to); const range = x.from > 0 && x.to < 1 ? `${pct(x.from)}–${pct(x.to)}` : x.from > 0 ? `${pct(x.from)}+` : `under ${pct(x.to)}`; return `<rect class="tb" style="fill-opacity:${(0.1 + x.rate * 1.2).toFixed(2)}" x="${x0.toFixed(1)}" y="${y}" width="${Math.max(1, x1 - x0).toFixed(1)}" height="${h}"/><text class="tt" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 16}" text-anchor="middle">${GROUP[x.status] === "This week" ? "High tier" : GROUP[x.status] === "Watch" ? "Middle tier" : "Low tier"} · ${range}</text><text class="tt tt2" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 32}" text-anchor="middle">${pct(x.rate)} of ${x.n} had one</text>`; }).join("");
     const mine = tiers.find((x) => t.value >= x.from && (x.to >= 1 || t.value < x.to));
     const mark = (v, label, cls) => `<line class="tm ${cls}" x1="${X(v).toFixed(1)}" x2="${X(v).toFixed(1)}" y1="${y - 14}" y2="${y + h + 2}"/><text class="tl ${cls}" x="${X(v).toFixed(1)}" y="${y - 18}" text-anchor="${X(v) > W - 80 ? "end" : "middle"}">${esc(label)} ${pct(v)}</text>`;
-    return `<figure class="fig"><figcaption><span>Where this patient sits among the risk tiers${mine ? `: ${pct(mine.rate)} of the ${mine.n} patients in this tier had an ER visit or stay` : ""}</span><span class="muted">${t.dev ? `${t.dev} development patients, cross-validated · darker = more had one` : ""}</span></figcaption>
+    return `<figure class="fig"><figcaption><span>Where this patient sits among the risk tiers${mine ? `: ${pct(mine.rate)} of the ${mine.n} in this tier had an ER visit or stay` : ""}</span><span class="muted">${t.dev ? `${t.dev} development patients, cross-validated · darker = more had one` : ""}</span></figcaption>
       <svg class="chart tiers" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`This patient ${pct(t.value)}; ${tiers.map((x) => `${x.status} tier from ${pct(x.from)}: ${pct(x.rate)} of ${x.n} had an event`).join("; ")}`)}">${bands}${t.base != null ? mark(t.base, "average patient", "avg") : ""}${mark(t.value, "this patient", "me")}</svg></figure>`;
   }
   // The tab hero: the number at 44 px, its status and comparison, and the one full visual the tab owns (the four-band bar for glucose).
@@ -442,7 +444,9 @@
     // Header status, actions and profile fill in when all four programs have answered.
     full.then((p) => setTimeout(() => {
       if (seq !== renderSeq) return;
+      linkedHeadTri = p.tri;
       whenMounted("[data-lk-status]", (el) => { el.innerHTML = statusPill(p.tri); });
+      ALL.forEach((m) => { const v = p.members[m]; if (v && !v.error) whenMounted(`a.tile[href="#p-${id}.${m}"]`, (el) => { el.outerHTML = tile(`#p-${id}.${m}`, m, v, p.tri); }); });
       whenMounted("[data-lk-acts]", (el) => { el.innerHTML = actionsHtml(p, p.callId); });
       whenMounted("[data-lk-profile]", (el) => { el.outerHTML = profileBox(p); });
       const sb = sourceBanner(ALL.filter((m) => p.members[m] && !p.members[m].error)); if (sb) whenMounted("[data-lk-src]", (el) => { el.innerHTML = sb; });
@@ -461,7 +465,8 @@
     current = mem;
     return `${head}${sourceBanner([tab])}${moduleView(mem, { lang: "English" })}${techDetails(mem)}`;
   }
-  const linkedTile = (id, m, v) => tile(`#p-${id}.${m}`, m, v);
+  let linkedHeadTri = ""; // the linked record's overall status, once all four programs have answered
+  const linkedTile = (id, m, v) => tile(`#p-${id}.${m}`, m, v, linkedHeadTri);
   // Below the tiles: the brief (why now), then the plan across all four programs.
   function linkedRest(p, calls) { return `${brief(p)}${planHtml(planSteps(p))}${coachPrep(p, calls)}`; }
 
@@ -553,7 +558,7 @@
      Charts, drivers, How sure and the raw response live on the program tab (moduleView). */
   function overview(p, calls) {
     const others = ALL.filter((m) => m !== p.mod).map((m) => MODS[m].name);
-    return `<section class="stack-s"><div class="tiles one">${tile(`#p-${p.id}.${p.mod}`, p.mod, p)}</div><p class="not-enrolled">Not enrolled in ${esc(others.join(", "))}.</p></section>${brief(p)}${planHtml(planSteps(p))}${coachPrep(p, calls)}`;
+    return `<section class="stack-s"><div class="tiles one">${tile(`#p-${p.id}.${p.mod}`, p.mod, p, p.tri)}</div><p class="not-enrolled">Not enrolled in ${esc(others.join(", "))}.</p></section>${brief(p)}${planHtml(planSteps(p))}${coachPrep(p, calls)}`;
   }
   // The program tab = evidence: hero, signals, every chart with its lead sentence, How sure, the raw fields. No actions here.
   function moduleView(p, o = {}) {

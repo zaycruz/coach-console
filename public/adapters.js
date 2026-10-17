@@ -302,7 +302,7 @@
       r.alertFrom != null && { label: "Alert line", value: r.alertFrom, text: pct(r.alertFrom), color: "var(--line-2)" },
     ].filter(Boolean) } : null;
     const driverBars = drivers.length ? { title: "What drives it", note: `Contribution to this person’s risk (model log-odds). Grey lowers it.${drivers.some(cost) ? " Health spending is a cost proxy for need, not a cause." : ""}`, rows: drivers.map((x) => ({ label: x.label + (cost(x) ? " (cost proxy)" : ""), value: Math.abs(x.logitContribution), text: (x.logitContribution > 0 ? "+" : "−") + num(Math.abs(x.logitContribution), 2), color: x.logitContribution > 0 ? "var(--m-c1-strong)" : "var(--ink-3)" })) } : null;
-    const panels = [{ id: "risk", title: "What drives this patient’s risk", lead: d.riskWords ? `${sentence(d.riskWords)}.`.replace(/\.\.$/, ".") : "", bars: driverBars, list: ev.filter((e) => e.kind !== "model").map((e) => e.text), advice }];
+    const panels = [{ id: "risk", title: "What drives this patient’s risk", lead: "", bars: driverBars, list: ev.filter((e) => e.kind !== "model").map((e) => e.text), advice }];
     const sc = c.scores || {};
     const scoreNames = { physical_score: "Physical health score", mental_score: "Mental health score", distress_k6: "Distress (K6)", depression_phq2: "Depression (PHQ-2)", pain: "Pain", fatigue: "Fatigue", financial_toxicity: "Money worries", cost_delay: "Delayed care for cost" };
     const rows = Object.entries(sc).map(([k, v]) => [scoreNames[k] || k, v == null ? "not answered" : num(v, 1)]);
@@ -333,7 +333,7 @@
       top: rf && rf.careTeamToday ? { tone: "red", text: rf.banner || "Call the care team today." } : caution && !caution.soft ? { tone: "amber", text: `${caution.label}. ${caution.text}.` } : null,
       // Glance (overview tile): one bullet gauge, numbers-only comparison, the accuracy figure and the data window.
       gauge: isNum(rv) ? { value: rv, max: Math.max(rv, isNum(alertAt) ? alertAt : 0, isNum(r.baseRate) ? r.baseRate : 0, 0.5) * 1.15, pct: true, marks: [isNum(r.baseRate) && { v: r.baseRate, label: "avg" }, isNum(alertAt) && { v: alertAt, label: "high tier" }].filter(Boolean) } : null,
-      cmp: (() => { const tt = m && m.tiers && Array.isArray(m.tiers.tiers) ? m.tiers.tiers.find((t) => isNum(rv) && rv >= t.riskFrom && (t.riskTo >= 1 || rv < t.riskTo)) : null; return [isNum(r.baseRate) && `avg ${pct(r.baseRate)}`, tt && `${pct(tt.observedRate)} of the ${tt.n} in this tier had one`].filter(Boolean).join(" · "); })(),
+      cmp: (() => { const tt = m && m.tiers && Array.isArray(m.tiers.tiers) ? m.tiers.tiers.find((t) => isNum(rv) && rv >= t.riskFrom && (t.riskTo >= 1 || rv < t.riskTo)) : null; return [tt && `${pct(tt.observedRate)} of the ${tt.n} in this tier had one`].filter(Boolean).join(" · "); })(),
       sure: fm && fm.auroc ? `ranks patients correctly ${pct(fm.auroc.value)} of the time, held out${dev ? `, ${dev} pts` : ""}` : "held-out accuracy not loaded",
       sureFull: fm && fm.auroc ? `AUROC ${num(fm.auroc.value, 2)} (95% CI ${num(fm.auroc.ci95[0], 2)}–${num(fm.auroc.ci95[1], 2)}): ranks patients correctly ${pct(fm.auroc.value)} of the time (0.5 = chance), cross-validated${dev ? ` on ${dev} patients` : ""}` : "",
       age: "2017 survey → next-year risk",
@@ -421,7 +421,7 @@
       top: null,
       spark: c.urgentRisk ? { values: lastN(c.urgentRisk, 14), ref: isNum(th.urgent) ? { y: th.urgent, label: "urgent" } : null, pct: true, note: "Last 14 days · dashed = urgent line" } : null,
       gauge: isNum(d.urgentRisk) ? { value: d.urgentRisk, max: Math.max(d.urgentRisk, isNum(th.urgent) ? th.urgent : 0) * 1.3, pct: true, d: 1, marks: [isNum(th.urgent) && { v: th.urgent, label: "urgent line" }].filter(Boolean) } : null,
-      cmp: [isNum(th.urgent) && `urgent line ${pct(th.urgent, 1)}`, times && `${times}× usual`].filter(Boolean).join(" · "),
+      cmp: [times && `${times}× their usual`].filter(Boolean).join(" · "),
       sure: c3Sure(m, true), age: c3Age(c),
       source: "Synthetic wearable cohort. Accuracy measured on a held-out test split (25% of patients kept back from training).",
     } : {
@@ -433,7 +433,7 @@
       top: null,
       spark: c.risk ? { values: lastN(c.risk, 14), ref: isNum(th.alert) ? { y: th.alert, label: "alert" } : null, pct: true, note: "Last 14 days · dashed = alert line" } : null,
       gauge: isNum(d.risk) ? { value: d.risk, max: Math.max(d.risk, isNum(th.alert) ? th.alert : 0) * 1.3, pct: true, marks: [isNum(th.watch) && { v: th.watch, label: "watch" }, isNum(th.alert) && { v: th.alert, label: "alert line" }].filter(Boolean) } : null,
-      cmp: [isNum(th.watch) && `watch from ${pct(th.watch)}`, isNum(th.alert) && `alert line ${pct(th.alert)}`].filter(Boolean).join(" · "),
+      cmp: "",
       sure: c3Sure(m, false), age: c3Age(c),
       source: "Synthetic wearable cohort. Accuracy measured on a held-out test split (25% of patients kept back from training).",
     };
@@ -544,7 +544,7 @@
       bar: isNum(tir) ? [["Below 70", tbr, "red"], ["70–180", tir, "green"], ["181–250", isNum(tar180) && isNum(tar250) ? Math.max(0, tar180 - tar250) : null, "amber"], ["Above 250", tar250, "red"]].filter(([, v]) => isNum(v)).map(([label, v, tone]) => ({ label, v, tone })) : null,
       spark: dp ? { values: dp.values, band: (c.dailyProfile.targetRange || [70, 180]), note: `Blood sugar by hour of day, ${String(dp.label || "")} · band = 70–180` } : null,
       gauge: (() => { const t = parseFloat((String(trigTarget || "").match(/(\d+(?:\.\d+)?)\s*%/) || [])[1]); return { value: trig.value, max: Math.max(trig.value, isNum(t) ? t : 0) * 1.4 || 10, unit: "%", d: 1, marks: isNum(t) ? [{ v: t, label: "target" }] : [] }; })(),
-      cmp: [trigTarget && trigTarget.replace(/^target /i, "target "), isNum(tir) && `time in range ${num(tir)}%`].filter(Boolean).join(" · "),
+      cmp: [isNum(tir) && `time in range ${num(tir)}%, same weeks`].filter(Boolean).join(" · "),
       sure: trig.n ? `measured, not modelled · ${num(trig.n)} sensor readings` : "measured, not modelled",
       age: window_ ? window_[1] + (d.updatedAt ? `, to ${new Date(d.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "") : "",
       source: "Synthetic CGM data (Crane Lab set), this person's readings.",
@@ -558,7 +558,7 @@
       bar: isNum(tir) ? [["Below 70", tbr, "red"], ["70–180", tir, "green"], ["181–250", isNum(tar180) && isNum(tar250) ? Math.max(0, tar180 - tar250) : null, "amber"], ["Above 250", tar250, "red"]].filter(([, v]) => isNum(v)).map(([label, v, tone]) => ({ label, v, tone })) : null,
       spark: dp ? { values: dp.values, band: (c.dailyProfile.targetRange || [70, 180]), note: `Blood sugar by hour of day, ${String(dp.label || "").replace(/^weeks/i, "weeks")} · band = 70–180` } : null,
       gauge: isNum(tir) ? { value: tir, max: 100, unit: "%", marks: [{ v: 70, label: "target" }, { v: 90, label: "ideal" }] } : null,
-      cmp: [`target 70%+`, `ideal 90%+`, isNum(tbr) && tbr > 0 && `${num(tbr, 1)}% below 70`, isNum(tar250) && tar250 > 0 && `${num(tar250, 1)}% above 250`].filter(Boolean).join(" · "),
+      cmp: [isNum(tbr) && tbr > 0 && `${num(tbr, 1)}% below 70`, isNum(tar250) && tar250 > 0 && `${num(tar250, 1)}% above 250`].filter(Boolean).join(" · "),
       sure: evById.tir && evById.tir.n ? `measured, not modelled · ${num(evById.tir.n)} sensor readings` : "measured, not modelled",
       age: window_ ? window_[1] + (d.updatedAt ? `, to ${new Date(d.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "") : "",
       source: "Synthetic CGM data (Crane Lab set), this person's readings. Program-wide and real-data (CGMacros, NHANES) checks sit under For scientists.",
@@ -601,7 +601,7 @@
       reason: !flagToday && flagDays != null ? "Close the loop: confirm the hand-off" : "",
       top: callFlag ? { tone: flagToday ? "red" : "amber", text: `Call ${callFlag.callNumber} at ${callFlag.flags[0].t}: “${String(callFlag.flags[0].text).replace(/^(oh,?\s+)?before you go,?\s*/i, "")}”` } : { tone: flagToday ? "red" : "amber", text: fl.text },
       spark: scored.length > 1 ? { values: scored.map((c) => c.score), ref: { y: 60, label: "target" }, d: 0, note: "Coach score by call, oldest first · dashed = target 60" } : null,
-      dots: c5Dots(calls), cmp: c5Cmp(callFlag, flagDays), sure: `supervisor-labelled, ${calls.length} call${calls.length === 1 ? "" : "s"}`, age: c5Age(calls),
+      dots: c5Dots(calls), cmp: c5Cmp(callFlag, flagDays), sure: `supervisor-labelled, ${calls.length} call${calls.length === 1 ? "" : "s"}`, age: "",
       source: "Synthetic coaching calls, supervisor-labelled.",
     } : {
       label: "Coach score, latest call", tileLabel: "Last call score", value: isNum(lastScore) ? String(lastScore) : NR, unit: isNum(lastScore) ? "/100" : "",
@@ -611,7 +611,7 @@
       todo: recs[0] ? recs[0].title : "No action from this program right now.",
       top: callFlag ? { tone: d.status === "alert" ? "red" : "amber", text: `Flagged line, call ${callFlag.callNumber} at ${callFlag.flags[0].t}: “${String(callFlag.flags[0].text).replace(/^(oh,?\s+)?before you go,?\s*/i, "")}”${d.status === "alert" ? " Tell the care team today." : ""}` } : fl ? { tone: "red", text: fl.text } : null,
       spark: scored.length > 1 ? { values: scored.map((c) => c.score), ref: { y: 60, label: "target" }, d: 0, note: "Score by call, oldest first · dashed = target 60" } : null,
-      dots: c5Dots(calls), cmp: `target 60+${scored.length > 1 ? ` · ${scored.length} scored` : ""}`, sure: `supervisor-labelled, ${calls.length} call${calls.length === 1 ? "" : "s"}`, age: c5Age(calls),
+      dots: c5Dots(calls), cmp: `target 60+${scored.length > 1 ? ` · ${scored.length} scored` : ""}`, sure: `supervisor-labelled, ${calls.length} call${calls.length === 1 ? "" : "s"}`, age: "",
       source: "Synthetic coaching calls, supervisor-labelled.",
     };
     return {
