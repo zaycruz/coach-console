@@ -574,7 +574,10 @@
     const lang = o.lang || (p.identity && p.identity.language);
     const panels = p.panels.filter((pn) => pn.id !== "redflags");
     // Charts two-up (zay: less scrolling); a section of small multiples or a table spans both columns.
-    const sections = panels.map((pn) => { const vis = panelVisual(pn); return vis ? `<section class="card stack${pn.small || pn.bars || pn.calls ? " wide" : ""}" id="pn-${esc(pn.id)}"><h2>${esc(pn.title)}</h2><div class="${pn.small ? "multiples" : "stack"}">${vis}</div></section>` : ""; }).join("");
+    const built = panels.map((pn) => ({ pn, vis: panelVisual(pn), wide: !!(pn.small || pn.bars || pn.calls) })).filter((x) => x.vis);
+    // An odd count of half-width cards leaves the last one beside empty space: that one spans the row too.
+    const halves = built.filter((x) => !x.wide); if (halves.length % 2) halves[halves.length - 1].wide = true;
+    const sections = built.map(({ pn, vis, wide }) => `<section class="card stack${wide ? " wide" : ""}" id="pn-${esc(pn.id)}"><h2>${esc(pn.title)}</h2><div class="${pn.small ? "multiples" : "stack"}">${vis}</div></section>`).join("");
     const kp = p.mod === "c1" ? [] : (p.kpis || []).filter((k) => !k.hero && !(p.hero && String(k.value) === String(p.hero.value)) && !(p.mod === "c5" && /score/i.test(k.label)));
     return `${p.mod === "c1" ? redFlagsCard(p) : ""}${heroCard(p.hero, p.mod, p)}${kp.length ? kpiCards(kp) : ""}${p.mod === "c4" ? c4Safety(p, lang) : ""}
       ${p.mod === "c3" ? signalRows(p.signals) : ""}${sections ? `<div class="chart-grid">${sections}</div>` : ""}
