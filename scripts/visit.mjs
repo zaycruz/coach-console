@@ -25,12 +25,13 @@ const settle = async () => { await page.waitForFunction(() => { const v = docume
 await page.goto(`${base}/#${route.replace(/^#/, "")}`); await settle();
 const find = (what) => {
   if (/^[.#\[]|^[a-z]+[.#\[]|^(button|a|input|select|textarea|dialog|summary)\b/.test(what)) return page.locator(what).first();
-  // An open sheet first, then the page body, then the navigation: "Hospital risk" means the patient's tab before the clinic page.
-  return page.locator(`dialog[open] button:has-text("${what}"), dialog[open] a:has-text("${what}"), dialog[open] label:has-text("${what}"), #view button:has-text("${what}"), #view a:has-text("${what}"), #view summary:has-text("${what}"), #view label:has-text("${what}"), button:has-text("${what}"), a:has-text("${what}"), summary:has-text("${what}"), label:has-text("${what}")`).first();
+  // An open sheet first, then the page body (a tab before a tile), then the navigation: "Hospital risk" on a patient page means the tab.
+  return [`dialog[open] button:has-text("${what}"), dialog[open] a:has-text("${what}"), dialog[open] label:has-text("${what}")`, `#view .pill:has-text("${what}")`, `#view button:has-text("${what}"), #view a:has-text("${what}"), #view summary:has-text("${what}"), #view label:has-text("${what}")`, `button:has-text("${what}"), a:has-text("${what}"), summary:has-text("${what}"), label:has-text("${what}")`];
 };
+const pick = async (what) => { const f = find(what); if (!Array.isArray(f)) return f; for (const sel of f) { const l = page.locator(sel); if (await l.count()) return l.first(); } return page.locator(f[f.length - 1]).first(); };
 for (const [kind, what] of opts.steps) {
   try {
-    if (kind === "click") { await find(what).click({ timeout: 8000 }); await settle(); console.log(`[click] ${what} → ${await page.evaluate(() => location.hash)}`); }
+    if (kind === "click") { await (await pick(what)).click({ timeout: 8000 }); await settle(); console.log(`[click] ${what} → ${await page.evaluate(() => location.hash)}`); }
     else if (kind === "fill") { const [sel, ...t] = what.split("="); await page.fill(sel, t.join("=")); console.log(`[fill] ${sel}`); }
     else if (kind === "check") { const byLabel = page.locator(`dialog[open] label:has-text("${what}") input, label:has-text("${what}") input`).first(); if (await byLabel.count()) await byLabel.check({ timeout: 8000 }); else await page.locator(what).first().check({ timeout: 8000 }); console.log(`[check] ${what}`); }
     else if (kind === "select") { const [sel, ...t] = what.split("="); await page.selectOption(sel, { label: t.join("=") }); console.log(`[select] ${sel} = ${t.join("=")}`); }

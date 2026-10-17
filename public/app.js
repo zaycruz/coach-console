@@ -35,6 +35,7 @@
   // One status vocabulary, four words: Act today (red, the only filled pill) · This week (amber) · Watch (neutral) · On track (green).
   const statusLabel = { ok: "On track", watch: "Watch", alert: "This week", today: "Act today" };
   const statusPill = (s) => `<span class="status ${s}">${statusLabel[s] || esc(s)}</span>`;
+  const langName = (l) => { const t = String(l || "").trim(); return /haitian|creole|kreyol|kreyòl/i.test(t) ? "Kreyòl" : /spanish|español/i.test(t) ? "Spanish" : t; };
   const hhmm = (iso) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const daysSince = (iso) => { const t = Date.parse(String(iso || "").length <= 10 ? iso + "T12:00:00" : iso); return isNaN(t) ? null : Math.floor((Date.now() - t) / 864e5); };
   const modChip = (m) => `<span class="chip m-${m}"><span class="dot"></span>${MODS[m].name}</span>`;
@@ -313,6 +314,7 @@
       if (pn.id === "redflags" && !/today/i.test(a.tag || "")) continue;
       let text = String(a.title || "").replace(/\.$/, "").replace(/\bthe top drivers below\b/i, `the top drivers on the ${MODS[v.mod].name} tab`).replace(/;?\s*escalate if symptoms are worsening/i, "; if anything new comes up, hand off to the nurse");
       if (c && /tell the care team|hand[- ]off|handed off/i.test(text)) continue; // the flagged-line step above covers it
+      if (p.handoff && /interpreter:/i.test(p.handoff.note || "") && /interpreter|reach out in/i.test(text)) continue; // logged already
       const owner = ownerFor(a, v.mod);
       if (/pass on to the patient/i.test(a.tag || "")) text = `Pass on to the patient: ${text.charAt(0).toLowerCase() + text.slice(1)}`;
       else if (owner === "Coach" && COACH_SCOPE.test(text)) text += " · ask, don’t assess; hand off";
@@ -343,7 +345,7 @@
     const ho = p.handoff;
     return `<section class="prep"><div class="sec-head"><h2>Last call · coach view</h2><p class="sub-s">Call ${c.callNumber} · ${fmtDate(c.date)} · ${esc(c.language)} · goal: ${esc(c.goalTopic)} · coach ${esc(c.coach.name)}</p></div>
       <dl class="prep-dl">${best ? `<div><dt>Went well</dt><dd>${esc(WELL[best[0]] || best[0])}<span class="small muted"> · ${esc(PART[best[0]] || best[0])} ${esc(partVal(best[0], best[1]))}</span></dd></div>` : ""}${worst && worst !== best ? `<div><dt>Try next</dt><dd>${esc(TRY[worst[0]] || worst[0])}<span class="small muted"> · ${esc(PART[worst[0]] || worst[0])} ${esc(partVal(worst[0], worst[1]))}</span></dd></div>` : ""}
-        ${fl ? `<div class="prep-flag"><dt>Flagged moment</dt><dd>At ${esc(fl.t)} on call ${c.callNumber} (${esc(fl.kind || "safety")}) <span class="${ho ? "done" : "open-flag"}">${ho ? `✓ ${esc(ho.label)}` : "▲ not yet handed off"}</span></dd></div>` : ""}</dl>
+        ${fl ? `<div class="prep-flag"><dt>Flagged moment</dt><dd>At ${esc(fl.t)} on call ${c.callNumber} (${esc(fl.kind || "safety")}) ${ho ? "" : `<span class="open-flag">▲ not yet handed off</span>`}</dd></div>` : ""}</dl>
       <p class="small"><a href="#call-${esc(c.callId)}">Call record and transcript →</a></p></section>`;
   }
   // Tier strip (Hospital risk tab): the three tiers as bands sized by share of development patients, each labelled with
@@ -418,7 +420,7 @@
     return `<a class="btn primary" href="#live-${esc(callId)}">Start call</a><button class="btn" type="button" title="After a call: reached, no answer, left message; who it went to; next contact" data-log data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Log outcome</button>${p.handoff ? `<span class="done">✓ ${esc(p.handoff.label)}${p.handoff.to && p.handoff.to !== "Called" ? ` → ${esc(p.handoff.to)}` : ""}${p.handoff.note ? `<span class="done-note">${esc(p.handoff.note)}</span>` : ""}</span>` : p.tri === "today" || p.concern ? `<button class="btn" type="button" title="Send the flagged line to the nurse now, with a note" data-handoff data-pid="${esc(callId)}" data-name="${esc(p.name)}" data-flag="${esc(flag || "")}">Hand off to nurse</button>` : ""}`;
   }
   function headHtml(p, id, callId) {
-    const lang = p.identity && p.identity.language && p.identity.language !== "English" ? p.identity.language : "";
+    const lang = p.identity && p.identity.language && p.identity.language !== "English" ? langName(p.identity.language) : "";
     const idn = identityLine(lang ? { ...p.identity, language: null } : p.identity);
     const script = p.handout && p.handout.langs && p.handout.langs.some((l) => l.lang !== "en") ? `<a class="small" href="#p-${esc(id)}.${esc(p.mod)}">Call script · ${p.handout.langs.filter((l) => l.lang !== "en").map((l) => l.name).join(" / ")} →</a>` : "";
     return `<header class="p-head pp-head"><div class="pp-id"><h1>${esc(String(p.name).split(" · linked")[0])}</h1>${idn ? `<p class="pp-ident">${esc(idn)}</p>` : ""}
@@ -667,6 +669,33 @@
     return p ? Object.values(p).reduce((s, x) => s + x.points, 0) : null;
   }
 
+  // The four score parts from the live tags, plus the coach-line count and the tagged lines behind each part.
+  function liveParts(lines) {
+    const tagged = lines.filter((l) => l.speaker === "coach" && l.live && l.live.tag);
+    const c = tagged.map((l) => l.live.tag), n = (t) => c.filter((x) => x === t).length;
+    const oq = n("open question"), cq = n("closed question"), sr = n("simple reflection"), cr = n("complex reflection");
+    const ad = c.filter((t) => FAMILY[t] === "s").length, na = n("persuade") + n("confront"), q = oq + cq, r = sr + cr;
+    const parts = {
+      reflectionsPerQuestion: { value: q ? +(r / q).toFixed(2) : null, target: 2, points: Math.round(30 * Math.min((q ? r / q : r ? 2 : 0) / 2, 1)), max: 30 },
+      complexReflectionPct: { value: r ? Math.round((100 * cr) / r) : null, target: 40, points: Math.round(20 * Math.min((r ? cr / r : 0) / 0.4, 1)), max: 20 },
+      openQuestionPct: { value: q ? Math.round((100 * oq) / q) : null, target: 50, points: Math.round(20 * Math.min((q ? oq / q : 0) / 0.5, 1)), max: 20 },
+      miConsistent: { value: `${ad} vs ${na}`, target: "no persuade or confront", points: Math.round(30 * (ad + na ? ad / (ad + na) : 1)), max: 30 },
+    };
+    const score = c.length < 4 ? null : Object.values(parts).reduce((t, p) => t + p.points, 0);
+    const lastBad = [...tagged].reverse().find((l) => l.live.tag === "persuade" || l.live.tag === "confront");
+    return { score, parts, coachLines: tagged.length, lastBad: lastBad ? { tag: lastBad.live.tag, t: lastBad.t } : null };
+  }
+  // One line naming the part that moved most between two readings (the display never invents a number).
+  function scoreMoveLine(prev, now) {
+    if (!prev || !now) return "";
+    const d = Object.keys(now.parts).map((k) => [k, now.parts[k].points - prev.parts[k].points]).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
+    if (!d || !d[1]) return "";
+    const down = d[1] < 0;
+    return { reflectionsPerQuestion: down ? "More questions than reflections in the last lines" : "More reflections than questions in the last lines",
+      complexReflectionPct: down ? "Fewer complex reflections" : "More complex reflections",
+      openQuestionPct: down ? "More closed questions" : "More open questions",
+      miConsistent: down && now.lastBad ? `${now.lastBad.tag.charAt(0).toUpperCase() + now.lastBad.tag.slice(1)}, ${now.lastBad.t}` : down ? "A persuade or confront" : "More supportive moves" }[d[0]] || "";
+  }
   function agreement(lines) {
     let m = 0, mn = 0, t = 0, tn = 0, f = 0, fn = 0;
     for (const l of lines) {
@@ -704,11 +733,13 @@
     const done = mine ? live.done : 0;
     const names = { reflectionsPerQuestion: "Reflections per question", complexReflectionPct: "Complex reflections %", openQuestionPct: "Open questions %", miConsistent: "Supportive vs persuade/confront" };
     const parts = Object.entries(c.scoreParts).map(([k, p]) => `<div class="part"><span>${names[k]} <span class="muted mono">${esc(p.value ?? "–")} · target ${esc(p.target)}</span></span><span class="mono">${p.points}/${p.max}</span><span class="track"><span class="fill" style="width:${(100 * p.points) / p.max}%"></span></span></div>`).join("");
+    const diff = lines.filter((l) => l.speaker === "coach" && l.live && l.live.tag && l.supervisor.move && l.live.tag !== l.supervisor.move);
+    const disagree = isFinite(c.score) && ls != null && Math.abs(c.score - ls) >= 10 && diff.length ? `<p class="small disagree">Clef and the supervisor disagree on ${diff.length} line${diff.length === 1 ? "" : "s"}: ${diff.slice(0, 6).map((l) => `<a href="#line-${l.n}">${esc(l.t)}</a>`).join(", ")}${diff.length > 6 ? "…" : ""}</p>` : "";
     const liveBtn = SNAP ? `<a class="btn primary" href="${LIVE_URL}/#call-${esc(c.callId)}" target="_blank" rel="noopener">Run Clef ↗</a><p class="small muted">This shared copy can’t call the model. The live console can.</p>`
       : `<button class="btn primary" data-run ${mine && live.running ? "disabled" : ""}>${mine && live.running ? `Tagging ${done} of ${c.lines.length}…` : mine && done ? "Run again" : "Run Clef"}</button>`;
     return `<aside class="call-side">
       <div class="card stack"><p class="eyebrow">Coach score</p>
-        <div class="score-pair"><div><span class="n">${c.score ?? "–"}</span><span class="l">from supervisor labels</span></div><div><span class="n" id="live-score">${ls ?? "–"}</span><span class="l">from Clef tags</span></div></div>${parts}
+        <div class="score-pair"><div><span class="n">${c.score ?? "–"}</span><span class="l">from supervisor labels</span></div><div><span class="n" id="live-score">${ls ?? "–"}</span><span class="l">from Clef tags, so far</span></div></div>${disagree}${parts}
         <p class="small muted" title="Targets from the Motivational Interviewing Treatment Integrity (MITI) code">Scored against standard motivational-interviewing targets.</p></div>
       <div class="card stack"><p class="eyebrow">Clef vs supervisor</p>${liveBtn}
         ${a.mn || a.tn ? `<div class="agree" id="agree"><span><b>${pct(a.move)}</b> coach moves (${a.mn} lines)</span><span><b>${pct(a.talk)}</b> patient talk (${a.tn})</span><span><b>${pct(a.flag)}</b> needs-a-person calls (${a.fn})</span></div><p class="small muted">Two human experts labelling the same lines agree about 84% of the time.</p>` : `<p class="small muted">Run the model to see how closely it matches the supervisor, line by line.</p>`}
@@ -975,7 +1006,7 @@
   window.addEventListener("hashchange", () => { if (parse().route === "line") return; toast.hidden = true; window.scrollTo(0, 0); render().then(() => view.focus({ preventScroll: true })); });
   // Shared with call.js and assistant.js, which load after this file and add their own routes.
   window.P360 = { NAME, routes: {}, render, esc, fmtDate, pct, num, post, once, memo, A, MODS, SNAP, LIVE_URL, COPILOT_URL, statusPill, modChip, tagsHtml, loadingBox, errorBox, emptyBox, forced, sourceBanner, showToast, notWired, parse,
-    FAMILY, FLAG_TEXT, liveScore, liveParts, lineHtml, flagBanner, cueTrigger, panelVisual, adviceCard, sortRows, current: () => current };
+    FAMILY, FLAG_TEXT, liveScore, liveParts, scoreMoveLine, lineHtml, flagBanner, cueTrigger, panelVisual, adviceCard, sortRows, current: () => current };
 
   // ------------------------------------------------------------------ coach name stamped on saved calls and hand-offs (no sign-in in the demo)
   let coachName = "";

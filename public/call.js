@@ -81,10 +81,19 @@
     } catch (e) { box.innerHTML = `<p class="small muted">Hand-off note unavailable (${esc(e.message)}). The facts above are from the record.</p>`; }
   }
 
+  // The score shows only after 6 coach lines (early swings are the formula with too few lines), is labelled "So far", and when it
+  // moves by 5 or more one line names the part that moved. Every value comes from liveParts; nothing here is invented.
   function scoreBox() {
-    const s = call ? P.liveScore(call.lines) : null;
+    const lp = call && P.liveParts ? P.liveParts(call.lines) : null;
+    const ready = lp && lp.coachLines >= 6 && lp.score != null;
+    let moved = "";
+    if (call) {
+      if (ready && call.prevParts && Math.abs(lp.score - call.prevParts.score) >= 5) call.moveLine = P.scoreMoveLine(call.prevParts, lp);
+      if (ready) call.prevParts = lp;
+      moved = call.moveLine || "";
+    }
     const flags = call ? call.lines.filter((l) => l.live && l.live.flag && l.live.flag !== "none").length : 0;
-    return `<div class="card stack"><p class="eyebrow">This call</p><div class="score-pair"><div><span class="n">${s ?? "–"}</span><span class="l">coach score (after 4 coach lines)</span></div><div><span class="n">${flags}</span><span class="l">lines need a person</span></div></div>
+    return `<div class="card stack"><p class="eyebrow">This call</p><div class="score-pair"><div>${ready ? `<span class="n">${lp.score}</span><span class="l">coach score, so far</span>` : `<span class="n muted">–</span><span class="l">Scoring after 6 coach lines${lp && lp.coachLines ? ` (${lp.coachLines} so far)` : ""}</span>`}</div><div><span class="n">${flags}</span><span class="l">lines need a person</span></div></div>${moved ? `<p class="small score-move">${P.esc(moved)}</p>` : ""}
       <p class="small muted" title="Targets from the Motivational Interviewing Treatment Integrity (MITI) code">Scored against standard motivational-interviewing targets.</p></div>`;
   }
 

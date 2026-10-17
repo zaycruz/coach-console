@@ -890,3 +890,6 @@ button.more-link { align-self: flex-start; padding-left: 0; }
 #cues .cue { margin: 0; }
 .done { white-space: normal; }
 .done-note { overflow-wrap: anywhere; }
+
+.score-move, .disagree { color: var(--ink-2); font-size: var(--t-14); }
+.disagree a { margin-right: 2px; }
