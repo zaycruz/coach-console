@@ -11,7 +11,8 @@
   const MODS = A.MODULES;
   const view = document.getElementById("view");
   let previewState = "ready";
-  const ui = { filter: "all", q: "", showOk: false };
+  const ui = { filter: "all", q: "", limit: 60 };
+  const ALL = ["c1", "c3", "c4", "c5"];
   const memo = new Map();
   const once = (k, fn) => { if (!memo.has(k)) memo.set(k, fn().catch((e) => { memo.delete(k); throw e; })); return memo.get(k); };
   async function post(path, body) {
@@ -56,7 +57,7 @@
     const el = document.getElementById("mode");
     if (!el) return;
     if (SNAP) { el.innerHTML = `Saved copy of live data · <a href="${LIVE_URL}" target="_blank" rel="noopener">Open the live site ↗</a>`; return; }
-    el.innerHTML = ["c3", "c4", "c5"].map((m) => { const h = A.health[m]; const s = !h ? "unknown" : h.source; return `<span class="src s-${s}" title="${esc(MODS[m].name)}: ${s === "live" ? "live" : s === "fallback" ? "saved copy" : s === "down" ? "down" : "not loaded yet"}">${MODS[m].challenge}</span>`; }).join("") + `<span class="src s-off" title="Hospital risk: not deployed yet">C1</span>`;
+    el.innerHTML = ALL.map((m) => { const h = A.health[m]; const s = !h ? "unknown" : h.source; return `<span class="src s-${s}" title="${esc(MODS[m].name)}: ${s === "live" ? "live" : s === "fallback" ? "saved copy" : s === "down" ? "down" : "not loaded yet"}">${MODS[m].challenge}</span>`; }).join("");
   }
 
   // ------------------------------------------------------------------ chart
@@ -64,7 +65,12 @@
      horizontal reference lines, a shaded y band, tick marks on chosen x indices, hover readout. */
   // A chart that can't be drawn never takes the page down with it.
   function chart(o) {
-    try { return drawChart({ ...o, series: (o.series || []).filter((s) => s && Array.isArray(s.values)).map((s) => ({ ...s, band: s.band && Array.isArray(s.band[0]) && Array.isArray(s.band[1]) ? s.band : null })) }); }
+    try {
+      const series = (o.series || []).filter((s) => s && Array.isArray(s.values) && s.values.some((v) => v != null)).map((s) => ({ ...s, band: s.band && Array.isArray(s.band[0]) && Array.isArray(s.band[1]) ? s.band : null }));
+      const dropped = (o.series || []).filter((s) => s && !series.some((k) => k.label === s.label)).map((s) => s.label).filter(Boolean);
+      if (series.length === 1) series[0].dash = false;
+      return drawChart({ ...o, series, dropped });
+    }
     catch (e) { console.warn("chart", o.title, e); return `<p class="small muted">${esc(o.title || "Chart")}: not available for this patient.</p>`; }
   }
   function drawChart(o) {
@@ -101,9 +107,9 @@
     const xl = o.x.map((t, i) => (i % step === 0 || i === n - 1 ? `<text x="${X(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === n - 1 ? "end" : "middle"}">${esc(t)}</text>` : "")).join("");
     const w = (W - pl - pr) / Math.max(1, n - 1);
     const hits = o.x.map((t, i) => `<rect x="${X(i) - w / 2}" y="0" width="${w}" height="${H}" fill="transparent" data-tip="${esc(t + " · " + o.series.map((s) => `${s.label}: ${s.values[i] == null ? "–" : fmt(s.values[i])}`).join(" · "))}"/>`).join("");
-    const legend = o.series.length > 1 ? `<div class="legend">${o.series.map((s) => `<span><i style="border-top-color:${s.color};border-top-style:${s.dash ? "dashed" : s.dots ? "dotted" : "solid"}"></i>${esc(s.label)}</span>`).join("")}</div>` : "";
+    const legend = o.series.length > 1 || (o.dropped && o.dropped.length) ? `<div class="legend">${o.series.map((s) => `<span><i style="border-top-color:${s.color};border-top-style:${s.dash ? "dashed" : s.dots ? "dotted" : "solid"}"></i>${esc(s.label)}</span>`).join("")}</div>` : "";
     return `<figure class="fig">${o.title ? `<figcaption><span>${esc(o.title)}</span>${o.note ? `<span class="muted">${esc(o.note)}</span>` : ""}</figcaption>` : ""}
-      <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria || o.title || "")}">${yband}${ticks}${bands}${refs}${ticksX}${lines}${ends}${xl}${hits}</svg>${legend}</figure>`;
+      <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria || o.title || "")}">${yband}${ticks}${bands}${refs}${ticksX}${lines}${ends}${xl}${hits}</svg>${legend}${o.dropped && o.dropped.length ? `<p class="small muted">No readings yet for ${esc(o.dropped.join(", "))}.</p>` : ""}</figure>`;
   }
 
   function hbars(rows) {
@@ -112,65 +118,97 @@
   }
 
   // ------------------------------------------------------------------ Today
+  // Short on purpose: who needs a person today and the one thing to do. The full list lives on Patients.
+  const TODAY_CAP = 8;
+  const sortRows = (items) => items.sort((a, b) => RANK[a.tri] - RANK[b.tri] || ["c5", "c3", "c1", "c4"].indexOf(a.mod) - ["c5", "c3", "c1", "c4"].indexOf(b.mod));
+  function failBanners(failed) { return failed.map((x) => `<div class="banner alert"><span class="b-ico">▲</span><div class="b-body"><b>${MODS[x.mod].challenge} ${MODS[x.mod].name} isn’t answering and has no saved copy.</b> <span class="small">${esc(x.error)}</span></div></div>`).join(""); }
   async function renderToday() {
-    const head = `<header class="page-head"><div><h1>Today</h1><p class="sub">Every patient across the live programs, sorted by who needs a person first.</p></div></header>`;
+    const head = `<header class="page-head"><div><h1>Today</h1><p class="sub">Who needs a person today, and why. Everyone else is on the Patients list.</p></div></header>`;
     const f = forced("today’s list", "No patients are assigned to you yet.");
     if (f) return head + f;
     const { rows: items, failed } = await once("roster", A.roster);
-    items.sort((a, b) => RANK[a.tri] - RANK[b.tri] || ["c5", "c3", "c4"].indexOf(a.mod) - ["c5", "c3", "c4"].indexOf(b.mod));
+    sortRows(items);
     const counts = { today: 0, alert: 0, watch: 0, ok: 0 };
     items.forEach((i) => counts[i.tri]++);
-    const tiles = ["today", "alert", "watch", "ok"].map((k) => `<button class="sum-tile ${k}" data-jump="${k}"><span class="n">${counts[k]}</span><span class="l">${GROUP[k]}</span></button>`).join("");
-    const perMod = ["c3", "c4", "c5"].map((m) => `<button class="fpill" aria-pressed="${ui.filter === m}" data-filter="${m}"><span class="dot m-${m}"></span>${MODS[m].name} <span class="cnt">${items.filter((x) => x.mod === m).length}</span></button>`).join("");
-    const fails = failed.map((x) => `<div class="banner alert"><span class="b-ico">▲</span><div class="b-body"><b>${MODS[x.mod].challenge} ${MODS[x.mod].name} isn’t answering and has no saved copy.</b> <span class="small">${esc(x.error)}</span></div></div>`).join("");
+    const strip = `<div class="stat-strip">
+      <a href="#patients-today"><span class="n ${counts.today ? "alert" : ""}">${counts.today}</span><span class="l">Need a person today</span></a>
+      <a href="#patients-alert"><span class="n">${counts.alert}</span><span class="l">Alerts to review</span></a>
+      <a href="#patients-watch"><span class="n">${counts.watch}</span><span class="l">Watch</span></a>
+      <a href="#patients"><span class="n">${items.length}</span><span class="l">All patients</span></a></div>`;
+    const top = items.filter((x) => x.tri === "today" || x.tri === "alert").slice(0, TODAY_CAP);
+    const rows = top.map((it) => `<div class="t-row" data-pid="${esc(it.id)}"><span class="sdot ${it.tri}" aria-hidden="true"></span>
+      <div class="who"><a href="#p-${esc(it.id)}">${esc(it.name)}</a><span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span>${statusPill(it.tri)}<span class="why" title="${esc(it.headline)}">${esc(it.headline)}</span></div>
+      <div class="acts">${it.mod !== "c1" ? `<a class="btn primary" href="#live-${esc(it.id)}">Start call</a>` : `<a class="btn primary" href="#p-${esc(it.id)}.c1">Review risk</a>`}<a class="btn" href="#p-${esc(it.id)}">Open</a></div></div>`).join("");
+    const rest = counts.today + counts.alert - top.length;
+    return `${head}${failBanners(failed)}${sourceBanner(ALL)}${strip}
+      <section class="stack-s"><h2>Start here</h2><div class="today-list roster-today" data-count="${top.length}">${rows || `<div class="live-empty">Nobody needs a person today.</div>`}</div>
+      ${rest > 0 ? `<a href="#patients-alert">${rest} more alerts on the Patients list →</a>` : ""}</section>`;
+  }
+
+  // ------------------------------------------------------------------ Patients
+  async function renderPatients(arg) {
+    const st = ["today", "alert", "watch", "ok"].includes(arg) ? arg : "all";
+    const head = `<header class="page-head"><div><h1>Patients</h1><p class="sub">Everyone across the live programs, sorted by who needs a person first. Search by name, ID or signal.</p></div></header>`;
+    const f = forced("patients", "No patients yet.");
+    if (f) return head + f;
+    const { rows: items, failed } = await once("roster", A.roster);
+    sortRows(items);
     const q = ui.q.trim().toLowerCase();
-    const shown = items.filter((x) => (ui.filter === "all" || x.mod === ui.filter) && (!q || (x.name + " " + x.headline + " " + x.id + " " + x.tags.map((t) => t.label).join(" ")).toLowerCase().includes(q)));
-    let rows = "", last = null, hiddenOk = 0;
-    for (const it of shown) {
-      if (it.tri === "ok" && !ui.showOk && !q) { hiddenOk++; continue; }
-      if (it.tri !== last) { rows += `<div class="r-group" id="g-${it.tri}">${GROUP[it.tri]}</div>`; last = it.tri; }
-      rows += `<a class="r-row" href="#p-${esc(it.id)}" data-pid="${esc(it.id)}"><span class="sdot ${it.tri}" aria-hidden="true"></span>
-        <span class="r-main"><span class="r-top"><b>${esc(it.name)}</b><span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span></span>
-        <span class="r-head">${esc(it.headline)}</span>${tagsHtml(it.tags)}</span>
-        <span class="r-right">${statusPill(it.tri)}<span class="when">${fmtDate(it.updatedAt)}</span></span></a>`;
-    }
-    if (hiddenOk) rows += `<button class="r-more" data-showok>Show ${hiddenOk} on track</button>`;
-    if (!rows) rows = `<div class="state-box">No patient matches “${esc(ui.q)}”.</div>`;
-    return `${head}${fails}${sourceBanner(["c3", "c4", "c5"])}<div class="summary">${tiles}</div>
+    const shown = items.filter((x) => (ui.filter === "all" || x.mod === ui.filter) && (st === "all" || x.tri === st) && (!q || (x.name + " " + x.headline + " " + x.id + " " + x.tags.map((t) => t.label).join(" ")).toLowerCase().includes(q)));
+    const modPills = `<button class="fpill" aria-pressed="${ui.filter === "all"}" data-filter="all">All programs <span class="cnt">${items.length}</span></button>` + ALL.map((m) => `<button class="fpill" aria-pressed="${ui.filter === m}" data-filter="${m}"><span class="dot m-${m}"></span>${MODS[m].name} <span class="cnt">${items.filter((x) => x.mod === m).length}</span></button>`).join("");
+    const stPills = ["all", "today", "alert", "watch", "ok"].map((k) => `<a class="fpill" aria-pressed="${st === k}" href="#patients${k === "all" ? "" : "-" + k}">${k === "all" ? "Any status" : GROUP[k]} <span class="cnt">${k === "all" ? items.length : items.filter((x) => x.tri === k).length}</span></a>`).join("");
+    const body = shown.slice(0, ui.limit).map((it) => `<tr data-pid="${esc(it.id)}"><td>${statusPill(it.tri)}</td><td class="nm"><a href="#p-${esc(it.id)}">${esc(it.name)}</a><div class="small muted mono">${esc(it.id)}</div></td>
+      <td class="hide-s"><span class="r-mod"><span class="dot m-${it.mod}"></span>${MODS[it.mod].name}</span></td><td class="hl">${esc(it.headline)}${it.tags.length ? `<div style="margin-top:6px">${tagsHtml(it.tags)}</div>` : ""}</td><td class="hide-s small muted">${fmtDate(it.updatedAt)}</td></tr>`).join("");
+    const more = shown.length > ui.limit ? `<button class="r-more" data-more>Show ${Math.min(60, shown.length - ui.limit)} more of ${shown.length - ui.limit}</button>` : "";
+    return `${head}${failBanners(failed)}${sourceBanner(ALL)}
       <div class="toolbar"><input id="search" type="search" placeholder="Search name, ID or signal" value="${esc(ui.q)}" aria-label="Search patients">
-        <div class="filters" role="group" aria-label="Filter by program"><button class="fpill" aria-pressed="${ui.filter === "all"}" data-filter="all">All <span class="cnt">${items.length}</span></button>${perMod}</div></div>
-      <div class="roster" data-count="${items.length}">${rows}</div>
+        <div class="filters" role="group" aria-label="Filter by program">${modPills}</div><div class="filters" role="group" aria-label="Filter by status">${stPills}</div></div>
+      <p class="small muted">${shown.length} of ${items.length} patients</p>
+      <div class="ptable-wrap roster" data-count="${items.length}"><table class="ptable"><thead><tr><th>Status</th><th>Patient</th><th class="hide-s">Program</th><th>Why</th><th class="hide-s">Last data</th></tr></thead><tbody>${body || `<tr><td colspan="5" class="live-empty">No patient matches.</td></tr>`}</tbody></table>${more}</div>
       <p class="footnote">Each program enrols its own synthetic cohort, so today a patient appears in one program. Dates are the last data each program holds.</p>`;
   }
 
   // ------------------------------------------------------------------ Patient 360
-  const PILLS = [["overview", "Health chart"], ["c3", "Rough weeks"], ["c4", "Glucose"], ["c5", "Coaching calls"], ["c1", "Hospital risk"]];
+  const PILLS = [["overview", "Health chart"], ["c1", "Hospital risk"], ["c3", "Rough weeks"], ["c4", "Glucose"], ["c5", "Coaching calls"]];
 
   async function renderPatient360(arg) {
     const [id, tab = "overview"] = arg.split(".");
-    const back = `<a class="back" href="#today">← Today</a>`;
+    const back = `<a class="back" href="#patients">← Patients</a>`;
     const f = forced("this patient", "No data for this patient yet. The page fills in after the first synced day.");
     if (f) return back + f;
     let p;
     try { p = await once("p:" + id, () => A.patient(id)); } catch (e) { return back + errorBox("this patient", e.message); }
+    current = p;
     const pills = PILLS.map(([k, label]) => {
       const mine = k === "overview" || k === p.mod;
       const cls = `pill${k === tab ? " on" : ""}${mine ? "" : " off"}`;
       const dot = k !== "overview" ? `<span class="dot m-${k}"></span>` : "";
-      return mine ? `<a class="${cls}" href="#p-${esc(id)}${k === "overview" ? "" : "." + k}" ${k === tab ? 'aria-current="page"' : ""}>${dot}${label}</a>`
-        : `<span class="${cls}" title="${k === "c1" ? "Hospital risk is not deployed yet" : "Not enrolled in this program’s data"}" aria-disabled="true">${dot}${label}</span>`;
+      return `<a class="${cls}" href="#p-${esc(id)}${k === "overview" ? "" : "." + k}" ${k === tab ? 'aria-current="page"' : ""} ${mine ? "" : 'title="Not enrolled in this program’s data"'}>${dot}${label}</a>`;
     }).join("");
     const factsLine = p.facts.slice(0, 7).map(([k, v]) => `<span>${esc(k)} <b>${esc(v)}</b></span>`).join("");
     const head = `${back}<header class="p-head"><div class="stack-s"><div class="row"><h1>${esc(p.name)}</h1>${statusPill(p.tri)}</div><div class="facts">${factsLine}</div></div>
-      <div class="row">${p.tri === "today" ? `<button class="btn danger" ${notWired("Escalate to care team")}>Escalate to care team</button>` : ""}<button class="btn" ${notWired("Schedule call")}>Schedule call</button><a class="btn" href="#app-${esc(id)}">Patient’s app</a></div></header>
+      <div class="row">${p.tri === "today" ? `<button class="btn danger" ${notWired("Escalate to care team")}>Escalate to care team</button>` : ""}<a class="btn primary" href="#live-${esc(id)}">Start call</a><a class="btn" href="#app-${esc(id)}">Patient’s app</a></div></header>
       <nav class="pills" aria-label="Patient views">${pills}</nav>${sourceBanner([p.mod])}`;
     const body = tab === "overview" ? overview(p) : tab === p.mod ? moduleView(p) : notEnrolled(tab);
     const miss = p.missing && p.missing.length ? `<p class="footnote">Not in this program’s response yet: ${esc(p.missing.join("; "))}.</p>` : "";
     return head + body + miss;
   }
 
-  function kpiCards(kpis) {
-    return kpis.length ? `<div class="kpis">${kpis.map((k) => `<div class="kpi ${k.good == null ? "" : k.good ? "k-ok" : "k-bad"}"><div class="kl">${esc(k.label)}</div><div class="kv">${esc(k.value)}</div>${k.sub ? `<div class="ks">${esc(k.sub)}</div>` : ""}</div>`).join("")}</div>` : "";
+  function kpiCards(kpis, href) {
+    const tag = href ? "a" : "div";
+    return kpis.length ? `<div class="kpis">${kpis.map((k) => `<${tag} class="kpi ${k.good == null ? "" : k.good ? "k-ok" : "k-bad"}" ${href ? `href="${esc(href)}"` : ""}><div class="kl">${esc(k.label)}</div><div class="kv">${esc(k.value)}</div>${k.sub || href ? `<div class="ks">${esc(k.sub || "")}</div>` : ""}</${tag}>`).join("")}</div>` : "";
+  }
+  // The last layer of every program view: every field the program sent, so the summary never hides data.
+  function flatten(o, path = "", out = []) {
+    if (o == null || typeof o !== "object") { out.push([path, o]); return out; }
+    if (Array.isArray(o) && o.every((v) => v == null || typeof v !== "object")) { out.push([path, o.map((v) => (v == null ? "–" : v)).join(", ")]); return out; }
+    for (const [k, v] of Object.entries(o)) flatten(v, path ? (Array.isArray(o) ? `${path}[${k}]` : `${path}.${k}`) : k, out);
+    return out;
+  }
+  function rawData(p) {
+    if (!p.raw) return "";
+    const rows = flatten(p.raw);
+    return `<details class="more raw" id="raw"><summary>Everything this program sent · ${rows.length} fields</summary><p class="small muted">The full response from ${esc(MODS[p.mod].challenge)} ${esc(MODS[p.mod].name)}${p.source === "fallback" ? " (saved copy)" : ""}, unedited.</p><div class="tbl-wrap"><table class="kv-tbl"><tbody>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v === "" ? "“”" : v)}</td></tr>`).join("")}</tbody></table></div></details>`;
   }
   function adviceCard(a, n) {
     return `<div class="a-text"><p class="basis t-${esc(a.tone || "info")}">${n ? n + " · " : ""}${esc(a.tag || "")}</p><h3>${esc(a.title)}</h3>${a.text ? `<p>${esc(a.text)}</p>` : ""}
@@ -197,18 +235,17 @@
     const first = doCards(p, 1);
     const allAdvice = p.panels.flatMap((pn) => pn.advice || []);
     const steps = allAdvice.length > 1 ? `<section class="card stack-s"><p class="eyebrow">All next steps</p><ol class="steps">${allAdvice.map((a) => `<li><b>${esc(a.title)}</b>${a.tag ? ` <span class="muted small">· ${esc(a.tag)}</span>` : ""}</li>`).join("")}</ol><a href="#p-${esc(p.id)}.${p.mod}">See each one with its chart →</a></section>` : "";
-    return `<p class="big-hl">${esc(p.headline)}</p>${tagsHtml(p.tags)}${kpiCards(p.kpis)}
+    return `<p class="big-hl">${esc(p.headline)}</p>${tagsHtml(p.tags)}${kpiCards(p.kpis, `#p-${p.id}.${p.mod}`)}
       ${p.reasons && p.reasons.length ? `<p class="muted small">Status set because ${esc(p.reasons.join("; "))}.</p>` : ""}
       ${first || (p.panels[0] ? `<section class="card">${panelVisual(p.panels[0])}</section>` : "")}${steps}`;
   }
   function moduleView(p) {
     const more = p.panels.filter((pn) => !pn.advice || !pn.advice.length);
     const moreHtml = more.length ? `<details class="more"><summary>More detail · ${more.map((pn) => esc(pn.title)).join(", ")}</summary>${more.map((pn) => `<section class="card stack"><h2>${esc(pn.title)}</h2><div class="${pn.small ? "multiples" : ""}">${panelVisual(pn)}</div></section>`).join("")}</details>` : "";
-    const ev = p.evidence && p.evidence.length ? `<details class="more"><summary>Evidence behind every number</summary>${p.evidence.map((g) => `<details ${g.open ? "open" : ""} class="ev-g"><summary>${esc(g.group)} <span class="muted">(${g.rows.length})</span></summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Measure</th><th>Value</th><th>95% CI</th><th>n</th></tr></thead><tbody>${g.rows.map((r) => `<tr><td>${esc(r.label)}${r.caveat ? `<span class="cav">${esc(r.caveat)}</span>` : ""}</td><td class="mono">${esc(r.value)}</td><td class="mono">${esc(r.ci)}</td><td class="mono">${esc(r.n)}</td></tr>`).join("")}</tbody></table></div></details>`).join("")}</details>` : "";
-    return `<div class="mod-head">${modChip(p.mod)}<p class="big-hl">${esc(p.headline)}</p></div>${kpiCards(p.kpis)}<h2 class="sec-t">What to do</h2>${doCards(p) || `<p class="muted">No actions from this program right now.</p>`}${moreHtml}${ev}${p.footnote ? `<p class="footnote">${esc(p.footnote)}</p>` : ""}`;
+    const ev = p.evidence && p.evidence.length ? `<details class="more" id="ev"><summary>Evidence behind every number</summary>${p.evidence.map((g) => `<details ${g.open ? "open" : ""} class="ev-g"><summary>${esc(g.group)} <span class="muted">(${g.rows.length})</span></summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Measure</th><th>Value</th><th>95% CI</th><th>n</th></tr></thead><tbody>${g.rows.map((r) => `<tr><td>${esc(r.label)}${r.caveat ? `<span class="cav">${esc(r.caveat)}</span>` : ""}</td><td class="mono">${esc(r.value)}</td><td class="mono">${esc(r.ci)}</td><td class="mono">${esc(r.n)}</td></tr>`).join("")}</tbody></table></div></details>`).join("")}</details>` : "";
+    return `<div class="mod-head">${modChip(p.mod)}<p class="big-hl">${esc(p.headline)}</p></div>${kpiCards(p.kpis)}<h2 class="sec-t">What to do</h2>${doCards(p) || `<p class="muted">No actions from this program right now.</p>`}${moreHtml}${ev}${rawData(p)}${p.footnote ? `<p class="footnote">${esc(p.footnote)}</p>` : ""}`;
   }
   function notEnrolled(tab) {
-    if (tab === "c1") return `<div class="state-box"><h2>Hospital risk isn’t live yet</h2><p class="muted">Challenge 1 is being built. When it deploys, this pill shows the chance of an ER visit or hospital stay next year, with its range and the factors behind it.</p></div>`;
     return `<div class="state-box"><h2>Not enrolled in ${esc(MODS[tab] ? MODS[tab].name : tab)}</h2><p class="muted">Each program uses its own cohort today, so this patient has no ${esc(MODS[tab] ? MODS[tab].short.toLowerCase() : "")} data. When the programs share one patient ID, this pill fills in.</p></div>`;
   }
 
@@ -346,25 +383,32 @@
     side();
   }
 
-  function cueCheck(L, i, coachName) {
-    const l = L.lines[i], lines = L.lines.slice(0, i + 1);
-    if (!l.live || !l.live.tag) return;
-    const coachCount = lines.filter((x) => x.speaker === "coach").length;
+  // Same trigger rules as the Copilot's own screen. Pure: used by call review and by live calls.
+  function cueTrigger(lines, i, lastCueAt) {
+    const l = lines[i];
+    if (!l.live || !l.live.tag) return null;
+    const coachCount = lines.slice(0, i + 1).filter((x) => x.speaker === "coach").length;
     let trigger = null;
     const f = l.live.flag;
     if (f === "missed_concern") trigger = "The participant raised a concern and the coach moved on without routing it.";
     else if (f === "medical_advice") trigger = "The coach just gave medical advice outside their role.";
     else if (f && f !== "none") trigger = `The participant raised a ${f} concern.`;
     else if (l.speaker === "coach") {
-      const coach = lines.filter((x) => x.speaker === "coach" && x.live && x.live.tag);
+      const coach = lines.slice(0, i + 1).filter((x) => x.speaker === "coach" && x.live && x.live.tag);
       const last = coach.slice(-4).map((x) => x.live.tag), before = lines[i - 1];
       if (l.live.tag === "confront") trigger = "The coach just confronted the participant.";
       else if (l.live.tag === "persuade" && !coach.slice(-3, -1).some((x) => x.live.tag === "ask permission")) trigger = "The coach told the participant what to do without asking permission.";
       else if (before && before.speaker === "participant" && before.live && before.live.tag === "change" && FAMILY[l.live.tag] !== "r" && l.live.tag !== "affirm") trigger = "The participant voiced change talk and the coach did not reflect or affirm it.";
       else if (last.length === 4 && last.every((t) => FAMILY[t] === "q")) trigger = "Four questions in a row without a reflection.";
       else if (last.length >= 3 && last.slice(-3).every((t) => t === "closed question")) trigger = "Three closed questions in a row.";
-      if (trigger && coachCount - L.lastCueAt < 3) trigger = null;
+      if (trigger && coachCount - lastCueAt < 3) trigger = null;
     }
+    return trigger ? { trigger, coachCount } : null;
+  }
+  function cueCheck(L, i, coachName) {
+    const lines = L.lines.slice(0, i + 1), l = L.lines[i];
+    const hit = cueTrigger(L.lines, i, L.lastCueAt);
+    const trigger = hit && hit.trigger, coachCount = hit && hit.coachCount;
     if (!trigger) return;
     L.lastCueAt = coachCount;
     const recent = lines.slice(-8).map((x) => ({ speaker: x.speaker, text: x.text, tag: x.live && x.live.tag }));
@@ -391,6 +435,10 @@
       const rules = recs.filter((r) => r.rule), tips = recs.filter((r) => !r.rule);
       cards = rules.concat(tips).map((r) => `<div class="p-card ${r === tips[0] ? "focus" : ""}"><p class="eyebrow">${r.rule ? "Check with your care team" : r === tips[0] ? "This week’s focus" : "Also try"}</p><p class="big">${esc(r.title)}</p><p class="why">${esc(r.text)}</p>${r.rule ? "" : `<label class="check"><input type="checkbox"> Done this week</label>`}</div>`).join("");
       if (ai) cards += `<p class="small muted">Plain-language text by Workers AI, checked against the evidence; ${ai.filter((x) => x.source === "template").length} kept as written.</p>`;
+    } else if (p.mod === "c1") {
+      const tips = p.patientAdvice || [];
+      cards = tips.length ? tips.map((t, i) => `<div class="p-card ${i ? "" : "focus"}"><p class="eyebrow">${i ? "Also" : "This month"}</p><p class="big">${esc(t)}</p></div>`).join("")
+        : `<div class="p-card focus"><p class="eyebrow">This month</p><p class="big">Keep your follow-up visits, and call your care team early when something changes.</p></div>`;
     } else if (p.mod === "c3") {
       const rough = p.status !== "ok";
       cards = `<div class="p-card focus"><p class="eyebrow">This week</p><p class="big">${rough ? "Your body may need more rest in the next few days." : "You’re close to your usual. Keep your routine."}</p><p class="why">${rough ? "Your watch shows changes from your usual. Rest is OK. Short walks around the house count. Your coach will call to check in." : "Short daily walks and a steady bedtime help on treatment weeks."}</p></div>
@@ -402,16 +450,28 @@
       ${lang !== "English" ? `<p class="small notice">Shown in English. ${esc(lang)} text is pending from the program.</p>` : ""}
       ${cards}<div class="p-card"><button class="btn primary" ${notWired("Message your coach")}>Message your coach</button></div>
       <p class="small muted">General guidance from your coaching program, not medical advice. For fever, chest pain or trouble breathing, call your care team now.</p></div>`;
-    const notes = `<div class="notes-side stack"><h2>${esc(p.name)}</h2><p class="muted">${p.mod === "c4" ? "Cards are the glucose program’s own advice for this person, rewritten in plain words when the AI check passes. Safety rules come first." : p.mod === "c3" ? "Rough-weeks advice is written for the coach, so the patient sees a softer card and the fever rule. The program should send patient-facing text." : "The calls program has no patient-facing text yet."}</p>
+    const notes = `<div class="notes-side stack"><h2>${esc(p.name)}</h2><p class="muted">${p.mod === "c4" ? "Cards are the glucose program’s own advice for this person, rewritten in plain words when the AI check passes. Safety rules come first." : p.mod === "c3" ? "Rough-weeks advice is written for the coach, so the patient sees a softer card and the fever rule. The program should send patient-facing text." : p.mod === "c1" ? "Cards are the hospital-risk program’s own advice marked for the patient. The risk number itself is never shown to them." : "The calls program has no patient-facing text yet."}</p>
       <a class="btn" href="#p-${esc(id)}">Back to their 360</a></div>`;
     return `${head}<div class="phone-wrap">${phone}${notes}</div>`;
   }
 
   // ------------------------------------------------------------------ later
-  function renderCare() {
-    return `<header class="page-head"><div><p class="eyebrow">Later · Challenge 1</p><h1>Hospital risk</h1><p class="sub">For the care-team lead: which patients are likely to need an ER visit or hospital stay next year, from survey answers plus clinical records.</p></div><span class="chip m-c1"><span class="dot"></span>Being built</span></header>
-      <div class="grid-2"><section class="card stack"><h2>Where it will show</h2><ul class="evidence"><li>A “Hospital risk” pill on every patient’s 360.</li><li>A risk tag on each Today row.</li><li>A care-team list sorted by risk, with a fairness view by age, sex, ethnicity, insurance and cancer type.</li></ul></section>
-      <section class="card stack"><h2>Rules for showing it</h2><ul class="evidence"><li>The survey and the clinical records share no patient key. Show how confident the link is.</li><li>Show a probability with its range, never a red or green verdict.</li><li>Factors are associations, not causes.</li></ul></section></div>`;
+  async function renderCare() {
+    const head = `<header class="page-head"><div><p class="eyebrow">Challenge 1 · for the care-team lead</p><h1>Hospital risk</h1><p class="sub">Chance of an ER visit or hospital stay next year, from 2017 survey answers. Highest first.</p></div></header>`;
+    const f = forced("hospital risk", "No risk scores yet.");
+    if (f) return head + f;
+    const [{ rows }, m] = await Promise.all([once("roster", A.roster), once("m:c1", () => A.metrics("c1")).catch(() => null)]);
+    const list = sortRows(rows.filter((x) => x.mod === "c1"));
+    const tiers = m && m.tiers && m.tiers.tiers ? m.tiers.tiers : [];
+    const fm = m && m.metrics && m.finalModel ? m.metrics[m.finalModel.name] || m.metrics.logistic : null;
+    const strip = tiers.length ? `<div class="stat-strip">${tiers.map((t) => `<a href="#patients-${t.status}"><span class="n">${pct(t.observedRate)}</span><span class="l">${GROUP[t.status]}: ${t.n} people in the test set had an ER visit or stay this often</span></a>`).join("")}${fm ? `<div><span class="n">${num(fm.auroc.value, 2)}</span><span class="l">How well it ranks people (AUROC, 0.5 = chance; 95% CI ${num(fm.auroc.ci95[0], 2)}–${num(fm.auroc.ci95[1], 2)})</span></div>` : ""}</div>` : "";
+    const table = `<div class="ptable-wrap"><table class="ptable"><thead><tr><th>Status</th><th>Patient</th><th>Why</th></tr></thead><tbody>${list.slice(0, ui.limit / 4).map((it) => `<tr><td>${statusPill(it.tri)}</td><td class="nm"><a href="#p-${esc(it.id)}.c1">${esc(it.name)}</a></td><td class="hl">${esc(it.headline)}${it.tags.length ? `<div style="margin-top:6px">${tagsHtml(it.tags)}</div>` : ""}</td></tr>`).join("")}</tbody></table>${list.length > ui.limit / 4 ? `<button class="r-more" data-more>Show 15 more of ${list.length}</button>` : ""}</div>`;
+    const factors = m && m.plainFactors ? `<details class="more"><summary>What raises or lowers risk across everyone</summary><ul class="evidence">${m.plainFactors.map((x) => `<li>${esc(typeof x === "string" ? x : x.text || x.label || JSON.stringify(x))}</li>`).join("")}</ul></details>` : "";
+    const fair = m && m.fairness ? `<details class="more"><summary>Fairness check by group · ${m.fairness.length} groups</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Group</th><th>n</th><th>Observed</th><th>Predicted</th><th>AUROC</th></tr></thead><tbody>${m.fairness.map((g) => `<tr><td>${esc(g.attribute)}: ${esc(g.group)}${g.tooSmall ? '<span class="cav">too few people to judge</span>' : ""}</td><td class="mono">${g.n}</td><td class="mono">${pct(g.observedRate)}</td><td class="mono">${pct(g.meanPredicted)}</td><td class="mono">${num(g.auroc, 2)}</td></tr>`).join("")}</tbody></table></div></details>` : "";
+    const cav = m && m.caveats ? `<details class="more"><summary>Caveats</summary><ul class="evidence">${m.caveats.map((c) => `<li>${esc(typeof c === "string" ? c : JSON.stringify(c))}</li>`).join("")}</ul></details>` : "";
+    const raw = m ? `<details class="more raw"><summary>Everything the model card holds · ${flatten(m).length} fields</summary><div class="tbl-wrap"><table class="kv-tbl"><tbody>${flatten(m).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</tbody></table></div></details>` : "";
+    return `${head}${sourceBanner(["c1"])}${strip}<section class="stack-s"><h2>${list.length} patients</h2>${table}</section>${factors}${fair}${cav}${raw}
+      <p class="footnote">${m && m.outcome ? esc(m.outcome) + ". " : ""}Factors are associations, not causes. Survey and clinical records share no patient key.</p>`;
   }
   function renderResearch() {
     return `<header class="page-head"><div><p class="eyebrow">Later · Challenges 6 and 7</p><h1>Research</h1><p class="sub">Drug discovery for lab scientists. A separate area with its own data and permissions; it never mixes with patient data.</p></div><span class="chip"><span class="dot"></span>Not built yet</span></header>`;
@@ -429,23 +489,26 @@
     if (route === "patient") route = "app";
     return { route, arg, st };
   }
-  let renderSeq = 0;
+  let renderSeq = 0, current = null;
   async function render() {
     const { route, arg, st } = parse();
     if (route === "line") return;
     previewState = st || "ready";
+    if (route !== "p" && route !== "live" && route !== "app") current = null;
     const seq = ++renderSeq;
-    const nav = { p: "today", call: "calls" }[route] || route;
+    const nav = { p: "patients", call: "calls", live: "patients" }[route] || route;
     document.querySelectorAll(".nav-link").forEach((a) => a.classList.toggle("active", a.dataset.nav === nav));
     if (view.dataset.ready !== route + arg) view.innerHTML = loadingBox("page");
     let html;
     try {
       if (route === "today") html = await renderToday();
       else if (route === "p") html = arg ? await renderPatient360(arg) : await renderToday();
+      else if (route === "patients") html = await renderPatients(arg);
+      else if (P360.routes[route]) html = await P360.routes[route](arg);
       else if (route === "calls") html = await renderCalls();
       else if (route === "call") html = await renderCall(arg);
       else if (route === "app") html = await renderApp(arg);
-      else if (route === "care") html = renderCare();
+      else if (route === "care") html = await renderCare();
       else if (route === "research") html = renderResearch();
       else html = emptyBox("This page doesn’t exist. Use the navigation to get back.");
     } catch (e) { console.warn(e); html = errorBox("this page", e.message); }
@@ -469,9 +532,8 @@
     const el = e.target.closest("button, a");
     if (!el) return;
     if (el.dataset.toast) showToast(el.dataset.toast);
-    if (el.dataset.filter) { ui.filter = el.dataset.filter; render(); }
-    if (el.hasAttribute("data-showok")) { ui.showOk = true; render(); }
-    if (el.dataset.jump) { if (el.dataset.jump === "ok" && !ui.showOk) { ui.showOk = true; await render(); } const g = document.getElementById("g-" + el.dataset.jump); if (g) g.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    if (el.dataset.filter) { ui.filter = el.dataset.filter; ui.limit = 60; render(); }
+    if (el.hasAttribute("data-more")) { ui.limit += 60; render(); }
     if (el.hasAttribute("data-retry")) { memo.clear(); if (location.hash.includes("~")) location.hash = location.hash.split("~")[0]; else render(); }
     if (el.hasAttribute("data-run")) { const { arg } = parse(); runLive(await A.call(arg)); }
     const href = el.getAttribute("href");
@@ -485,6 +547,9 @@
     searchT = setTimeout(async () => { await render(); const s = document.getElementById("search"); if (s) { s.focus(); s.setSelectionRange(s.value.length, s.value.length); } }, 200);
   });
   window.addEventListener("hashchange", () => { if (parse().route === "line") return; toast.hidden = true; window.scrollTo(0, 0); render().then(() => view.focus({ preventScroll: true })); });
+  // Shared with call.js and ellie.js, which load after this file and add their own routes.
+  window.P360 = { routes: {}, render, esc, fmtDate, pct, num, post, once, memo, A, MODS, SNAP, LIVE_URL, COPILOT_URL, statusPill, modChip, tagsHtml, loadingBox, errorBox, emptyBox, forced, sourceBanner, showToast, notWired, parse,
+    FAMILY, FLAG_TEXT, liveScore, lineHtml, flagBanner, cueTrigger, panelVisual, adviceCard, current: () => current };
   updateMode();
-  render();
+  window.addEventListener("DOMContentLoaded", render);
 })();

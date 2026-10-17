@@ -4,6 +4,8 @@
   "compatibility_date": "2026-09-01",
   "workers_dev": true, "routes": [{ "pattern": "patient-360.raava.dev", "custom_domain": true }],
   "observability": { "enabled": true },
+  "ai": { "binding": "AI" },
+  "kv_namespaces": [{ "binding": "CALLS", "id": "70bb5c8877564ce6b5c5a53e1e693c2f" }],
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
   "services": [
     { "binding": "C1", "service": "c1-acute-risk" },

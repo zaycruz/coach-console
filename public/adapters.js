@@ -100,7 +100,6 @@
       if (/treatment calendar/i.test(h)) t.push({ label: "Treatment calendar", tone: "info" });
     }
     if (mod === "c1") {
-      const r = h.match(/risk (\d+)%/i); if (r) t.push({ label: `Acute care ${r[1]}%`, tone: x.status === "alert" ? "risk" : x.status === "watch" ? "warn" : "info" });
       const d = h.match(/driven by ([^,;]+)/i); if (d) t.push({ label: sentence(d[1].trim()), tone: "warn" });
     }
     return t;
@@ -116,7 +115,7 @@
     const base = { id, mod, name: patientName(d.displayName), status: d.status || "ok", tri: triage(mod, d.status, mod === "c3" && c3Urgent(d)), headline: d.headline || "", summary: d.summary || "", updatedAt: d.updatedAt, facts: facts(d.profile || {}), source: health[mod] && health[mod].source };
     if (!d.profile) note(mod, "profile (not provided)");
     const v = mod === "c1" ? c1View(d) : mod === "c3" ? c3View(d) : mod === "c4" ? c4View(d) : c5View(d);
-    return { ...base, ...v, missing: [...(missing[mod] || [])] };
+    return { ...base, ...v, raw: d, missing: [...(missing[mod] || [])] };
   }
 
   function facts(p) {
@@ -139,7 +138,7 @@
       r.alertFrom != null && { label: "Alert line", value: r.alertFrom, text: pct(r.alertFrom), color: "var(--line-2)" },
     ].filter(Boolean) } : null;
     const driverBars = drivers.length ? { title: "What drives it", note: "Contribution to this person’s risk (model log-odds). Grey lowers it.", rows: drivers.map((x) => ({ label: x.label, value: Math.abs(x.logitContribution), text: (x.logitContribution > 0 ? "+" : "−") + num(Math.abs(x.logitContribution), 2), color: x.logitContribution > 0 ? "var(--m-c1-strong)" : "var(--ink-3)" })) } : null;
-    const panels = [{ id: "risk", title: "Hospital risk next year", lead: d.caveat || "", bars: riskBars, bars2: driverBars, list: ev.filter((e) => e.kind !== "model").map((e) => e.text), advice }];
+    const panels = [{ id: "risk", title: "Hospital risk next year", lead: "", bars: riskBars, bars2: driverBars, list: ev.filter((e) => e.kind !== "model").map((e) => e.text), advice }];
     const sc = c.scores || {};
     const scoreNames = { physical_score: "Physical health score", mental_score: "Mental health score", distress_k6: "Distress (K6)", depression_phq2: "Depression (PHQ-2)", pain: "Pain", fatigue: "Fatigue", financial_toxicity: "Money worries", cost_delay: "Delayed care for cost" };
     const rows = Object.entries(sc).map(([k, v]) => [scoreNames[k] || k, v == null ? "not answered" : num(v, 1)]);
@@ -280,5 +279,7 @@
     return null;
   }
 
-  window.Adapter = { MODULES, roster, patient, calls, call, advice, health, missing, triage };
+  // Program-level metrics (C1 care-team page, C3 model card). Same live → saved-copy fallback.
+  async function metrics(mod) { return fetchJSON(`/api/${mod}/metrics`, []); }
+  window.Adapter = { MODULES, roster, patient, calls, call, advice, metrics, health, missing, triage };
 })();

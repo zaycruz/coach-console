@@ -2,7 +2,7 @@ node_modules/
 .DS_Store
 scripts/__pycache__/
 runs/*
-!runs/2026-10-17T14-16-12/
+!runs/2026-10-17T15-06-22/
 .wrangler/
 
 # Beads / Dolt files (added by bd init)
