@@ -4,3 +4,10 @@ scripts/__pycache__/
 runs/*
 !runs/2026-10-17T14-16-12/
 .wrangler/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+*.gate.lock*
