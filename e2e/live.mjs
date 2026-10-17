@@ -313,7 +313,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   const banner = await page.locator(".banner.warn").innerText().catch(() => "");
   const chip = await page.locator(".mode .src", { hasText: "Rough weeks" }).getAttribute("class");
   ok("C3 down: Patients still complete from the saved copy", count === total, `${count} vs ${total}`);
-  ok("C3 down: banner says saved copy", /C3.*isn.t answering.*saved copy/i.test(banner), banner.replace(/\s+/g, " "));
+  ok("C3 down: banner says saved copy", /Rough weeks.*isn.t answering.*saved copy/i.test(banner), banner.replace(/\s+/g, " "));
   ok("C3 down: status chip turns amber", /s-fallback/.test(chip), chip);
   await shot(page, "fallback-c3-down_patients.png", false);
   await page.goto(`${B}/#p-${ids.c3}.c3`); await settle(page);
