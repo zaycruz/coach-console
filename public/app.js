@@ -126,7 +126,7 @@
     const w = (W - pl - pr) / Math.max(1, n - 1);
     const hits = o.x.map((t, i) => `<rect x="${X(i) - w / 2}" y="0" width="${w}" height="${H}" fill="transparent" data-tip="${esc(t + " · " + o.series.map((s) => `${s.label}: ${s.values[i] == null ? "–" : fmt(s.values[i])}`).join(" · "))}" data-hx="${X(i).toFixed(1)}" data-hy="${o.series.map((s) => (s.values[i] == null ? "" : Y(s.values[i]).toFixed(1))).join(",")}"/>`).join("");
     // The hover guide: a vertical line and one dot per series, moved by the pointer handler to the nearest point.
-    const guide = `<g class="hover-guide" hidden><line class="hg-line" x1="0" x2="0" y1="${pt}" y2="${H - pb}"/>${o.series.map((s) => `<circle class="hg-dot" r="4.5" cx="0" cy="0" fill="${s.color}"/>`).join("")}</g>`;
+    const guide = `<g class="hover-guide" hidden><line class="hg-line" x1="0" x2="0" y1="${pt}" y2="${H - pb}"/>${o.series.map((s) => `<circle class="hg-dot" r="4.5" cx="0" cy="0" style="fill:${s.color}"/>`).join("")}</g>`;
     const legend = o.series.length > 1 || (o.dropped && o.dropped.length) ? `<div class="legend">${o.series.map((s) => `<span><i style="border-top-color:${s.color};border-top-style:${s.dash ? "dashed" : s.dots ? "dotted" : "solid"}"></i>${esc(s.label)}</span>`).join("")}</div>` : "";
     return `<figure class="fig">${o.title ? `<figcaption><span>${esc(o.title)}</span>${o.note ? `<span class="muted">${esc(o.note)}</span>` : ""}</figcaption>` : ""}
       <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.aria || o.title || "")}">${yband}${ticks}${bands}${refs}${ticksX}${lines}${ends}${xl}${guide}${hits}</svg>${legend}${o.dropped && o.dropped.length ? `<p class="small muted">No readings yet for ${esc(o.dropped.join(", "))}.</p>` : ""}</figure>`;
@@ -982,15 +982,15 @@
     if (t && t.dataset.tip) { tip.textContent = t.dataset.tip; tip.hidden = false; tip.style.left = Math.min(e.clientX + 12, innerWidth - 280) + "px"; tip.style.top = e.clientY + 14 + "px"; } else tip.hidden = true;
     // Trend guide: follow the nearest point on every series of the chart under the pointer.
     const svg = t && t.dataset.hx != null ? t.closest("svg.chart") : null;
-    if (hoverSvg && hoverSvg !== svg) { const g = hoverSvg.querySelector(".hover-guide"); if (g) g.hidden = true; hoverSvg = null; }
+    if (hoverSvg && hoverSvg !== svg) { const g = hoverSvg.querySelector(".hover-guide"); if (g) g.setAttribute("hidden", ""); hoverSvg = null; }
     if (!svg) return;
     const g = svg.querySelector(".hover-guide"); if (!g) return;
     const x = t.dataset.hx, ys = t.dataset.hy.split(",");
     g.querySelector(".hg-line").setAttribute("x1", x); g.querySelector(".hg-line").setAttribute("x2", x);
     g.querySelectorAll(".hg-dot").forEach((c, i) => { if (ys[i] === "" || ys[i] == null) { c.setAttribute("visibility", "hidden"); return; } c.removeAttribute("visibility"); c.setAttribute("cx", x); c.setAttribute("cy", ys[i]); });
-    g.hidden = false; hoverSvg = svg;
+    g.removeAttribute("hidden"); hoverSvg = svg;
   });
-  document.addEventListener("pointerleave", () => { if (hoverSvg) { const g = hoverSvg.querySelector(".hover-guide"); if (g) g.hidden = true; hoverSvg = null; } }, true);
+  document.addEventListener("pointerleave", () => { if (hoverSvg) { const g = hoverSvg.querySelector(".hover-guide"); if (g) g.setAttribute("hidden", ""); hoverSvg = null; } }, true);
   // Clickable table rows (Hospital risk): the whole row opens data-href; Enter or Space does the same.
   const rowLink = (e) => { const r = e.target.closest && e.target.closest("tr[data-href]"); return r && !e.target.closest("a, button") ? r : null; };
   document.addEventListener("keydown", (e) => { if (e.key !== "Enter" && e.key !== " ") return; const r = rowLink(e); if (r && e.target === r) { e.preventDefault(); location.hash = r.dataset.href; } });
