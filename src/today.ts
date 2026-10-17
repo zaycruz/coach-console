@@ -92,18 +92,22 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
     rows.push({ ...base("c4", x), horizon: lows || high ? "today" : "week", rank: lows ? 930 + (tbr || 0) : high ? 920 + (mg || 0) / 100 : 300 + (100 - (tir || 0)) / 10, reason: cut(reason), data: "Synthetic", language: "" });
   });
 
-  // C1: the alert tier, highest next-year risk first; top 5 this week (or today when the module says so).
-  const c1 = l1.filter((x) => x.status === "alert").map((x) => ({ x, risk: Number((String(x.headline).match(/risk (\d+(?:\.\d+)?)%/i) || [])[1] || 0) }))
-    .sort((a, b) => b.risk - a.risk).slice(0, 5);
-  const d1 = await Promise.all(c1.map(({ x }) => detail("c1", String(x.survivorId))));
-  c1.forEach(({ x, risk }, i) => {
-    const d = d1[i] || {}, rf = isRec(d.redFlags) ? d.redFlags : {};
+  // C1: anyone the module marks care-team-today (red flags from the survey: hopelessness, serious distress…) is today's
+  // work whatever their tier; then the alert tier, highest next-year risk first, top 5 this week.
+  const c1all = l1.filter((x) => x.status === "alert" || x.status === "watch").map((x) => ({ x, risk: Number((String(x.headline).match(/risk (\d+(?:\.\d+)?)%/i) || [])[1] || 0) }))
+    .sort((a, b) => b.risk - a.risk);
+  const d1all = await Promise.all(c1all.map(({ x }) => detail("c1", String(x.survivorId))));
+  const c1 = c1all.map((c, i) => ({ ...c, d: d1all[i] || {} })).filter((c, i) => (isRec(c.d.redFlags) && c.d.redFlags.careTeamToday === true) || (c.x.status === "alert" && c1all.slice(0, i + 1).filter((y) => y.x.status === "alert").length <= 5));
+  c1.forEach(({ x, risk, d }) => {
+    const rf = isRec(d.redFlags) ? d.redFlags : {};
     const survey = (Array.isArray(rf.fromSurvey) ? rf.fromSurvey : []).filter(isRec);
     const visits = survey.map((s) => String(s.text).match(/^(\d+ ER visit\(s\) and \d+ hospital stay\(s\) last year)/)?.[1]).find(Boolean);
     const driver = (String(x.headline).match(/driven by ([^,;]+)/i) || [])[1];
-    const reason = `ER/hospital risk ${risk}% next year${visits ? `, ${visits.replace(/\(s\)/g, "s").replace(/^1 ER visits/, "1 ER visit").replace(/ 1 hospital stays/, " 1 hospital stay")}` : driver ? `, driven by ${driver}` : ""}`;
     const now = rf.careTeamToday === true;
-    rows.push({ ...base("c1", x), horizon: now ? "today" : "week", rank: now ? 910 : 500 + risk / 10, reason: cut(reason), riskWords: d.riskWords || "", caveat: d.caveat || "",
+    const flag = now ? String(rf.banner || (survey.find((s) => s.urgency === "today") || {}).text || "") : "";
+    const reason = now && flag ? `Red flag: ${flag.replace(/^[^:]*care team today[:.]?\s*/i, "")}`
+      : `ER/hospital risk ${risk}% next year${visits ? `, ${visits.replace(/\(s\)/g, "s").replace(/^1 ER visits/, "1 ER visit").replace(/ 1 hospital stays/, " 1 hospital stay")}` : driver ? `, driven by ${driver}` : ""}`;
+    rows.push({ ...base("c1", x), horizon: now ? "today" : "week", rank: now ? 910 + risk / 100 : 500 + risk / 10, reason: cut(reason), riskWords: d.riskWords || "", caveat: d.caveat || "",
       data: "Real survey data (MEPS)", language: "" });
   });
 
