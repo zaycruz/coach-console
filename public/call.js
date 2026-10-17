@@ -11,7 +11,9 @@
   let call = null; // { pid, lines, lastCueAt, speaker, started, coach, queue, replay }
   let mic = null; // { on, stream, ctx, an, data, rec, mime, segAt, heard, lastLoud, iv, started, C }
   let pendingReplay = null;
-  const justSaved = {}; // KV reads can lag a write by up to a minute; keep this session's saves in hand
+  // KV reads can lag a write by up to a minute; this session's saves live in Adapter.local.calls (shared with Today).
+  const justSaved = A.local.calls;
+  const coachOf = (m) => (m.coach && m.coach !== "Coach" ? m.coach : "not recorded"); // older saves stored a placeholder
   const SPK = { coach: "Coach", participant: "Patient" };
 
   async function lastCall(p) {
@@ -52,9 +54,9 @@
       const m = last.meta, pl = m.lines.filter((l) => l.speaker === "participant");
       const flags = m.lines.filter((l) => l.flag && l.flag !== "none");
       return `<section class="card stack recap" id="recap" data-date="${esc(m.at.slice(0, 10))}"><div class="row" style="justify-content:space-between"><h2>Last call · ${esc(fmtDate(m.at))}</h2><span class="chip">Logged in Patient 360</span></div>
-        <div class="rc-grid"><span>Coach <b>${esc(m.coach)}</b></span><span><b>${m.lines.length}</b> lines</span><span>Coach score <b>${m.score ?? "–"}</b>/100</span><span><b>${flags.length}</b> ${flags.length === 1 ? "line" : "lines"} flagged</span></div>
+        <div class="rc-grid"><span>Coach <b>${esc(coachOf(m))}</b></span><span><b>${m.lines.length}</b> lines</span><span>Coach score <b>${m.score ?? "–"}</b>/100</span><span><b>${flags.length}</b> ${flags.length === 1 ? "line" : "lines"} flagged</span></div>
         ${flags.map((l) => `<p class="small"><span class="tag flag">▲ ${esc(l.flag.replace("_", " "))}</span> “${esc(l.text)}”</p>`).join("")}
-        ${pl.slice(-2).map((l) => `<q>${esc(l.text)}</q>`).join("")}${m.note ? `<p class="small muted">Note: ${esc(m.note)}</p>` : ""}${pastLines(m.lines, m.coach)}<div id="recap-ai"></div></section>`;
+        ${pl.slice(-2).map((l) => `<q>${esc(l.text)}</q>`).join("")}${m.note ? `<p class="small muted">Note: ${esc(m.note)}</p>` : ""}${pastLines(m.lines, coachOf(m))}<div id="recap-ai"></div></section>`;
     }
     const c = last.meta;
     return `<section class="card stack recap" id="recap" data-date="${esc(c.date)}"><div class="row" style="justify-content:space-between"><h2>Last call · ${esc(fmtDate(c.date))}</h2><a class="small" href="#call-${esc(c.callId)}">Open the call record →</a></div>
@@ -83,7 +85,7 @@
     const s = call ? P.liveScore(call.lines) : null;
     const flags = call ? call.lines.filter((l) => l.live && l.live.flag && l.live.flag !== "none").length : 0;
     return `<div class="card stack"><p class="eyebrow">This call</p><div class="score-pair"><div><span class="n">${s ?? "–"}</span><span class="l">coach score (after 4 coach lines)</span></div><div><span class="n">${flags}</span><span class="l">lines need a person</span></div></div>
-      <p class="small muted">MITI-style targets, same arithmetic as Clef.</p></div>`;
+      <p class="small muted" title="Targets from the Motivational Interviewing Treatment Integrity (MITI) code">Scored against standard motivational-interviewing targets.</p></div>`;
   }
 
   function replayBar() {
@@ -112,7 +114,7 @@
       const c = pendingReplay; pendingReplay = null;
       call = { pid: id, lines: [], lastCueAt: -99, speaker: "coach", started: null, coach: c.coach.name, queue: Promise.resolve(), replay: { c, i: 0, running: true } };
       const C = call; setTimeout(() => runReplay(C), 700);
-    } else if (!call || call.pid !== id) { stopMic(); call = { pid: id, lines: [], lastCueAt: -99, speaker: "coach", started: null, coach: "", queue: Promise.resolve(), replay: null }; }
+    } else if (!call || call.pid !== id) { stopMic(); call = { pid: id, lines: [], lastCueAt: -99, speaker: "coach", started: null, coach: P.coach ? P.coach() : "", queue: Promise.resolve(), replay: null }; }
     const R = call.replay;
     const last = R ? null : await lastCall(p);
     if (!R) setTimeout(() => aiRecap(p, last), 0);
@@ -129,7 +131,7 @@
       ? `<section class="card stack"><h2>Start a call</h2><p class="muted">This shared copy can’t reach the model. The live site can.</p><a class="btn primary" href="${LIVE_URL}/#live-${esc(id)}" target="_blank" rel="noopener">Open on the live site ↗</a></section>`
       : `<section class="card stack"><div class="sec-head"><h2>${R ? "Call replay" : "Today’s call"}</h2><p class="small muted">${R ? "A recorded call, sent line by line through Clef exactly as a live call would be." : "Use the mic or type each line. Clef tags each line as it arrives. A concern raises a banner. A cue appears only when the coach needs one."}</p></div>
         ${controls}
-        <div id="flagbox2" class="flags"></div>
+        <div id="flagbox2"></div>
         <div class="transcript scroll" id="live-lines">${call.lines.length ? call.lines.map((l) => P.lineHtml(l, call.coach)).join("") : `<div class="live-empty" id="live-empty">${R ? "Starting the replay…" : "No lines yet. Start the mic, or type the first line."}</div>`}</div>
         ${R ? "" : `<div class="row"><button class="btn" id="endcall" ${call.lines.length ? "" : "disabled"}>End and save call</button><span class="small muted" id="savestate"></span></div>`}</section>`;
     return `${head}${R ? "" : recapFacts(p, last)}<div class="call-layout">${panel}<aside class="call-side" id="live-side">${scoreBox()}<div class="card stack"><p class="eyebrow">Cues</p><div id="cues"><p class="small muted">Quiet. Cues appear only when the coach needs one.</p></div></div></aside></div>`;
@@ -165,7 +167,7 @@
     l.pending = false;
     if (call !== C) return;
     paint(l); side();
-    if (l.live.flag && l.live.flag !== "none") document.getElementById("flagbox2")?.insertAdjacentHTML("afterbegin", P.flagBanner({ t: l.t, line: l.n, kind: l.live.flag, text: l.text, src: "Clef" }));
+    if (l.live.flag && l.live.flag !== "none") { const fb = document.getElementById("flagbox2"); if (fb) fb.innerHTML = P.flagList([...fb.querySelectorAll(".flag-row")].map((r) => r.outerHTML).concat(P.flagBanner({ t: l.t, line: l.n, kind: l.live.flag, text: l.text, src: "Clef" }))); }
     const hit = P.cueTrigger(C.lines, i, C.lastCueAt);
     if (!hit) return;
     C.lastCueAt = hit.coachCount;
@@ -173,7 +175,7 @@
       if (!c.cue || call !== C) return;
       const box = document.getElementById("cues"); if (!box) return;
       box.querySelector("p.small.muted")?.remove();
-      box.insertAdjacentHTML("afterbegin", `<p class="cue"><b>${esc(c.cue)}</b>${c.say ? ` <q>${esc(c.say)}</q>` : ""}<span class="why">${esc(hit.trigger)}</span></p>`);
+      box.insertAdjacentHTML("afterbegin", P.cueHtml(c, hit.trigger, C.lines));
     }).catch(() => {});
   }
 
@@ -312,10 +314,15 @@
     const C = call; stopMic();
     const st = document.getElementById("savestate"); if (st) st.textContent = "Saving…";
     try {
-      const rec = await post(`/api/calls/${encodeURIComponent(C.pid)}`, { coach: C.coach, score: P.liveScore(C.lines), lines: C.lines.map((l) => ({ speaker: l.speaker, text: l.text, tag: l.live && l.live.tag, flag: l.live && l.live.flag })) });
-      (justSaved[C.pid] = justSaved[C.pid] || []).unshift(rec);
+      const p = await once("p:" + C.pid, () => A.patient(C.pid)).catch(() => null);
+      const coach = C.coach || (P.coach ? P.coach() : "");
+      const rec = await post(`/api/calls/${encodeURIComponent(C.pid)}`, { coach, name: p ? p.name : "", score: P.liveScore(C.lines), lines: C.lines.map((l) => ({ speaker: l.speaker, text: l.text, tag: l.live && l.live.tag, flag: l.live && l.live.flag })) });
+      A.remember.call({ ...rec, pid: rec.pid || C.pid, name: rec.name || (p ? p.name : "") });
+      // The saved call is now the latest call everywhere: Today, Patients, the patient page and Calls re-read it.
+      P.memo.delete("roster"); P.memo.delete("p:" + C.pid);
       call = null;
-      P.showToast("Call saved. It is the recap for the next call.");
+      const concern = rec.lines.find((l) => l.flag && /^(medical|distress|social)$/.test(l.flag));
+      P.showToast(concern ? `Call saved by ${rec.coach}. Clef flagged “${concern.text.slice(0, 60)}”: ${p ? P.A.shortName(p.name) : "the patient"} is on Act today.` : `Call saved by ${rec.coach} · hand-off note ready below.`);
       P.render();
     } catch (e) { if (st) st.textContent = `Not saved: ${e.message}`; }
   }

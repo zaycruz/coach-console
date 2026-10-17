@@ -2,7 +2,7 @@
 // Checks: every screen renders from live data at desktop and phone width; the page stays light with square
 // corners even when the OS asks for dark; the Patients count equals the four list endpoints and Today stays
 // short; module chips say "live"; pills navigate; every program view ends in the raw response; a live call
-// tags typed lines through the Copilot and saves, and the recap matches the record; Ellie opens pages and
+// tags typed lines through Clef and saves, and the recap matches the record; Ellie opens pages and
 // answers; with C3 forced down (its API requests aborted in the browser) the app falls back to the saved copy.
 // Also: Health chart is a summary with Ellie's Insight; Hospital-risk rows open the patient; no Patient's app or nav icons;
 // Ellie follow-ups ("open that first patient", "start a call with them"); Play-as-live demo; the mic records a spoken
@@ -30,7 +30,7 @@ const quiet = l3.filter((x) => x.status === "ok").pop() || l3[l3.length - 1];
 ok("list endpoints answer", total > 0, `c1 ${l1.length}, c3 ${l3.length}, c4 ${l4.length}, c5 ${l5.length}`);
 
 const ROUTES = [
-  ["today", "Start here"], ["patients", "Patients"],
+  ["today", "Act today"], ["patients", "Patients"],
   [`p-${ids.c3}`, "Health chart"], [`p-${ids.c3}.c3`, "What to do"],
   [`p-${ids.c4}`, "Health chart"], [`p-${ids.c4}.c4`, "What to do"],
   [`p-${ids.c5}`, "Health chart"], [`p-${ids.c5}.c5`, "Calls"],
@@ -107,8 +107,11 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   }
   await page.locator(`[data-filter="all"]`).click();
   await page.goto(`${B}/#today`); await settle(page);
-  const todayRows = await page.locator(".t-row").count();
-  ok("Today stays short (8 rows or fewer)", todayRows > 0 && todayRows <= 8, `${todayRows} rows`);
+  // Today lists every Act-today patient (capped, with a "n more" link): rows + more = the tile count.
+  const todayRows = await page.locator(".roster-today .t-row").count();
+  const todayTile = Number(await page.locator('.stat-strip a[href="#patients-today"] .n').innerText());
+  const todayMore = Number(((await page.locator('a[href="#patients-today"]', { hasText: "more Act today" }).innerText().catch(() => "0")).match(/\d+/) || [0])[0]);
+  ok("Today: Act-today rows + 'more' link = tile count", todayRows > 0 && todayRows + todayMore === todayTile, `${todayRows} rows + ${todayMore} more vs tile ${todayTile}`);
   await page.locator(".t-row .btn.primary").first().click(); await settle(page);
   ok("Today: first action opens a call or the risk view", /#(live-|p-c1-)/.test(await page.evaluate(() => location.hash)), await page.evaluate(() => location.hash));
 
@@ -136,7 +139,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("AI hand-off note arrives, labelled as AI", (await page.locator("#recap-ai .ai-label").count()) === 1);
   await shot(page, "live-recap_1280.png");
 
-  // live call: typed lines are tagged by the Copilot, then saved and shown as the next recap
+  // live call: typed lines are tagged by Clef, then saved and shown as the next recap
   const before = (await j(`/api/calls/${quiet.survivorId}`)).length;
   await page.goto(`${B}/#live-${quiet.survivorId}`); await settle(page);
   for (const t of ["How have the last few days been for you?", "Honestly tired, but I want to get back to walking.", "It sounds like walking matters to you, even on tired days."]) {
@@ -144,7 +147,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   }
   await page.waitForFunction(() => document.querySelectorAll("#live-lines .tag.live").length >= 2, null, { timeout: 90000 }).catch(() => {});
   const tagged = await page.locator("#live-lines .tag.live").count();
-  ok("live call: typed lines get Copilot tags", tagged >= 2, `${tagged} of 3`);
+  ok("live call: typed lines get Clef tags", tagged >= 2, `${tagged} of 3`);
   await shot(page, "live-call-tagged_1280.png");
   await page.locator("#endcall").click();
   await page.waitForFunction(() => document.querySelector("#recap h2") && /Last call/.test(document.querySelector("#recap h2").textContent), null, { timeout: 30000 }).catch(() => {});
@@ -161,7 +164,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Ellie opens a patient's glucose page", (await page.evaluate(() => location.hash)) === "#p-c4-N0072.c4", await page.evaluate(() => location.hash));
   await settle(page);
   await page.fill("#ellie-q", "What does time in range mean for this patient?"); await page.press("#ellie-q", "Enter");
-  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
+  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
   const ans = await page.locator("#ellie-msgs .m.a").last().innerText();
   ok("Ellie answers from the patient on screen", /range|70|180/i.test(ans) && !/couldn/i.test(ans), ans.slice(0, 160).replace(/\s+/g, " "));
   await shot(page, "ellie_1280.png", false);
@@ -169,7 +172,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
 
   // Ellie: follow-ups resolve to the patients she just named; the panel closes
   await page.fill("#ellie-q", "who is at most risk of hospitalization"); await page.press("#ellie-q", "Enter");
-  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
+  await page.waitForFunction(() => { const m = [...document.querySelectorAll("#ellie-msgs .m.a")].pop(); return m && !/Thinking|retrying/.test(m.textContent); }, null, { timeout: 90000 }).catch(() => {});
   const firstCite = await page.locator("#ellie-msgs .m.a").last().locator('a[href^="#p-"]').first().getAttribute("href").catch(() => null);
   ok("Ellie names patients for a risk question", !!firstCite, firstCite || (await page.locator("#ellie-msgs .m.a").last().innerText()).slice(0, 160));
   await page.fill("#ellie-q", "open up that first patient"); await page.press("#ellie-q", "Enter");
@@ -186,15 +189,15 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
 
   // Health chart = summary + Ellie's Insight; detail lives in the pills
   await page.goto(`${B}/#p-${ids.c3}`); await settle(page);
-  await page.waitForFunction(() => { const e = document.querySelector(".ellie-insight"); return e && /check before acting|program’s own summary/i.test(e.textContent); }, null, { timeout: 60000 }).catch(() => {});
+  await page.waitForFunction(() => { const e = document.querySelector(".ellie-insight"); return e && /check before acting|program’s own (summary|record)/i.test(e.textContent); }, null, { timeout: 60000 }).catch(() => {});
   const ins = await page.locator(".ellie-insight").innerText().catch(() => "");
-  ok("Health chart shows Ellie's Insight, short and labelled", /check before acting|own summary/i.test(ins) && ins.split(/\s+/).length < 90, ins.replace(/\s+/g, " ").slice(0, 200));
+  ok("Health chart shows Ellie's Insight, short and labelled", /check before acting|own (summary|record)/i.test(ins) && ins.split(/\s+/).length < 90, ins.replace(/\s+/g, " ").slice(0, 200));
   ok("Health chart has no raw dump (that lives in the program tab)", (await page.locator("details#raw").count()) === 0);
   await shot(page, "health-chart-insight_1280.png");
 
   // Hospital risk: the whole row opens the patient's C1 view
   await page.goto(`${B}/#care`); await settle(page);
-  await page.locator("tr.row-link td.hl").first().click(); await settle(page);
+  await page.locator(`tr.row-link[data-href$=".c1"] td.hl`).first().click(); await settle(page);
   ok("Hospital risk: clicking a row opens that patient's C1 view", /^#p-c1-.+\.c1$/.test(await page.evaluate(() => location.hash)), await page.evaluate(() => location.hash));
   ok("no Patient's app link and no nav icons", (await page.locator('a[href^="#app"]').count()) === 0 && (await page.locator(".nav-link .ico").count()) === 0);
 
@@ -208,16 +211,16 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await shot(page, "play-as-live_1280.png", false);
   await page.locator("#replaystop").click().catch(() => {});
 
-  // call review still runs the live Copilot
+  // call review still runs Clef live
   await page.goto(`${B}/#call-${flaggedCall.callId}`); await settle(page);
   await page.locator("[data-run]").click();
   await page.waitForFunction(() => document.querySelectorAll(".tag.live").length >= 4, null, { timeout: 90000 }).catch(() => {});
   const liveTags = await page.locator(".tag.live").count();
-  ok("call review: live Copilot tags arrive", liveTags >= 4, `${liveTags} tagged lines`);
+  ok("call review: live Clef tags arrive", liveTags >= 4, `${liveTags} tagged lines`);
   await page.waitForFunction(() => !document.querySelector("[data-run][disabled]"), null, { timeout: 180000 }).catch(() => {});
   const agree = await page.locator("#agree").innerText().catch(() => "");
   ok("call review: agreement with supervisor computed", /%/.test(agree), agree.replace(/\s+/g, " "));
-  await shot(page, "call-live-copilot_1280.png");
+  await shot(page, "call-live-clef_1280.png");
   manifest.copilot = { liveTags, agree };
   ok("no page errors in the flows", !errors.length, errors.join(" | "));
   await ctx.close();
@@ -229,7 +232,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   await page.goto(`${B}/#patients`); await settle(page);
   const count = Number(await page.locator(".roster").getAttribute("data-count"));
   const banner = await page.locator(".banner.warn").innerText().catch(() => "");
-  const chip = await page.locator(".mode .src", { hasText: "C3" }).getAttribute("class");
+  const chip = await page.locator(".mode .src", { hasText: "Rough weeks" }).getAttribute("class");
   ok("C3 down: Patients still complete from the saved copy", count === total, `${count} vs ${total}`);
   ok("C3 down: banner says saved copy", /C3.*isn.t answering.*saved copy/i.test(banner), banner.replace(/\s+/g, " "));
   ok("C3 down: status chip turns amber", /s-fallback/.test(chip), chip);
@@ -239,7 +242,7 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("C3 down: patient page renders from the saved copy", /What to do/.test(body) && /saved copy/i.test(body) && (await page.locator("svg.chart").count()) > 0);
   await shot(page, "fallback-c3-down_patient.png");
   await page.goto(`${B}/#p-${ids.c4}.c4`); await settle(page);
-  ok("C3 down: C4 pages stay live", (await page.locator(".mode .src", { hasText: "C4" }).getAttribute("class")).includes("s-live"));
+  ok("C3 down: C4 pages stay live", (await page.locator(".mode .src", { hasText: "Glucose" }).getAttribute("class")).includes("s-live"));
   ok("C3 down: no page errors", !errors.length, errors.join(" | "));
   await ctx.close();
 }

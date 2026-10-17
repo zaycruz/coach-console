@@ -74,15 +74,78 @@
   // ------------------------------------------------------------------ roster
   async function roster() {
     const mods = ["c1", "c3", "c4", "c5"];
-    const res = await Promise.allSettled(mods.map((m) => fetchJSON(`/api/${m}/survivors`)));
+    const [res, ctx] = await Promise.all([Promise.allSettled(mods.map((m) => fetchJSON(`/api/${m}/survivors`))), context()]);
     const rows = [], failed = [];
     res.forEach((r, i) => {
       const m = mods[i];
       if (r.status !== "fulfilled" || !Array.isArray(r.value)) { failed.push({ mod: m, error: r.reason ? r.reason.message : "bad response" }); return; }
-      r.value.forEach((x) => rows.push(rosterRow(m, x)));
+      r.value.forEach((x) => rows.push(overlay(rosterRow(m, x), ctx)));
     });
-    return { rows, failed };
+    return { rows, failed, handoffs: ctx.handoffs, saved: ctx.saved };
   }
+
+  // ------------------------------------------------------------------ closing the loop: call quotes, saved calls, hand-offs
+  /* Today, Patients and the patient page all read one overlay on top of the module rows:
+     - C5 labelled calls: the patient's own flagged words and when they were flagged (not "concern at 06:18 in call 5"),
+     - calls saved in Patient 360 (GET /api/calls index): the newest is the latest call; a safety flag makes the patient Act today,
+     - hand-offs (GET /api/handoffs): newer than the concern -> off Act today, tagged "Handed off by <coach> HH:MM".
+     KV reads can lag a write by up to a minute, so this session's own saves and hand-offs live in `local` and merge by id. */
+  const local = { calls: {}, handoffs: [] }; // calls: patientId -> full saved records, newest first
+  const SAFETY = { medical: "Medical concern", distress: "Emotional distress", social: "Unmet basic need" };
+  const getNoStore = (p) => (SNAP_ONLY ? Promise.resolve([]) : fetch(p, { cache: "no-store" }).then((r) => (r.ok ? r.json() : [])).then((j) => (Array.isArray(j) ? j : [])).catch(() => []));
+  const mergeById = (fetched, mine) => [...mine.filter((x) => !fetched.some((f) => f.id === x.id)), ...fetched].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  const savedEntry = (s) => ({ id: s.id, pid: s.pid, name: s.name, at: s.at, coach: s.coach, score: s.score, lines: Array.isArray(s.lines) ? s.lines.length : s.lines, flags: Array.isArray(s.flags) ? s.flags : (s.lines || []).filter((l) => l.flag && l.flag !== "none").map((l) => ({ flag: l.flag, text: l.text })) });
+  let c5calls = null;
+  async function context() {
+    const [calls, saved, hand] = await Promise.all([c5calls || (c5calls = fetchJSON("/api/c5/calls").catch(() => ((c5calls = null), []))), getNoStore("/api/calls"), getNoStore("/api/handoffs")]);
+    return { calls: Array.isArray(calls) ? calls : [], saved: mergeById(saved.map(savedEntry), Object.values(local.calls).flat().map(savedEntry)), handoffs: mergeById(hand, local.handoffs) };
+  }
+  const remember = {
+    call: (rec) => { (local.calls[rec.pid] = local.calls[rec.pid] || []).unshift(rec); },
+    handoff: (h) => { local.handoffs.unshift(h); },
+  };
+  const ago = (iso) => {
+    const t = Date.parse(String(iso || "").length <= 10 ? iso + "T12:00:00" : iso); if (isNaN(t)) return "";
+    const d = (Date.now() - t) / 864e5;
+    return new Date(t).toDateString() === new Date().toDateString() ? "today" : d < 2 ? "yesterday" : d < 45 ? `${Math.round(d)} days ago` : d < 548 ? `${Math.round(d / 30.4)} months ago` : `${(d / 365).toFixed(1).replace(/\.0$/, "")} years ago`;
+  };
+  // The patient's words, minus the "Oh, before you go," lead-in, so the symptom comes first.
+  const shortQ = (s, n = 90) => { s = String(s || "").replace(/\s+/g, " ").trim().replace(/^(oh,?\s+)?before you go,?\s+(oh,?\s+)?(and\s+)?/i, ""); s = s.charAt(0).toUpperCase() + s.slice(1); return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, "").replace(/[,;:.]$/, "") + "…" : s; };
+  const hhmm = (iso) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const handoffLabel = (h) => `Handed off by ${h.coach} ${new Date(h.at).toDateString() === new Date().toDateString() ? hhmm(h.at) : new Date(h.at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " " + hhmm(h.at)}`;
+
+  // Mutates and returns a roster row or patient view: concern {kind,text,at,where,by,fresh}, reason, age, lastSaved, handoff, prio.
+  function overlay(r, ctx) {
+    const er = (String(r.headline).match(/ER or hospital risk (\d+(?:\.\d+)?)%/i) || [])[1];
+    if (r.mod === "c5" && r.status === "alert") {
+      const fl = ctx.calls.filter((c) => c.survivorId === r.id && c.flags && c.flags.length).sort((a, b) => (b.date + b.start).localeCompare(a.date + a.start))[0];
+      if (fl) { const f = fl.flags[0]; r.concern = { kind: SAFETY[f.kind] ? f.kind : "medical", text: f.text, at: fl.date, where: `call ${fl.callNumber}`, by: fl.coach && fl.coach.name }; }
+    }
+    const saved = ctx.saved.filter((s) => s.pid === r.id);
+    if (saved[0]) r.lastSaved = saved[0];
+    const fresh = saved.find((s) => (s.flags || []).some((x) => SAFETY[x.flag]));
+    if (fresh) { const f = fresh.flags.find((x) => SAFETY[x.flag]); r.concern = { kind: f.flag, text: f.text, at: fresh.at, where: "a call logged in Patient 360", by: fresh.coach, fresh: true }; r.tri = "today"; }
+    if (r.concern) {
+      const c = r.concern, k = SAFETY[c.kind] || "Concern";
+      r.reason = `${k}: “${shortQ(c.text)}”`;
+      r.age = `flagged ${ago(c.at)}`;
+      r.headline = `${k}: “${shortQ(c.text, 160)}” Raised on ${c.where}${c.by ? ` (coach ${c.by})` : ""}, ${r.age}.`;
+    } else if (r.updatedAt) r.age = `data from ${ago(r.updatedAt)}`;
+    const h = ctx.handoffs.find((x) => x.patientId === r.id);
+    if (h && h.at >= (r.concern ? String(r.concern.at) : "")) {
+      r.handoff = { ...h, label: handoffLabel(h) };
+      if (r.tri === "today") r.tri = "alert";
+      r.tags = [{ label: r.handoff.label, tone: "good" }, ...(r.tags || [])];
+    }
+    // Rank inside a status: urgent ER/hospital risk first (highest first), then call concerns (newest first), then the rest.
+    r.prio = r.mod === "c3" && er && r.tri === "today" ? -er : r.concern ? 101 - Date.parse(String(r.concern.at).length <= 10 ? r.concern.at + "T12:00:00" : r.concern.at) / 1e13 : 200;
+    return r;
+  }
+  // A call saved in Patient 360, in the labelled-call row shape (app.js callRow), for the Coaching calls tab and the Calls list.
+  // Short spoken name: "María López · …" -> "María López"; "85M · prostate · S71188550" -> "S71188550".
+  const shortName = (n) => { const p = String(n || "").split(" · ").map((x) => x.trim()); return /^\d/.test(p[0]) ? p[p.length - 1] : p[0]; };
+  const savedAsCall = (s) => ({ callId: s.id, saved: true, href: `#live-${s.pid}`, survivorId: s.pid, participantName: shortName(s.name || s.pid), coach: { name: s.coach }, date: s.at, language: "", goalTopic: "", callNumber: "", week: "",
+    flags: (s.flags || []).map((f) => ({ kind: f.flag, text: f.text })), lines: s.lines, score: s.score, status: (s.flags || []).some((f) => SAFETY[f.flag]) ? "alert" : "ok" });
 
   function rosterRow(mod, x) {
     let tags = Array.isArray(x.tags) ? x.tags : null;
@@ -114,8 +177,18 @@
     const d = await fetchJSON(`/api/${mod}/survivors/${encodeURIComponent(id)}`, REQUIRED[mod]);
     const base = { id, mod, name: patientName(d.displayName), status: d.status || "ok", tri: triage(mod, d.status, mod === "c3" && c3Urgent(d)), headline: d.headline || "", summary: d.summary || "", updatedAt: d.updatedAt, facts: facts(d.profile || {}), source: health[mod] && health[mod].source };
     if (!d.profile) note(mod, "profile (not provided)");
-    const v = mod === "c1" ? c1View(d) : mod === "c3" ? c3View(d) : mod === "c4" ? c4View(d) : c5View(d);
-    return { ...base, ...v, raw: d, missing: [...(missing[mod] || [])] };
+    const v = mod === "c1" ? c1View(d, await c1Metrics()) : mod === "c3" ? c3View(d) : mod === "c4" ? c4View(d) : c5View(d);
+    const ctx = await context();
+    const out = overlay({ ...base, ...v, raw: d, missing: [...(missing[mod] || [])] }, ctx);
+    // Calls saved in Patient 360 join the labelled calls on the Coaching calls tab, newest first.
+    const mine = ctx.saved.filter((s) => s.pid === id);
+    const pn = mod === "c5" && mine.length && out.panels.find((x) => x.id === "calls");
+    if (pn) {
+      pn.calls = [...mine.map(savedAsCall), ...(pn.calls || [])];
+      out.kpis.forEach((k) => { if (k.label === "Calls on file") { k.value = String(pn.calls.length); k.sub = `${mine.length} logged in Patient 360`; } });
+      out.tags = out.tags.map((t) => (/^\d+ calls?$/.test(t.label) ? { ...t, label: `${pn.calls.length} calls` } : t));
+    }
+    return out;
   }
 
   function facts(p) {
@@ -126,7 +199,22 @@
   }
 
   // ---- C1 Care Team Risk
-  function c1View(d) {
+  // "S71188550 · 85M · prostate" → "85M · prostate · S71188550": who the person is first, the ID second. Real names are left alone.
+  const demoName = (n) => { const p = String(n || "").split(" · "); return p.length > 1 && /\d/.test(p[0]) && !/\s/.test(p[0]) ? [...p.slice(1), p[0]].join(" · ") : patientName(n); };
+  // C1 headlines say "Acute care risk 70% for 2018"; 2018 is the data year, so name the horizon instead.
+  const c1Headline = (h) => String(h || "").replace(/^Acute care risk/i, "ER or hospital risk").replace(/ for 2018\b/g, " in the next 12 months");
+  // A fairness group the model is unreliable for, whatever its n: ranking near or below chance, or O/E CI excluding 1.
+  const fairFlag = (g) => !!g && ((g.auroc != null && g.auroc < 0.6) || (Array.isArray(g.oeCi95) && (g.oeCi95[0] > 1 || g.oeCi95[1] < 1)));
+  let c1m = null;
+  const c1Metrics = () => (c1m = c1m || metrics("c1").catch(() => (c1m = null)));
+  function c1Groups(p, m) {
+    if (!p || !m || !Array.isArray(m.fairness)) return [];
+    const lc = (s) => String(s ?? "").toLowerCase(), a = p.age;
+    const band = a == null ? "" : a < 50 ? "18-49" : a < 65 ? "50-64" : a < 75 ? "65-74" : "75+";
+    const cancers = (Array.isArray(p.cancerTypes) ? p.cancerTypes : [p.cancerType]).map(lc);
+    return m.fairness.filter((g) => g.attribute === "race_ethnicity" ? g.group === p.raceEthnicity : g.attribute === "sex" ? lc(g.group) === lc(p.sex) : g.attribute === "insurance" ? g.group === p.insurance2017 : g.attribute === "age" ? !!band && String(g.group).startsWith(band) : g.attribute === "cancer_type" ? cancers.includes(lc(g.group)) : false);
+  }
+  function c1View(d, m) {
     const c = d.charts || {}, r = c.risk || {}, use = c.use2017 || {}, ev = d.evidence || [];
     const audName = { "care-team": "For the care team", coach: "For the coach", survivor: "To pass on to the patient" };
     // Care-team and coach advice first; advice the program wrote for the patient follows, for the clinician to pass on.
@@ -134,21 +222,39 @@
     const advice = [...recs.filter((x) => x.audience !== "survivor"), ...recs.filter((x) => x.audience === "survivor")].map((x, i) => ({ title: x.text, text: "", tag: audName[x.audience] || x.audience || "", tone: i === 0 && d.status === "alert" ? "risk" : "info" }));
     if ((d.recommendations || []).some((x) => !x.audience)) note("c1", "recommendations[].audience (not provided)");
     const drivers = (c.drivers || []).filter((x) => x && x.logitContribution != null);
-    const riskBars = r.value != null ? { title: "Chance of an ER visit or hospital stay next year", note: "This patient against the average patient and the tier lines.", rows: [
+    // Fairness: if the model validated poorly for this patient's group, say so before anyone acts on the score.
+    const weak = c1Groups(d.profile, m).filter(fairFlag);
+    let caution = weak.length ? { groups: weak.map((g) => g.group), label: `Caution: model weak for ${weak[0].group}`, text: weak.map((g) => `${g.group}: AUROC ${num(g.auroc, 2)}${g.auroc < 0.4 ? " (worse than chance: the ranking is inverted)" : g.auroc < 0.6 ? " (at or near chance)" : ""}, O/E ${num(g.oe, 2)}, ${g.n} people`).join("; ") } : null;
+    // C1's own per-patient fairness flags (t-0004 contract) win over our metrics-derived guess:
+    // weak-ranking / under- / over-predicted = caution chip; too-small = a softer note.
+    const ff = Array.isArray(d.fairnessFlags) ? d.fairnessFlags : null;
+    if (ff) {
+      const strong = ff.filter((f) => /weak-ranking|under-predicted|over-predicted/.test(f.flag)), soft = ff.filter((f) => f.flag === "too-small");
+      caution = strong.length ? { groups: strong.map((f) => f.group), label: `Caution: less reliable for ${strong[0].group}`, text: strong.map((f) => f.text).join("; ") }
+        : soft.length ? { groups: soft.map((f) => f.group), soft: true, label: `Few ${soft[0].group} in training`, text: soft.map((f) => f.text).join("; ") } : null;
+    }
+    if (caution && !caution.soft) advice.unshift({ title: "Check this score by hand before acting on it", text: `In validation the model was unreliable for this patient’s group. ${caution.text}. Use the drivers and the record, not the score alone.`, tag: "Model caution", tone: "warn" });
+    // Headline names the real top driver; health spending is called out as a cost proxy for need.
+    const cost = (x) => /spending|cost/i.test(x.label), low = (s) => (/^[A-Z][a-z]/.test(s) ? s[0].toLowerCase() + s.slice(1) : s);
+    const pos = drivers.filter((x) => x.logitContribution > 0).sort((a, b) => b.logitContribution - a.logitContribution);
+    let headline = c1Headline(d.headline);
+    if (pos.length) headline = headline.replace(/(driven by|mostly from) [^,;.]+/i, `driven most by ${low(pos[0].label)}${cost(pos[0]) ? " (a cost proxy for need)" : ""}${cost(pos[0]) && pos[1] ? `, then ${low(pos[1].label)}` : ""}`);
+    const riskBars = r.value != null ? { title: "Chance of an ER visit or hospital stay in the next 12 months", note: "This patient against the average patient and the tier lines.", rows: [
       { label: "This patient", value: r.value, text: pct(r.value), color: "var(--alert)" },
       r.baseRate != null && { label: "Average patient", value: r.baseRate, text: pct(r.baseRate), color: "var(--ink-3)" },
       r.alertFrom != null && { label: "Alert line", value: r.alertFrom, text: pct(r.alertFrom), color: "var(--line-2)" },
     ].filter(Boolean) } : null;
-    const driverBars = drivers.length ? { title: "What drives it", note: "Contribution to this person’s risk (model log-odds). Grey lowers it.", rows: drivers.map((x) => ({ label: x.label, value: Math.abs(x.logitContribution), text: (x.logitContribution > 0 ? "+" : "−") + num(Math.abs(x.logitContribution), 2), color: x.logitContribution > 0 ? "var(--m-c1-strong)" : "var(--ink-3)" })) } : null;
-    const panels = [{ id: "risk", title: "Hospital risk next year", lead: "", bars: riskBars, bars2: driverBars, list: ev.filter((e) => e.kind !== "model").map((e) => e.text), advice }];
+    const driverBars = drivers.length ? { title: "What drives it", note: `Contribution to this person’s risk (model log-odds). Grey lowers it.${drivers.some(cost) ? " Health spending is a cost proxy for need, not a cause." : ""}`, rows: drivers.map((x) => ({ label: x.label + (cost(x) ? " (cost proxy)" : ""), value: Math.abs(x.logitContribution), text: (x.logitContribution > 0 ? "+" : "−") + num(Math.abs(x.logitContribution), 2), color: x.logitContribution > 0 ? "var(--m-c1-strong)" : "var(--ink-3)" })) } : null;
+    const panels = [{ id: "risk", title: "Hospital risk, next 12 months", lead: [d.riskWords, d.caveat].filter(Boolean).join(". ").replace(/\.\./g, "."), bars: riskBars, bars2: driverBars, list: ev.filter((e) => e.kind !== "model").map((e) => e.text), advice }];
     const sc = c.scores || {};
     const scoreNames = { physical_score: "Physical health score", mental_score: "Mental health score", distress_k6: "Distress (K6)", depression_phq2: "Depression (PHQ-2)", pain: "Pain", fatigue: "Fatigue", financial_toxicity: "Money worries", cost_delay: "Delayed care for cost" };
     const rows = Object.entries(sc).map(([k, v]) => [scoreNames[k] || k, v == null ? "not answered" : num(v, 1)]);
     const useRows = [["ER visits", use.erVisits], ["Hospital stays", use.hospitalStays], ["Office visits", use.officeVisits], ["Prescription fills", use.rxFills]].filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]);
-    if (rows.length || useRows.length) panels.push({ id: "survey", title: "2017 survey answers and care use", charts: [], advice: [], table: { head: ["Measure", "2017"], rows: [...useRows, ...rows] } });
+    if (rows.length || useRows.length) panels.push({ id: "survey", title: "Survey answers and care use (data year 2017)", charts: [], advice: [], table: { head: ["Measure", "Data year 2017"], rows: [...useRows, ...rows] } });
     return {
-      tags: [{ label: `Acute care ${pct(d.risk)}`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...drivers.filter((x) => x.logitContribution > 0).slice(0, 3).map((x) => ({ label: x.label, tone: "warn" }))],
-      kpis: [{ value: pct(d.risk), label: "ER or hospital stay, next year", sub: r.baseRate != null ? `average patient ${pct(r.baseRate)}` : "", good: d.status === "alert" ? false : d.status === "ok" ? true : null }, use.erVisits != null && { value: String(use.erVisits), label: "ER visits last year", sub: "most survivors had none", good: use.erVisits === 0 ? true : null }, use.hospitalStays != null && { value: String(use.hospitalStays), label: "Hospital stays last year", sub: "", good: use.hospitalStays === 0 ? true : null }].filter(Boolean),
+      name: demoName(d.displayName), headline, caution, forEllie: d.forEllie || "",
+      tags: [caution && { label: caution.label, tone: caution.soft ? "info" : "warn" }, { label: `ER/hospital ${pct(d.risk)} · 12 months`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...pos.slice(0, 3).map((x) => ({ label: x.label + (cost(x) ? " (cost proxy)" : ""), tone: "warn" }))].filter(Boolean),
+      kpis: [{ value: pct(d.risk), label: "ER or hospital stay, next 12 months", sub: d.riskWords || (r.baseRate != null ? `average patient ${pct(r.baseRate)}` : ""), good: d.status === "alert" ? false : d.status === "ok" ? true : null }, use.erVisits != null && { value: String(use.erVisits), label: "ER visits, data year 2017", sub: "most survivors had none", good: use.erVisits === 0 ? true : null }, use.hospitalStays != null && { value: String(use.hospitalStays), label: "Hospital stays, data year 2017", sub: "most survivors had none", good: use.hospitalStays === 0 ? true : null }].filter(Boolean),
       panels, evidence: null,
       footnote: (d.profile && d.profile.dataSource ? d.profile.dataSource + ". " : "") + (d.caveat || ""),
     };
@@ -176,8 +282,8 @@
     const riskAdvice = recs.filter((r) => !used.has(r));
     if (!has(d, "risk")) note("c3", "risk (not provided)");
     const risk = {
-      id: "risk", title: "Chance of a rough patch in the next 7 days", lead: d.summary,
-      charts: c.risk ? [{ x, series: [series("risk", "Rough patch, 7 days"), c.urgentRisk && { values: c.urgentRisk, color: "var(--alert)", label: "ER or hospital, 7 days" }].filter(Boolean), refs: d.thresholds ? [{ y: d.thresholds.alert, label: "alert", color: "var(--ink-2)" }, { y: d.thresholds.watch, label: "watch" }] : [], ticks: doses, min: 0, h: 220, pct: true, title: "Forecast, last 42 days", note: "ticks = treatment days" }] : [],
+      id: "risk", title: "Chance of a rough week in the next 7 days", lead: d.summary,
+      charts: c.risk ? [{ x, series: [series("risk", "Rough week, 7 days"), c.urgentRisk && { values: c.urgentRisk, color: "var(--alert)", label: "ER or hospital, 7 days" }].filter(Boolean), refs: d.thresholds ? [{ y: d.thresholds.alert, label: "alert", color: "var(--ink-2)" }, { y: d.thresholds.watch, label: "watch" }] : [], ticks: doses, min: 0, h: 220, pct: true, title: "Forecast, last 42 days", note: "ticks = treatment days" }] : [],
       bars: ev.length ? { title: "What drives it", note: "How far the risk would drop if each signal were back at their usual. Grey = treatment calendar.", rows: ev.map((e) => ({ label: e.label, value: e.riskShare || 0, text: "+" + pct(e.riskShare), color: e.signal === "schedule" ? "var(--ink-3)" : "var(--m-c3)" })) } : null,
       advice: riskAdvice,
     };
@@ -189,7 +295,8 @@
     if (rest.length) panels.push({ id: "other", title: "Other signals", lead: "Near their usual, or not used in this forecast.", charts: rest, small: true, advice: [] });
     const lastWear = (c.watchWornHours || []).slice(-7).filter((v) => v != null);
     return {
-      tags: [c3Urgent(d) && { label: `ER/hospital ${pct(d.urgentRisk)}`, tone: "risk" }, { label: `Rough patch ${pct(d.risk)}`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...ev.filter((e) => e.signal !== "schedule").slice(0, 3).map((e) => ({ label: `${e.label} ${e.change || ""}`.trim(), tone: "warn" }))].filter(Boolean),
+      name: demoName(d.displayName),
+      tags: [c3Urgent(d) && { label: `ER/hospital ${pct(d.urgentRisk)} · 7 days`, tone: "risk" }, { label: `Rough week ${pct(d.risk)}`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...ev.filter((e) => e.signal !== "schedule").slice(0, 3).map((e) => ({ label: `${e.label} ${e.change || ""}`.trim(), tone: "warn" }))].filter(Boolean),
       kpis: [d.urgentRisk != null && { value: pct(d.urgentRisk), label: "ER or hospital risk, 7 days", sub: d.thresholds && d.thresholds.urgent != null ? `urgent line ${pct(d.thresholds.urgent, 1)}` : "", good: d.urgent ? false : null }, { value: pct(d.risk), label: "Rough-patch risk, 7 days", sub: d.thresholds ? `alert line ${pct(d.thresholds.alert, 1)}` : "", good: d.thresholds && d.risk != null ? (d.risk >= d.thresholds.alert ? false : d.risk < d.thresholds.watch ? true : null) : null }, { value: pct(d.scheduleRisk), label: "From treatment calendar alone", sub: "what the schedule predicts", good: null }, lastWear.length && { value: num(lastWear.reduce((a, b) => a + b, 0) / lastWear.length, 1) + " h", label: "Watch worn a day", sub: "last 7 days; forecast needs ~12 h", good: lastWear.reduce((a, b) => a + b, 0) / lastWear.length >= 12 }].filter(Boolean),
       panels, evidence: null,
       footnote: "Forecast from wearable signals against the person’s own usual plus the treatment calendar. No self-reports. Synthetic cohort.",
@@ -247,8 +354,15 @@
     const evidence = ["person", "cohort", "trial", "real"].map((s) => ({ group: scopeName[s], open: s === "person", rows: (d.evidence || []).filter((e) => e.scope === s).map((e) => ({ label: e.label, caveat: e.caveat, value: e.value == null ? "–" : `${num(e.value, 1)} ${e.unit || ""}`, ci: e.ci ? `${num(e.ci[0], 1)} to ${num(e.ci[1], 1)}` : "", n: e.n ?? "" })) })).filter((g) => g.rows.length);
     let tags = d.tags;
     if (!Array.isArray(tags)) { note("c4", "tags[] (not provided)"); tags = []; }
+    // Severe: extreme highs (average 250+ or under 10% in range) or frequent lows (4%+ below 70). Stale: last reading over 60 days old.
+    const val = (id) => (evById[id] && evById[id].value != null ? evById[id].value : null), tir = val("tir"), mg = val("mean_glucose"), tbr = val("tbr70");
+    const severe = [((mg != null && mg >= 250) || (tir != null && tir < 10)) && `very high sugar (average ${num(mg)} mg/dL, ${num(tir)}% in range)`, tbr != null && tbr >= 4 && `frequent lows (${num(tbr, 1)}% below 70)`].filter(Boolean);
+    const last = Date.parse(d.updatedAt || ""), staleDays = isNaN(last) ? null : Math.floor((Date.now() - last) / 864e5);
+    const stale = staleDays != null && staleDays > 60 ? `No data for ${Math.round(staleDays / 30.4)} months` : null;
+    tags = [...severe.map((x) => ({ label: `Severe: ${x.split(" (")[0]}`, tone: "risk" })), stale && { label: stale, tone: "warn" }, ...tags].filter(Boolean);
     return {
-      tags, reasons: d.statusReasons || [],
+      name: demoName(d.displayName), severe, staleDays,
+      tags, reasons: [...severe.map((x) => "severe: " + x), ...(d.statusReasons || []), ...(stale ? [`${stale.toLowerCase()} (last reading ${new Date(last).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})`] : [])],
       kpis: [kp("tir", "Time in range", "target over 70%, ideal 90%+", (v) => (v >= 90 ? true : v < 70 ? false : null)), kp("tbr70", "Lows (below 70)", "target under 4%", (v) => v <= 4, 1), kp("mean_glucose", "Average sugar", "mg/dL, target 154 or less", (v) => v <= 154), kp("late_share", "Late dinners", "share at 8 pm or later", null), kp("fast_avg", "Overnight fast", "hours, average", null, 1)].filter(Boolean),
       panels, evidence, footnote: d.dataNote || "",
     };
@@ -283,5 +397,5 @@
 
   // Program-level metrics (C1 care-team page, C3 model card). Same live → saved-copy fallback.
   async function metrics(mod) { return fetchJSON(`/api/${mod}/metrics`, []); }
-  window.Adapter = { MODULES, roster, patient, calls, call, advice, metrics, health, missing, triage };
+  window.Adapter = { MODULES, roster, patient, calls, call, advice, metrics, health, missing, triage, demoName, shortName, c1Headline, fairFlag, context, remember, local, ago, savedAsCall, handoffLabel };
 })();

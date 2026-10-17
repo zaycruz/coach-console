@@ -44,7 +44,7 @@ Hash routes are plain tokens, so links work inside the claude.ai Artifact as wel
 | `#p-<id>` | Health chart: the summary (headline, status, Ellie's Insight, key numbers, top two actions). The pills are tabs: Health chart, Hospital risk, Rough weeks, Glucose, Coaching calls. |
 | `#p-<id>.<c1\|c3\|c4\|c5>` | One program's full view of the patient: every action with its chart, detail panels, evidence, everything the program sent. A program the patient isn't in shows "Not enrolled" and why. |
 | `#live-<id>` | Start a call with this patient. See section 4. |
-| `#calls`, `#call-<id>` | Supervisor-labelled calls. "Run live Copilot" re-tags every line and scores agreement. |
+| `#calls`, `#call-<id>` | Supervisor-labelled calls. "Run Clef" re-tags every line and scores agreement. |
 | `#care` | C1 list, highest risk first. The whole row opens that patient's Hospital risk view (`#p-<id>.c1`); rows take keyboard focus and open on Enter. Tier outcome rates, AUROC with CI, factors, fairness by group, caveats and the full model card. |
 | `#research` | Stub. |
 | `~loading`, `~empty`, `~error` suffixes | Force a state, for review. |
@@ -60,12 +60,12 @@ Hash routes are plain tokens, so links work inside the claude.ai Artifact as wel
 
 A patient with no call history gets "No previous call on record" and the program's own headline and actions to cover.
 
-**The call.** It works the same way as the Copilot (coach.raava.dev):
+**The call.** It works the same way as Clef (coach.raava.dev):
 
 - **Input.** Use the mic, or type each line. The browser records short clips (MediaRecorder; a clip ends on a ~0.9 s pause, at 8 s, on "Next line" or on Space, which also switches speaker) and sends each to `POST /api/stt`, which runs Workers AI Whisper (`@cf/openai/whisper-large-v3-turbo`) with an English, Spanish, Haitian Creole or detect hint. "Play as live" on a stored call replays it through the same screen.
 - **Tagging.** Each line goes to Clef (`/api/c5/turn`). A line below 0.3 confidence goes to a GLM review.
 - **Alerts.** A concern raises a banner.
-- **Cues.** Cues use the Copilot's trigger rules with a gap of 3 coach lines.
+- **Cues.** Cues use Clef's trigger rules with a gap of 3 coach lines.
 - **Score.** The live coach score uses MITI-style targets.
 
 "End and save call" stores the call, and it becomes the next recap.
@@ -79,7 +79,7 @@ Ellie is a chat panel that is available on every screen. She can:
 - **Ellie's insight.** Every health chart has an `.ellie-insight[data-pid]` slot that `POST /api/insight` fills with a headline and up to 3 short bullets, cached in KV.
 - **Answer general medical questions.** These answers are labelled AI.
 
-The Worker accepts a page from the model only if it fits a known route and uses an ID it sent. It drops cited IDs it did not send. The model is the same GLM the Copilot uses (`@cf/zai-org/glm-5.3-flash`).
+The Worker accepts a page from the model only if it fits a known route and uses an ID it sent. It drops cited IDs it did not send. The model is the same GLM Clef uses (`@cf/zai-org/glm-5.3-flash`).
 
 ## 6. Look
 
