@@ -871,3 +871,8 @@ dialog.sheet q { display: block; font-style: normal; color: var(--ink-2); border
 .chart.tiers .tt, .chart.tiers .tl { font-size: 12px; }
 button.more-link { align-self: flex-start; padding-left: 0; }
 .prep-dl dd .small { font-size: var(--t-14); }
+
+/* one tag style: the same box for Real · MEPS and Interpreter; only the interpreter tag carries the amber edge */
+.tag-real, .chip-lang, .chip-data { display: inline-flex; align-items: center; font: 600 var(--t-12)/20px var(--font-body); padding: 0 8px; border: 1px solid var(--line-2); color: var(--ink-2); background: var(--surface); white-space: nowrap; }
+.chip-lang.need { border-color: var(--watch); color: var(--ink); background: var(--surface); }
+.tag-real { border-color: var(--line-2); }

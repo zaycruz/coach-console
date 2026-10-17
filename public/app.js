@@ -37,7 +37,7 @@
   const statusPill = (s) => `<span class="status ${s}">${statusLabel[s] || esc(s)}</span>`;
   const hhmm = (iso) => new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const daysSince = (iso) => { const t = Date.parse(String(iso || "").length <= 10 ? iso + "T12:00:00" : iso); return isNaN(t) ? null : Math.floor((Date.now() - t) / 864e5); };
-  const modChip = (m) => `<span class="chip m-${m}"><span class="dot"></span>${MODS[m].challenge} · ${MODS[m].name}</span>`;
+  const modChip = (m) => `<span class="chip m-${m}"><span class="dot"></span>${MODS[m].name}</span>`;
   const tagsHtml = (tags) => (tags && tags.length ? `<span class="tags">${tags.map((t) => `<span class="tag t-${esc(t.tone || "info")}">${esc(t.label)}</span>`).join("")}</span>` : "");
   const notWired = (what) => `data-toast="${esc(what)}: not connected to a scheduling or messaging system yet"`;
   const RANK = { today: 0, alert: 1, watch: 2, ok: 3 };
@@ -57,7 +57,7 @@
     return mods.map((m) => A.health[m]).map((h, i) => {
       if (!h || h.source === "live") return "";
       const m = mods[i];
-      return `<div class="banner warn" role="status"><span class="b-ico">!</span><div class="b-body"><b>${MODS[m].challenge} ${MODS[m].name} isn’t answering${h.error ? ` (${esc(h.error)})` : ""}.</b> ${h.source === "fallback" ? `Showing the saved copy${h.at ? " from " + esc(fmtDate(h.at)) : ""}.` : "No saved copy for this page."}</div></div>`;
+      return `<div class="banner warn" role="status"><span class="b-ico">!</span><div class="b-body"><b>${MODS[m].name} isn’t answering${h.error ? ` (${esc(h.error)})` : ""}.</b> ${h.source === "fallback" ? `Showing the saved copy${h.at ? " from " + esc(fmtDate(h.at)) : ""}.` : "No saved copy for this page."}</div></div>`;
     }).join("");
   }
   // One indicator for the four programs: "4 of 4 programs live · 2:51 PM"; the per-program list opens on click.
@@ -150,7 +150,7 @@
     const { handoffs } = await A.context();
     return head + (handoffs.length ? `<div class="today-list">${handoffs.map(handoffRow).join("")}</div>` : emptyBox("No hand-offs yet. Escalate from a patient page or hand off from a call flag."));
   }
-  function failBanners(failed) { return failed.map((x) => `<div class="banner alert"><span class="b-ico">▲</span><div class="b-body"><b>${MODS[x.mod].challenge} ${MODS[x.mod].name} isn’t answering and has no saved copy.</b> <span class="small">${esc(x.error)}</span></div></div>`).join(""); }
+  function failBanners(failed) { return failed.map((x) => `<div class="banner alert"><span class="b-ico">▲</span><div class="b-body"><b>${MODS[x.mod].name} isn’t answering and has no saved copy.</b> <span class="small">${esc(x.error)}</span></div></div>`).join(""); }
   // Today = one ranked queue across the four programs (GET /api/today), with this session's overlay on top:
   // a safety flag on a call saved here joins the top, a hand-off moves the patient to "Handed off today".
   const COHORTS = `<p class="cohorts"><b>Four programs, four separate cohorts</b> (hospital risk: real MEPS survey data; rough weeks, glucose, coaching calls: synthetic). No patient appears in more than one. The 5 linked demo records join one record from each program to show the full view.</p>`;
@@ -480,7 +480,7 @@
   function rawData(p) {
     if (!p.raw) return "";
     const rows = flatten(p.raw);
-    return `<details class="more raw" id="raw"><summary>Everything this program sent · ${rows.length} fields</summary><p class="small muted">The full response from ${esc(MODS[p.mod].challenge)} ${esc(MODS[p.mod].name)}${p.source === "fallback" ? " (saved copy)" : ""}, unedited.</p><div class="tbl-wrap"><table class="kv-tbl"><tbody>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v === "" ? "“”" : v)}</td></tr>`).join("")}</tbody></table></div></details>`;
+    return `<details class="more raw" id="raw"><summary>Everything this program sent · ${rows.length} fields</summary><p class="small muted">The full response from ${esc(MODS[p.mod].name)}${p.source === "fallback" ? " (saved copy)" : ""}, unedited.</p><div class="tbl-wrap"><table class="kv-tbl"><tbody>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v === "" ? "“”" : v)}</td></tr>`).join("")}</tbody></table></div></details>`;
   }
   function adviceCard(a, n) {
     return `<div class="a-text"><p class="basis t-${esc(a.tone || "info")}">${n ? n + " · " : ""}${esc(a.tag || "")}</p><h3>${esc(a.title)}</h3>${a.text ? `<p>${esc(a.text)}</p>` : ""}
@@ -891,7 +891,7 @@
       <p class="footnote">${m && m.outcome ? esc(m.outcome) + ". " : ""}Factors are associations, not causes. Survey and clinical records share no patient key.</p>`;
   }
   function renderResearch() {
-    return `<header class="page-head"><div><p class="eyebrow">Later · Challenges 6 and 7</p><h1>Research</h1><p class="sub">Drug discovery for lab scientists. A separate area with its own data and permissions; it never mixes with patient data.</p></div><span class="chip"><span class="dot"></span>Not built yet</span></header>`;
+    return `<header class="page-head"><div><h1>Research</h1><p class="sub">Drug discovery for lab scientists. A separate area with its own data and permissions; it never mixes with patient data.</p></div><span class="chip"><span class="dot"></span>Not built yet</span></header>`;
   }
 
   // ------------------------------------------------------------------ router
