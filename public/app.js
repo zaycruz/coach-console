@@ -631,27 +631,10 @@
   window.P360 = { NAME, routes: {}, render, esc, fmtDate, pct, num, post, once, memo, A, MODS, SNAP, LIVE_URL, COPILOT_URL, statusPill, modChip, tagsHtml, loadingBox, errorBox, emptyBox, forced, sourceBanner, showToast, notWired, parse,
     FAMILY, FLAG_TEXT, liveScore, lineHtml, flagBanner, cueTrigger, panelVisual, adviceCard, sortRows, current: () => current };
 
-  // ------------------------------------------------------------------ signed-in coach (top bar), stamped on saved calls and hand-offs
-  const COACH_KEY = "p360.coach";
-  let coachName = (() => { try { return localStorage.getItem(COACH_KEY) || ""; } catch (e) { return ""; } })();
+  // ------------------------------------------------------------------ coach name stamped on saved calls and hand-offs (no sign-in in the demo)
+  let coachName = "";
   P360.coach = () => coachName || "Unknown coach";
-  async function coachPicker() {
-    const bar = document.querySelector(".topbar");
-    if (!bar || document.getElementById("coach-pick") || SNAP) return;
-    let names = [];
-    try { const calls = await once("calls", A.calls); names = [...new Map(calls.map((c) => [c.coach.id, c.coach.name])).entries()].sort((a, b) => a[0].localeCompare(b[0])).map((x) => x[1]); } catch (e) { /* picker shows the stored name only */ }
-    if (!coachName) coachName = names[0] || "";
-    if (coachName && !names.includes(coachName)) names.unshift(coachName);
-    if (!names.length || document.getElementById("coach-pick")) return;
-    bar.insertAdjacentHTML("beforeend", `<label id="coach-pick" class="small" style="display:inline-flex;gap:6px;align-items:center;color:var(--ink-2)">Signed in as <select id="coach-select" aria-label="Signed-in coach" style="font:inherit;border-radius:0">${names.map((n) => `<option ${n === coachName ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`);
-  }
-  document.addEventListener("change", (e) => {
-    if (e.target.id !== "coach-select") return;
-    coachName = e.target.value;
-    try { localStorage.setItem(COACH_KEY, coachName); } catch (err) { /* this tab only */ }
-    showToast(`Signed in as ${coachName}. New calls and hand-offs carry this name.`);
-  });
-  window.addEventListener("DOMContentLoaded", coachPicker);
+  if (!SNAP) once("calls", A.calls).then((calls) => { const c = [...calls].sort((x, y) => String(x.coach.id).localeCompare(String(y.coach.id)))[0]; if (c) coachName = c.coach.name; }).catch(() => {});
 
   // ------------------------------------------------------------------ hand-off to the care team (POST /api/handoffs)
   async function handoffFrom(btn) {

@@ -382,24 +382,9 @@ a.kpi .ks::after { content: " · details ›"; color: var(--link); }
 .ellie-fab { z-index: 42; }
 .ellie-fab.on { background: var(--navy-2); }
 .ellie { bottom: 84px; height: min(620px, calc(100vh - 108px)); }
-.ellie-fab .fab-k { font: 500 .7rem var(--font-data); padding: 1px 5px; border: 1px solid rgba(255, 255, 255, .35); color: #c9d6e6; }
-.ellie .meta button, .ellie .ellie-retry { font: inherit; font-size: .78rem; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); padding: 2px 10px; cursor: pointer; }
-.ellie .m a { font-weight: 600; }
-/* Room under the last row for the button, so it never covers an Open or Start call. */
-#view { padding-bottom: 120px; }
-/* Wide screens: the open panel is a docked right column; the page narrows instead of being covered. */
-@media (min-width: 1200px) {
-  .ellie { top: 0; right: 0; bottom: 0; width: 380px; height: auto; border-width: 0 0 0 1px; box-shadow: none; z-index: 30; }
-  body.ellie-open .main { margin-right: 380px; }
-  body.ellie-open .ellie-fab { display: none; }
-}
 @media (max-width: 760px) {
   .ellie { bottom: 0; height: calc(100vh - 64px); }
   .ellie-fab.on { display: none; }
-  /* Phones: icon-only button above the bottom nav. */
-  .ellie-fab { width: 48px; height: 48px; padding: 0; justify-content: center; }
-  .ellie-fab .fab-l, .ellie-fab .fab-k { display: none; }
-  #view { padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
 }
 /* Ellie's insight on the health chart */
 .ellie-insight:empty { display: none; }
