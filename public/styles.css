@@ -948,3 +948,7 @@ button.more-link { align-self: flex-start; padding-left: 0; }
 .flag-row { background: #fdf1f0; }
 /* hospital-risk rows lead with who the person is; the code follows in mono */
 .q-who.code { font-family: var(--font-data); font-size: var(--t-12); color: var(--ink-3); }
+/* two-up chart cards share the row height; the chart sits centred in the extra space */
+.chart-grid { align-items: stretch; }
+.chart-grid > .card { display: flex; flex-direction: column; }
+.chart-grid > .card > .stack, .chart-grid > .card > .multiples { flex: 1; justify-content: center; }
