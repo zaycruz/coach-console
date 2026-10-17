@@ -3,7 +3,7 @@
    identity, (2) status, always with a glyph and a word, (3) chart series. Light only. */
 :root {
   color-scheme: light;
-  --bg: #f3f5f8;
+  --bg: #f4f5f7;
   --surface: #ffffff;
   --surface-2: #f0f3f7;
   --ink: #0f1b2d;
@@ -915,3 +915,36 @@ button.more-link { align-self: flex-start; padding-left: 0; }
 #cues { flex: 1; max-height: none; min-height: 120px; overflow-y: auto; }
 .tile { min-height: 176px; }
 .q-row { min-height: 64px; }
+
+/* ==== iteration 3: appeal (simulated users on preview 17) ==== */
+/* a warmer field, one soft elevation on primary surfaces */
+:root { --bg: #f5f5f4; --surface-2: #f1f2f3; --line: #e2e4e8; --sh-1: 0 1px 2px rgba(15, 27, 45, .04), 0 6px 16px rgba(15, 27, 45, .05); }
+.card, .tile, .queue, .plan-list, .hero-card, .prep, .brief .assistant-insight, .ptable-wrap, .calls-list, .lr-card { box-shadow: var(--sh-1); }
+.hero-card { background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 56%); }
+/* the page header carries the rail's gradient language as a quiet band */
+#view > .page-head, #view > .pp-head { position: relative; padding: var(--s-3) var(--s-3) var(--s-2); margin: calc(-1 * var(--s-2)) 0 0; background: linear-gradient(180deg, rgba(18, 58, 99, .07), rgba(18, 58, 99, 0)); border-top: 2px solid rgba(18, 58, 99, .18); }
+#view > .back + .pp-head { margin-top: 0; }
+/* the rail's gradient ends on the shell colour, so the column below the viewport continues it with no seam */
+.rail { background: linear-gradient(180deg, #143d68 0%, #0b2a4a 70%, #0b2a4a 100%); }
+/* filled pills, no borders */
+.status.watch { background: var(--surface-2); border-color: transparent; }
+.status.alert { border-color: transparent; }
+.chip-own, .chip-due, .tag-real, .chip-lang, .chip-data { border-color: transparent; background: var(--surface-2); }
+.chip-due.now { background: var(--alert-soft); color: var(--alert-ink); }
+.chip-lang.need { background: var(--watch-soft); color: var(--warn-ink); }
+.pill-synthetic { border: 1px solid transparent; background: var(--surface-2); }
+.pill-synthetic .q { border-color: var(--line-2); }
+/* Today: the first Call today row leads; the rest stay quiet */
+#today-now .q-row:first-child { padding: var(--s-3); background: linear-gradient(90deg, rgba(198, 40, 40, .05), rgba(198, 40, 40, 0) 60%); box-shadow: inset 3px 0 0 var(--alert); }
+#today-now .q-row:first-child .q-why { font-size: 17px; font-weight: 600; }
+#today-now .q-row:first-child .q-name { font-size: var(--t-20); }
+/* charts: heavier lines, larger labels; two-up cells keep their own height */
+.chart text { font: 12px var(--font-body); }
+.chart path[stroke-width="2"] { stroke-width: 2.5; }
+.chart-grid { align-items: start; }
+/* flag labels say the thing, without shouting */
+.flag-row .f-chip { text-transform: none; letter-spacing: 0; font-weight: 600; border-color: transparent; background: var(--surface); }
+.flag-row.f-coaching { background: #fbf6ea; }
+.flag-row { background: #fdf1f0; }
+/* hospital-risk rows lead with who the person is; the code follows in mono */
+.q-who.code { font-family: var(--font-data); font-size: var(--t-12); color: var(--ink-3); }
