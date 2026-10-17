@@ -202,8 +202,8 @@
       }
     } catch (e) { /* best effort */ }
   }
-  setTimeout(prefetchToday, 2500);
-  window.addEventListener("hashchange", () => setTimeout(prefetchToday, 2500));
+  // Once per visit, after the first screen has settled: the insights are cached server-side, so this only warms them.
+  setTimeout(() => (window.requestIdleCallback || setTimeout)(prefetchToday), 6000);
   async function fillInsight(el) {
     const pid = el.dataset.pid;
     el.dataset.state = "loading";

@@ -443,6 +443,26 @@ async function savedCalls(env: Env, req: Request, pid: string) {
   await env.CALLS.put("calls:index", JSON.stringify([entry, ...idx].slice(0, 200))).catch(() => {});
   return json(saved, 201);
 }
+
+// Edge cache, stale-while-revalidate: module data changes rarely, so a hit is served at once from this colo's cache and,
+// once it is older than FRESH_S, refreshed in the background. A screen never waits on a module that answered recently.
+const FRESH_S = 60, KEEP_S = 6 * 3600;
+async function swr(url: URL, ctx: ExecutionContext, make: () => Promise<Response>): Promise<Response> {
+  const key = new Request(url.toString(), { method: "GET" });
+  const store = async () => {
+    const r = await make();
+    if (!r.ok) return r;
+    const body = await r.text();
+    const out = new Response(body, { status: 200, headers: { "content-type": "application/json", "cache-control": `public, max-age=${KEEP_S}`, "x-p360-at": String(Date.now()) } });
+    ctx.waitUntil(caches.default.put(key, out.clone()).catch(() => {}));
+    return new Response(body, { status: 200, headers: { "content-type": "application/json", "cache-control": `public, max-age=${FRESH_S}`, "x-p360-cache": "miss" } });
+  };
+  const hit = await caches.default.match(key).catch(() => undefined);
+  if (!hit) return store();
+  const age = (Date.now() - Number(hit.headers.get("x-p360-at") || 0)) / 1000;
+  if (age > FRESH_S) ctx.waitUntil(store().catch(() => null));
+  return new Response(hit.body, { status: 200, headers: { "content-type": "application/json", "cache-control": `public, max-age=${FRESH_S}`, "x-p360-cache": age > FRESH_S ? "stale" : "hit" } });
+}
 const noStore = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
 async function allSavedCalls(env: Env) { return noStore(JSON.parse((await env.CALLS.get("calls:index").catch(() => null)) || "[]")); }
 
@@ -468,17 +488,12 @@ export default {
     try {
       if (mod === "health") return json({ ok: true });
       if (mod === "today" && req.method === "GET") {
-        const key = new Request(url.toString(), { method: "GET" });
-        const hit = await caches.default.match(key).catch(() => undefined);
-        if (hit) return hit;
         const c5Calls = async () => {
           const native = await env.C5.fetch("https://coach-copilot/api/c5/calls").catch(() => null);
           const r = native && native.ok && (native.headers.get("content-type") || "").includes("json") ? native : await c5(env, ["calls"]);
           return r.json();
         };
-        const out = json(await today(env, c5Calls));
-        ctx.waitUntil(caches.default.put(key, out.clone()).catch(() => {}));
-        return out;
+        return await swr(url, ctx, async () => json(await today(env, c5Calls)));
       }
       if (mod === "insight" && req.method === "POST") return await insight(env, (await req.json()) as Record<string, unknown>);
       if (mod === "ellie" && req.method === "POST") return await ellie(env, (await req.json()) as Record<string, unknown>);
@@ -488,14 +503,9 @@ export default {
       if (mod === "calls" && rest.length === 1 && (req.method === "GET" || req.method === "POST")) return await savedCalls(env, req, rest[0]);
       if (mod === "handoffs" && rest.length === 0 && (req.method === "GET" || req.method === "POST")) return await handoffs(env, req);
       if ((mod === "c1" || mod === "c3" || mod === "c4") && req.method === "GET") {
-        // Module data changes rarely: serve from this colo's edge cache for 60 s (first paint ~0.5 s faster).
-        const key = new Request(url.toString(), { method: "GET" });
-        const hit = await caches.default.match(key).catch(() => undefined);
-        if (hit) return hit;
-        const r = await ({ c1: env.C1, c3: env.C3, c4: env.C4 }[mod] as Fetcher).fetch(`https://${mod}${url.pathname}${url.search}`);
-        const out = new Response(r.body, { status: r.status, headers: { "content-type": "application/json", "cache-control": "public, max-age=60" } });
-        if (r.ok) ctx.waitUntil(caches.default.put(key, out.clone()).catch(() => {}));
-        return out;
+        const f = { c1: env.C1, c3: env.C3, c4: env.C4 }[mod] as Fetcher;
+        const make = async () => { const r = await f.fetch(`https://${mod}${url.pathname}${url.search}`); return new Response(r.body, { status: r.status, headers: { "content-type": "application/json" } }); };
+        return await swr(url, ctx, make);
       }
       if (mod === "c5" && req.method === "POST" && C5_POST.has(rest[0]) && rest.length === 1) {
         // The Copilot rate-limits bursts (429): back off and retry twice so a replay or "Run live Copilot" doesn't drop tags.
@@ -509,14 +519,16 @@ export default {
       }
       if (mod === "c5" && req.method === "GET") {
         // Prefer the Copilot's own suite endpoints; fall back to the adapter while they 404.
-        const native = await env.C5.fetch(`https://coach-copilot${url.pathname}${url.search}`).catch(() => null);
-        if (native && native.ok && (native.headers.get("content-type") || "").includes("json"))
-          return new Response(native.body, { status: 200, headers: { "content-type": "application/json", "cache-control": "public, max-age=60", "x-c5-source": "native" } });
-        return await c5(env, rest);
+        return await swr(url, ctx, async () => {
+          const native = await env.C5.fetch(`https://coach-copilot${url.pathname}${url.search}`).catch(() => null);
+          if (native && native.ok && (native.headers.get("content-type") || "").includes("json")) return native;
+          return await c5(env, rest);
+        });
       }
       return json({ error: "not found" }, 404);
     } catch (e) {
-      return json({ error: `module unavailable: ${(e as Error).message}`, module: mod }, 502);
+      console.error("module error", mod, (e as Error).message);
+      return json({ error: "This program is not answering right now. Try again in a minute.", module: mod }, 502);
     }
   },
 };
