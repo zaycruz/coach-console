@@ -354,14 +354,17 @@
   // what actually happened to people in it; this patient and the average patient marked on the risk axis.
   function tierStrip(t) {
     if (!t || !t.tiers || !t.tiers.length) return "";
-    const W = 640, H = 96, pl = 8, pr = 8, y = 36, h = 18, hi = Math.max(0.6, t.value * 1.1, ...t.tiers.map((x) => x.from));
+    const W = 640, H = 112, pl = 8, pr = 8, y = 52, h = 18, hi = Math.max(0.6, t.value * 1.1, ...t.tiers.map((x) => x.from));
     const X = (v) => pl + Math.max(0, Math.min(1, v / hi)) * (W - pl - pr);
     const tiers = [...t.tiers].sort((a, b) => a.from - b.from);
     const bands = tiers.map((x) => { const x0 = X(x.from), x1 = X(x.to >= 1 ? hi : x.to); const range = x.from > 0 && x.to < 1 ? `${pct(x.from)}–${pct(x.to)}` : x.from > 0 ? `${pct(x.from)}+` : `under ${pct(x.to)}`; return `<rect class="tb" style="fill-opacity:${(0.1 + x.rate * 1.2).toFixed(2)}" x="${x0.toFixed(1)}" y="${y}" width="${Math.max(1, x1 - x0).toFixed(1)}" height="${h}"/><text class="tt" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 16}" text-anchor="middle">${GROUP[x.status] === "This week" ? "High tier" : GROUP[x.status] === "Watch" ? "Middle tier" : "Low tier"} · ${range}</text><text class="tt tt2" x="${((x0 + x1) / 2).toFixed(1)}" y="${y + h + 32}" text-anchor="middle">${pct(x.rate)} of ${x.n} had one</text>`; }).join("");
     const mine = tiers.find((x) => t.value >= x.from && (x.to >= 1 || t.value < x.to));
-    const mark = (v, label, cls) => `<line class="tm ${cls}" x1="${X(v).toFixed(1)}" x2="${X(v).toFixed(1)}" y1="${y - 14}" y2="${y + h + 2}"/><text class="tl ${cls}" x="${X(v).toFixed(1)}" y="${y - 18}" text-anchor="${X(v) > W - 80 ? "end" : "middle"}">${esc(label)} ${pct(v)}</text>`;
+    // Two markers close together take separate label rows and lean away from each other, so the labels never collide.
+    const close = t.base != null && Math.abs(X(t.value) - X(t.base)) < 170;
+    const mark = (v, label, cls, row, lean) => { const x = X(v), lift = row ? 18 : 0; const anchor = x > W - 90 ? "end" : x < 90 ? "start" : lean || "middle"; return `<line class="tm ${cls}" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${y - 14 - lift}" y2="${y + h + 2}"/><text class="tl ${cls}" x="${x.toFixed(1)}" y="${y - 18 - lift}" text-anchor="${anchor}">${esc(label)} ${pct(v)}</text>`; };
+    const meLeft = t.base != null && t.value <= t.base;
     return `<figure class="fig"><figcaption><span>Where this patient sits among the risk tiers${mine ? `: ${pct(mine.rate)} of the ${mine.n} in this tier had an ER visit or stay` : ""}</span><span class="muted">${t.dev ? `${t.dev} development patients, cross-validated · darker = more had one` : ""}</span></figcaption>
-      <svg class="chart tiers" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`This patient ${pct(t.value)}; ${tiers.map((x) => `${x.status} tier from ${pct(x.from)}: ${pct(x.rate)} of ${x.n} had an event`).join("; ")}`)}">${bands}${t.base != null ? mark(t.base, "average patient", "avg") : ""}${mark(t.value, "this patient", "me")}</svg></figure>`;
+      <svg class="chart tiers" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`This patient ${pct(t.value)}; ${tiers.map((x) => `${x.status} tier from ${pct(x.from)}: ${pct(x.rate)} of ${x.n} had an event`).join("; ")}`)}">${bands}${t.base != null ? mark(t.base, "average patient", "avg", close ? 1 : 0, close ? (meLeft ? "start" : "end") : "middle") : ""}${mark(t.value, "this patient", "me", 0, close ? (meLeft ? "end" : "start") : "middle")}</svg></figure>`;
   }
   // The tab hero: the number at 44 px, its status and comparison, and the one full visual the tab owns (the four-band bar for glucose).
   function heroCard(h, mod, p) {
