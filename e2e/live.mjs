@@ -292,10 +292,10 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
 
   // call review still runs Clef live
   await page.goto(`${B}/#call-${flaggedCall.callId}`); await settle(page);
-  // Clef starts by itself when the record opens (no button press).
+  await page.locator("[data-run]").click();
   await page.waitForFunction(() => document.querySelectorAll(".tag.live").length >= 4, null, { timeout: 90000 }).catch(() => {});
   const liveTags = await page.locator(".tag.live").count();
-  ok("call review: Clef tags arrive without pressing anything", liveTags >= 4, `${liveTags} tagged lines`);
+  ok("call review: live Clef tags arrive", liveTags >= 4, `${liveTags} tagged lines`);
   await page.waitForFunction(() => !document.querySelector("[data-run][disabled]"), null, { timeout: 180000 }).catch(() => {});
   const agree = await page.locator("#agree").innerText().catch(() => "");
   ok("call review: agreement with supervisor computed", /%/.test(agree), agree.replace(/\s+/g, " "));

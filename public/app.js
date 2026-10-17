@@ -734,14 +734,12 @@
     return `<section class="flags" aria-label="Flags"><p class="eyebrow">${safe ? `${safe} need${safe === 1 ? "s" : ""} a person today` : ""}${safe && html.length > safe ? " · " : ""}${html.length > safe ? `${html.length - safe} coaching note${html.length - safe === 1 ? "" : "s"}` : ""}</p>${html.join("")}</section>`;
   }
 
-  const autoRan = new Set();
   async function renderCall(id) {
     const back = `<a class="back" href="#calls">← Calls</a>`;
     const f = forced("this call", "This call has no lines yet. For a live call, lines appear as people speak.");
     if (f) return back + f;
     let c;
     try { c = await Adapter.call(id); } catch (e) { return back + errorBox("this call", e.message); }
-    if (!SNAP && !autoRan.has(c.callId)) { autoRan.add(c.callId); setTimeout(() => runLive(c), 60); }
     const lines = live && live.callId === c.callId ? live.lines : c.lines;
     const untagged = lines.filter((l) => !(l.speaker === "coach" ? l.supervisor.move : l.supervisor.talk) && !(l.live && l.live.tag)).length;
     // Supervisor labels say only "needs a person"; the kind comes from the live model when it has run.
@@ -751,7 +749,7 @@
       <div class="facts"><span>Coach <b>${esc(c.coach.name)}</b> (${esc(c.coach.role)})</span><span>Week <b>${c.week}</b></span><span><b>${fmtDate(c.date)}</b> ${esc(c.start)}</span><span>${esc(c.language)}</span><span>Goal <b>${esc(c.goalTopic)}</b></span><span><b>${c.durationMin}</b> min</span></div></div>
       <div class="row">${SNAP ? "" : `<button class="btn primary" data-play="${esc(c.callId)}">▶ Play as live</button>`}<a class="btn" href="#p-${esc(c.survivorId)}">Patient page</a></div></header>
       <div id="flagbox" class="stack">${banners}</div>
-      <div class="call-layout"><section class="card"><div class="sec-head"><h2>Transcript</h2><p class="small muted">Clef tags every line as the record opens (outlined tag: ✓ agrees with the supervisor, ≠ differs). Grey tags are the supervisor’s.</p></div><div class="transcript scroll" id="transcript">${lines.map((l) => lineHtml(l, c.coach.name)).join("")}</div></section>
+      <div class="call-layout"><section class="card"><div class="sec-head"><h2>Transcript</h2><p class="small muted">${untagged ? `${untagged} of ${lines.length} lines have no tag yet: press Run Clef to fill them.` : `Every line is already tagged from the call record (grey tag).`} Run Clef to add the model’s tag beside it (outlined: ✓ agrees, ≠ differs).</p></div><div class="transcript scroll" id="transcript">${lines.map((l) => lineHtml(l, c.coach.name)).join("")}</div></section>
       <div id="side">${sidePanel(c)}</div></div>`;
   }
 
