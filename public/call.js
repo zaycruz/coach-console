@@ -180,10 +180,10 @@
     const i = C.lines.length - 1;
     const previous = C.lines.slice(Math.max(0, i - 2), i).map((x) => ({ speaker: x.speaker, text: x.text, flag: x.live && x.live.flag && x.live.flag !== "none" ? x.live.flag : undefined }));
     try {
-      const r = await post("/api/c5/turn", { line: { speaker, text }, previous });
+      const r = await track(C, post("/api/c5/turn", { line: { speaker, text }, previous }));
       l.live = { tag: r.tag, confidence: r.confidence, flag: r.flag };
       if (r.confidence != null && r.confidence < 0.3)
-        post("/api/c5/review", { line: { speaker, text }, previous, probabilities: r.probabilities }).then((v) => { const lab = v.label || v.tag; if (lab && call === C) { l.live.tag = lab; l.live.reviewed = true; paint(l); side(); } }).catch(() => {});
+        track(C, post("/api/c5/review", { line: { speaker, text }, previous, probabilities: r.probabilities })).then((v) => { const lab = v.label || v.tag; if (lab && call === C) { l.live.tag = lab; l.live.reviewed = true; paint(l); side(); } }).catch(() => {});
     } catch (err) { l.live = { error: err.message }; }
     l.pending = false;
     if (call !== C) return;
@@ -331,10 +331,19 @@
     micUi();
   }
 
+  // Every Clef tag and second-model retag still in flight for this call. End call waits for them (up to 10 s), so the
+  // saved score is the score of every line the coach saw tagged, not of the lines that happened to be back.
+  function track(C, p) { (C.inflight = C.inflight || new Set()).add(p); const done = () => C.inflight.delete(p); p.then(done, done); return p; }
+  async function settled(C, ms = 10000) {
+    const until = Date.now() + ms;
+    while (C.inflight && C.inflight.size && Date.now() < until) await Promise.race([Promise.allSettled([...C.inflight]), new Promise((r) => setTimeout(r, until - Date.now()))]);
+  }
+
   async function endCall() {
     const C = call; stopMic();
     const st = document.getElementById("savestate"); if (st) st.textContent = "Saving…";
     try {
+      await settled(C);
       const p = await once("p:" + C.pid, () => A.patient(C.pid)).catch(() => null);
       const coach = C.coach || (P.coach ? P.coach() : "");
       const rec = await post(`/api/calls/${encodeURIComponent(C.pid)}`, { coach, name: p ? p.name : "", score: P.liveScore(C.lines), lines: C.lines.map((l) => ({ speaker: l.speaker, text: l.text, tag: l.live && l.live.tag, flag: l.live && l.live.flag })) });

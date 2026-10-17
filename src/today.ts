@@ -3,9 +3,9 @@
  *   Each row: { id, mod, name, status, tri, horizon: "today"|"week", rank, reason (<= 90 chars, clinical), data
  *   ("Real survey data (MEPS)" | "Synthetic"), language, interpreter, headline, updatedAt }.
  * Who is on it, worst first:
- *   Glucose (C4) never reaches Today: even care-team-flag rows go to the top of This week (judges: Today is red flags only).
+ *   Glucose (C4) reaches Today only when careTeamFlag.urgency is "today" (level 2 lows); other care-team flags lead This week.
  *   today: C5 safety lines under 30 days old (medical, distress, social), incl. Clef's demo call replayed today · C3 urgent 7-day ER/hospital risk ·
- *          C1 care-team-today (survey red flag)
+ *          C1 care-team-today (survey red flag) · C4 level 2 lows
  *   week:  C4 care-team flags first (frequent lows, very high sugar), then C1 highest next-year ER/hospital risk (alert tier, top 5) · C3 rough-patch alerts · C4 other alerts
  * The module APIs stay the source; this only picks rows and writes one short reason from their own fields.
  */

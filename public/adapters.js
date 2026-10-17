@@ -337,7 +337,7 @@
       : m && Array.isArray(m.fairness) ? { tone: "green", text: "No reliability gap found for this patient's age, sex, race, insurance or cancer groups (cross-validated: tested on patients held back from training, in turns)." }
       : { tone: "neutral", text: "Subgroup check not available right now (the model card did not load)." };
     return {
-      name: demoName(d.displayName), headline, caution, forAssistant: d.forAssistant ?? d.forEllie ?? "", hero, fit,
+      name: demoName(d.displayName), headline, caution, forAssistant: d.forAssistant ?? "", hero, fit,
       tags: [caution && { label: caution.label, tone: caution.soft ? "info" : "warn" }, { label: `ER/hospital ${pct(d.risk)} · 12 months`, tone: d.status === "alert" ? "risk" : d.status === "watch" ? "warn" : "info" }, ...pos.slice(0, 3).map((x) => ({ label: x.label + (cost(x) ? " (cost proxy)" : ""), tone: "warn" }))].filter(Boolean),
       kpis: [{ hero: true, value: isNum(d.risk) ? pct(d.risk) : NR, label: "Next-year ER or hospital risk (from 2017 survey)", sub: d.riskWords || (r.baseRate != null ? `average patient ${pct(r.baseRate)}` : ""), good: d.status === "alert" ? false : d.status === "ok" ? true : null }, use.erVisits != null && { value: String(use.erVisits), label: "ER visits, data year 2017", sub: "most survivors had none · real MEPS", good: use.erVisits === 0 ? true : null }, use.hospitalStays != null && { value: String(use.hospitalStays), label: "Hospital stays, data year 2017", sub: "most survivors had none · real MEPS", good: use.hospitalStays === 0 ? true : null }].filter(Boolean),
       panels, evidence: null,

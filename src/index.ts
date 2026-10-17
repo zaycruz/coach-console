@@ -11,7 +11,7 @@
  *   GET  /api/today           -> one ranked queue across C1/C3/C4/C5 with a short clinical reason, data type and language per row (src/today.ts)
  *   POST /api/recap           -> GLM summary of the last call, for picking the conversation back up
  *   POST /api/assistant       -> the AI assistant for clinicians: a small GLM tool loop (search/get patient, read page; navigate/open tab/start call)
- *   POST /api/insight         -> AI Insight for one patient (headline + up to 3 bullets), cached in KV by patient id + data hash
+ *   POST /api/insight         -> AI Insight for one patient (a one-sentence headline), cached in KV by patient id + data hash
  * Everything else is the static app in ./public.
  */
 import PEOPLE from "./c5-people.json";
@@ -515,8 +515,7 @@ export default {
         return await swr(url, ctx, async () => json(await today(env, c5Calls)));
       }
       if (mod === "insight" && req.method === "POST") return await insight(env, (await req.json()) as Record<string, unknown>);
-      // /api/ellie is a silent alias for the judges panel and MCP until they move to /api/assistant.
-      if ((mod === "assistant" || mod === "ellie") && req.method === "POST") return await assistant(env, (await req.json()) as Record<string, unknown>);
+      if (mod === "assistant" && req.method === "POST") return await assistant(env, (await req.json()) as Record<string, unknown>);
       if (mod === "recap" && req.method === "POST") return await recap(env, (await req.json()) as Record<string, unknown>);
       if (mod === "stt" && req.method === "POST") return await (await import("./stt")).stt(env, req);
       if (mod === "calls" && rest.length === 0 && req.method === "GET") return await allSavedCalls(env, req);

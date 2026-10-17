@@ -8,37 +8,19 @@ response to the UI in one file, `public/adapters.js`. No module repo was edited.
 | C1 Hospital risk (`c1-acute-risk`) | `/api/c1/survivors[/:id]`, `/api/c1/metrics` | live, all 199 patients |
 | C3 Rough weeks (`c3-rough-patch`) | `/api/c3/survivors[/:id]`, `/api/c3/metrics` | live (model-v2 fields `urgent`, `urgentRisk` wired) |
 | C4 Glucose (`c4-glucose-guide`) | `/api/c4/survivors[/:id][/advice]`, `/api/c4/cohort` | live, uses its `tags[]` |
-| C5 Coaching calls (`coach-copilot-clef`) | `/api/c5/turn|review|cue` live; `/api/c5/survivors|calls` | model live; lists via adapter until the Copilot serves them |
+| C5 Coaching calls (`coach-copilot-clef`) | `/api/c5/survivors|calls|demo|agreement`, `POST /api/c5/turn|review|cue` | live (native endpoints first, adapter fallback) |
 
 **Fallback.** Each fetch times out at 10 s. A failed module, or a missing required field, falls back to the
 saved copy in `public/fallback-data.js` (`node scripts/snapshot.mjs`, 375 responses). The status chips at the top
 right say live / saved copy / down per module, and a banner names the module that is down.
 
-## Remaining asks, per module
+How each number gets from a module to a screen, the tier rules, what is AI and what fails how: see
+[`docs/how-it-works.md`](docs/how-it-works.md). That doc is the current reference; this file only keeps the module table.
 
-**All modules**
-- One shared patient ID. Today each module has its own synthetic cohort, so a patient fills one pill only.
-- An `audience` field on every recommendation (`coach | care-team | patient`). C1 has it; the others need it.
-- Spanish and Haitian Creole text for anything the patient sees.
+## Open asks (checked against the live APIs on 2026-10-17)
 
-**C1 Hospital risk**
-- `tags[]` on roster rows (the console derives them from the headline today).
-- Patient-facing text that never states the risk number (the console filters `audience: survivor` today).
+- One shared patient ID. Each program still has its own cohort, so the linked demo records join them by matching sex, cancer type and age.
+- C3: `tags[]` on roster rows. C1 and C4 send them; P360 derives C3's from the headline.
+- C5's lists come through the Worker's adapter when the Copilot's native endpoints don't answer. Calls started in Patient 360 are stored in Patient 360's KV.
 
-**C3 Rough weeks**
-- `tags[]` on roster and detail, like C4.
-- `urgent` on roster rows (the console reads it from the "Urgent:" headline today).
-- Patient-facing text and a `caveat` string.
-
-**C4 Glucose**
-- `language` in `profile`.
-- The KPI strip as data (`kpis[]` with value, target, good/bad), so the console stops re-deriving it from evidence ids.
-- When a series has no readings (for example `dailyProfile` weeks 11-12), send `values: []` or omit the series instead of 24 nulls.
-
-**C5 Coaching calls**
-- Serve `/api/c5/survivors[/:id]` and `/api/c5/calls[/:id]` from the Copilot. The Worker tries them first and switches over with no console change (`x-c5-source: native`).
-- A call-history write endpoint, so calls started in Patient 360 (stored in Patient 360's KV today) live with the rest.
-
-## C5 rate limit (found 2026-10-17)
-
-`POST /api/review` and `/api/cue` on coach-copilot-clef return 429 under bursts. One "Run live Copilot" pass over a call is enough to trigger it. Patient 360's proxy retries twice with backoff, and tags (`/api/turn`) still arrive. **Ask:** raise the limit for the `patient-360` service binding, or send `Retry-After`.
+Done since the first version of this file: C1 `tags[]`, C3 `urgent` on roster rows, C4 `careTeamFlag.urgency`, and C5 `Retry-After: 20` on 429.
