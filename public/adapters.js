@@ -115,12 +115,14 @@
   // ------------------------------------------------------------------ roster
   async function roster() {
     const mods = ["c1", "c3", "c4", "c5"];
-    const [res, ctx] = await Promise.all([Promise.allSettled(mods.map((m) => fetchJSON(`/api/${m}/survivors`))), context()]);
+    const [res, ctx, tq] = await Promise.all([Promise.allSettled(mods.map((m) => fetchJSON(`/api/${m}/survivors`))), context(), fetchJSON("/api/today").catch(() => null)]);
+    // One Act today list everywhere: when the Today queue answers, its "today" rows set who is Act today on Patients and for Ellie.
+    const nowIds = tq && Array.isArray(tq.rows) ? new Set(tq.rows.filter((r) => r.horizon === "today").map((r) => r.id)) : null;
     const rows = [], failed = [];
     res.forEach((r, i) => {
       const m = mods[i];
       if (r.status !== "fulfilled" || !Array.isArray(r.value)) { failed.push({ mod: m, error: r.reason ? r.reason.message : "bad response" }); return; }
-      r.value.forEach((x) => rows.push(overlay(rosterRow(m, x), ctx)));
+      r.value.forEach((x) => { const row = rosterRow(m, x); if (nowIds) row.tri = nowIds.has(row.id) ? "today" : row.tri === "today" ? "alert" : row.tri; rows.push(overlay(row, ctx)); });
     });
     return { rows, failed, handoffs: ctx.handoffs, saved: ctx.saved };
   }
