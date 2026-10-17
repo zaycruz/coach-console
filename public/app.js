@@ -170,10 +170,10 @@
       <a href="#patients"><span class="n">${roster.length}</span><span class="l">All patients</span></a></div>`;
     const handed = hToday.length ? `<details class="more"><summary>Handed off today (${hToday.length})</summary><div class="today-list">${hToday.map(handoffRow).join("")}</div><p class="small" style="margin-top:8px"><a href="#inbox">Care-team inbox, every hand-off →</a></p></details>` : "";
     return `${head}${failBanners(failed)}${sourceBanner(ALL)}${COHORTS}${strip}
-      <section class="stack-s" id="today-now"><h2>Call today · ${nowAll.length}</h2><p class="small muted">Safety lines from calls, urgent 7-day ER risk, frequent lows or very high sugar. ${per(now)}</p>
+      <section class="stack-s" id="today-now"><h2>Call today · ${nowAll.length}</h2><p class="small muted">Red flags only: safety lines from calls, urgent 7-day ER risk, survey red flags. ${per(now)}</p>
         <div class="today-list roster-today" data-count="${now.length}">${now.map(row).join("") || `<div class="live-empty">Nobody needs a call today.</div>`}</div>
         ${nowAll.length > now.length ? `<a href="#patients">${nowAll.length - now.length} more on the Patients list →</a>` : ""}</section>
-      ${week.length ? `<section class="stack-s" id="today-week"><h2>This week · ${week.length}</h2><p class="small muted">Highest next-year ER/hospital risk, rough weeks ahead, glucose off target. ${per(week)}</p>
+      ${week.length ? `<section class="stack-s" id="today-week"><h2>This week · ${week.length}</h2><p class="small muted">Glucose flags for the care team first, then rough weeks ahead and the highest next-year ER/hospital risk. ${per(week)}</p>
         <div class="today-list">${week.map(row).join("")}</div></section>` : ""}${handed}`;
   }
 
