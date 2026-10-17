@@ -1,0 +1,7 @@
+{
+  "name": "p360-reproduce",
+  "private": true,
+  "type": "module",
+  "scripts": { "deploy": "wrangler deploy", "run-e2e": "sh run.sh" },
+  "devDependencies": { "wrangler": "^4.135.0" }
+}

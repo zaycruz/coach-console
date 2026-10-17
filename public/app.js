@@ -231,7 +231,7 @@
     const row = (it, i, hz, hideFrom) => { const reason = it.reason || it.headline || "Needs a review"; const nm = nameOf(it);
       const r = byId.get(it.id) || {};
       const expand = hz === "today" && i === 0;
-      const quote = expand && r.concern && r.concern.text ? `<blockquote class="t-quote">“${esc(r.concern.text)}”<cite>${esc(r.concern.where ? `Raised on ${r.concern.where}` : "")}${r.concern.by ? ` · coach ${esc(r.concern.by)}` : ""}${r.concern.at ? ` · ${esc(A.ago(r.concern.at))}` : ""}</cite></blockquote>` : "";
+      const quote = expand && r.concern && r.concern.text ? `<blockquote class="t-quote">“${esc(r.concern.text)}”<cite>${esc(r.concern.where ? `Raised on ${r.concern.where}` : "")}${r.concern.by ? ` · coach ${esc(r.concern.by)}` : ""}${/replayed through Clef today/.test(r.headline || "") ? " · replayed through Clef today" : r.concern.at ? ` · ${esc(A.ago(r.concern.at))}` : ""}</cite></blockquote>` : "";
       const why = expand && quote ? `<p class="why"><b>Why today:</b> ${esc(String(reason).split(":")[0])}. ${it.mod === "c5" ? "A safety line from a coaching call needs a person the same day." : ""}</p>` : `<p class="why" title="${esc(it.headline || reason)}">${boldKey(reason)}</p>`;
       return `<div class="t-row${expand ? " t-first" : ""}" data-pid="${esc(it.id)}" data-mod="${it.mod}" data-h="${hz}"${hideFrom != null && i >= hideFrom && !ui["more_" + hz] ? " hidden" : ""}>${glyph(gk[hz])}
       <div class="who"><div class="t-line1"><a class="t-name" href="#p-${esc(it.id)}">${esc(nm)}</a><span class="r-mod"><span class="dot m-${it.mod}" aria-hidden="true"></span>${MODS[it.mod].name}</span>${langChip(it.language)}${dataChip(it.mod)}<span class="t-hz">${HORIZON[hz]}</span></div>
