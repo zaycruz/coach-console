@@ -197,6 +197,8 @@
       const box = document.getElementById("cues"); if (!box) return;
       box.querySelector("p.small.muted")?.remove();
       box.insertAdjacentHTML("afterbegin", P.cueHtml(c, hit.trigger, C.lines));
+      // The newest three cues only: the side panel never grows past the transcript.
+      [...box.children].slice(3).forEach((el) => el.remove());
     }).catch(() => {});
   }
 

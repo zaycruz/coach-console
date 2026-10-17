@@ -883,3 +883,10 @@ button.more-link { align-self: flex-start; padding-left: 0; }
 .done { flex-wrap: wrap; gap: 2px 8px; }
 .done-note { font-weight: 400; color: var(--ink-2); }
 .pills + * { margin-top: -8px; }
+
+/* live call: the side panel never outgrows the viewport; cues scroll inside their box */
+.call-side { max-height: calc(100vh - 80px); overflow-y: auto; }
+#cues { max-height: 48vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+#cues .cue { margin: 0; }
+.done { white-space: normal; }
+.done-note { overflow-wrap: anywhere; }

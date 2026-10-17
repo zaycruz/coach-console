@@ -106,9 +106,9 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   const src = await page.locator(".mode .src").evaluateAll((els) => els.map((e) => e.textContent + ":" + e.className));
   ok("C1, C3, C4, C5 chips say live", src.length === 4 && src.every((c) => c.includes("s-live")), src.join(" | "));
   const optToday = await page.locator('a.fpill[href="#patients-today"]').first().innerText().catch(() => "");
-  // Patients handed off today leave Call today. The test namespace is shared with other test sessions, so count theirs too.
-  const handedToday = new Set((await j("/api/handoffs")).filter((h) => h && new Date(h.at).toDateString() === new Date().toDateString()).map((h) => h.patientId));
-  const apiToday = (await (await fetch(`${B}/api/today`)).json()).rows.filter((r) => r.horizon === "today" && !handedToday.has(r.id)).length;
+  // A patient handed off or logged in this test namespace leaves Call today on the page; the API queue does not know about hand-offs.
+  const handedIds = new Set((await j("/api/handoffs")).map((h) => h.patientId));
+  const apiToday = (await j("/api/today")).rows.filter((r) => r.horizon === "today" && !handedIds.has(r.id)).length;
   ok("Patients 'Act today' count = Today queue count (one list everywhere)", new RegExp(`\\b${apiToday}\\b`).test(optToday), `${optToday} vs ${apiToday}`);
   for (const m of ["c3", "c4", "c1"]) {
     await page.locator(`[data-filter="${m}"]`).click(); await settle(page);
@@ -125,8 +125,9 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Today API: C1 rows say real MEPS data, the rest synthetic", tq.rows.every((r) => (r.mod === "c1") === /MEPS/.test(r.data)));
   const todayRows = await page.locator(".queue .q-row").count();
   const domMods = new Set(await page.locator(".queue .q-row").evaluateAll((els) => els.map((e) => e.dataset.mod)));
-  ok("Today page: rows from all four programs", todayRows >= 4 && domMods.size === 4, `${todayRows} rows, ${[...domMods].join(",")}`);
-  const nowN = tq.rows.filter((r) => r.horizon === "today" && !handedToday.has(r.id)).length;
+  const apiMods = new Set(tq.rows.filter((r) => !handedIds.has(r.id)).map((r) => r.mod));
+  ok("Today page: rows from every program the queue holds", todayRows >= 4 && [...apiMods].every((m) => domMods.has(m)), `${todayRows} rows, ${[...domMods].join(",")} vs ${[...apiMods].join(",")}`);
+  const nowN = tq.rows.filter((r) => r.horizon === "today" && !handedIds.has(r.id)).length;
   ok("Today API: Act today holds red flags only, no glucose rows", !tq.rows.some((r) => r.horizon === "today" && r.mod === "c4"), `${nowN} today`);
   ok("Today page: hero count matches the API's Act today rows", new RegExp(`\\b${nowN}\\b`).test(await page.locator(".today-hero, .t-hero, h1, .hero").first().innerText().catch(() => "")) || (await page.getByText(new RegExp(`^${nowN}$`)).count()) > 0, `${nowN}`);
   // Provenance once: Real · MEPS on every hospital-risk row and nowhere else; no "Synthetic" tag on rows (the page chrome says it once).
