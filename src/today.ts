@@ -86,7 +86,7 @@ export async function today(env: TodayEnv, c5Calls: () => Promise<unknown>) {
   c4.forEach((x, i) => {
     if (typeof x.careTeamToday === "boolean" && x.todayReason) {
       const now = x.careTeamToday, pr = Number(x.priority ?? 2), tir = Number((String(x.todayReason).match(/(\d+(?:\.\d+)?)% in range/) || [])[1] ?? 50);
-      rows.push({ ...base("c4", x), horizon: now ? "today" : "week", rank: now ? (pr === 0 ? 935 : 920) : 300 + (100 - tir) / 10, reason: cut(String(x.todayReason)), data: "Synthetic", language: "" });
+      rows.push({ ...base("c4", x), horizon: now ? "today" : "week", rank: now ? (pr === 0 ? 930 + Number((String(x.todayReason).match(/(\d+(?:\.\d+)?)% of readings below/) || [])[1] || 0) : 920) : 300 + (100 - tir) / 10, reason: cut(String(x.todayReason)), data: "Synthetic", language: "" });
       return;
     }
     const ev = new Map(((d4[i] && Array.isArray(d4[i]!.evidence) ? d4[i]!.evidence : []) as Rec[]).map((e) => [String(e.id), e.value as number]));
