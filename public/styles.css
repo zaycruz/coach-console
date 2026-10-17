@@ -661,6 +661,7 @@ a.l-tile:hover { text-decoration: none; border-color: var(--accent); box-shadow:
 .q-row:first-child { border-top: 0; }
 .q-n { font-family: var(--font-data); font-size: var(--t-14); color: var(--ink-3); text-align: right; font-variant-numeric: tabular-nums; }
 .q-n.today { color: var(--alert); font-weight: 600; }
+.q-n.week { color: var(--watch); font-weight: 600; }
 .q-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .q-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 .q-name { color: var(--ink); font-weight: 600; font-size: var(--t-16); }
@@ -708,7 +709,7 @@ a.tile:hover { text-decoration: none; border-color: var(--accent); }
 a.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .t-prog { display: flex; align-items: center; gap: 6px; font-size: var(--t-12); font-weight: 600; color: var(--ink-3); }
 .t-label { font-size: var(--t-14); color: var(--ink-2); min-height: 20px; }
-.t-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+.t-numrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
 .t-num { display: flex; align-items: baseline; gap: 2px; font-variant-numeric: tabular-nums; }
 .t-num .hv { font-size: var(--t-28); line-height: 32px; font-weight: 600; letter-spacing: -0.02em; }
 .t-num .hu { font-size: var(--t-14); font-weight: 600; color: var(--ink-2); margin-left: 2px; }
@@ -716,7 +717,7 @@ a.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .t-cmp { font-size: var(--t-14); color: var(--ink-2); font-variant-numeric: tabular-nums; }
 .t-sure { margin-top: auto; padding-top: 6px; font-size: var(--t-12); color: var(--ink-3); }
 .not-enrolled { font-size: var(--t-14); color: var(--ink-3); }
-.gauge { width: 100%; height: auto; display: block; overflow: visible; }
+.gauge { width: 100%; max-width: 240px; height: auto; display: block; overflow: visible; }
 .gauge .gtrack { fill: var(--surface-2); }
 .gauge .gv { fill: var(--ink-2); }
 .gauge .gm { stroke: var(--ink-3); stroke-width: 1.5; }
@@ -820,3 +821,16 @@ dialog.sheet q { display: block; font-style: normal; color: var(--ink-2); border
   .nav-link { min-height: 44px; font-size: var(--t-12); }
   #toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* coach prep and coach-first calls */
+.prep { display: flex; flex-direction: column; gap: var(--s-2); background: var(--surface); border: 1px solid var(--line); padding: var(--s-3); }
+.prep-dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2) var(--s-3); }
+.prep-dl dt { font-size: var(--t-12); font-weight: 600; color: var(--ink-3); margin-bottom: 2px; }
+.prep-dl dd { margin: 0; font-size: var(--t-16); line-height: 1.5; }
+.prep-flag { grid-column: 1 / -1; }
+.open-flag { display: inline-flex; align-items: center; gap: 4px; font-size: var(--t-12); font-weight: 600; color: var(--alert-ink); white-space: nowrap; }
+.c-row { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) auto; padding: 12px var(--s-3); min-height: 56px; }
+.c-row .small { font-size: var(--t-14); }
+.c-row .c-ww b { color: var(--ink-2); font-weight: 600; margin-right: 4px; }
+.c-row .c-flag { color: var(--ink-2); }
+@media (max-width: 760px) { .prep-dl { grid-template-columns: 1fr; } .c-row { grid-template-columns: minmax(0, 1fr) auto; } .c-row .c-ww, .c-row .c-flag { grid-column: 1 / -1; } }
