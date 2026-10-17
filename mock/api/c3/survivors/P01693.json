@@ -1,0 +1,324 @@
+{
+ "survivorId": "P01693",
+ "status": "alert",
+ "headline": "Rough patch likely · 3 signals off usual",
+ "summary": "Head And Neck cancer, stage IV, chemoradiation, weekdays for 6 weeks. Treatment phase: on treatment. Last 3 days compared with this person’s own previous 28 days.",
+ "profile": {
+  "age": 67,
+  "sex": "female",
+  "language": "English",
+  "cancer": "head and neck",
+  "stage": "IV",
+  "treatment": "Chemoradiation, weekdays for 6 weeks",
+  "livesAlone": "no",
+  "milesToClinic": 25,
+  "device": "Fitbit tracker"
+ },
+ "evidence": [
+  {
+   "kind": "steps",
+   "text": "Steps -44% vs usual (1,193 vs 2,124/day)"
+  },
+  {
+   "kind": "feeling",
+   "text": "Daily check-in 1.0/5 (usual 3.2/5)"
+  },
+  {
+   "kind": "worn",
+   "text": "Watch worn only 13 h/day"
+  },
+  {
+   "kind": "diary",
+   "text": "Diary 2024-07-04: “Feeling strong today. My kids came over, helped a lot.”"
+  },
+  {
+   "kind": "diary",
+   "text": "Diary 2024-07-05: “Meh. Low energy but got some things done”"
+  },
+  {
+   "kind": "diary",
+   "text": "Diary 2024-07-06: “Radiation done, quick today”"
+  }
+ ],
+ "recommendations": [
+  {
+   "audience": "coach",
+   "text": "Call before the scheduled check-in. Ask how the last 3 days felt; don’t lead with the numbers."
+  },
+  {
+   "audience": "coach",
+   "text": "If fever, shortness of breath or no food intake comes up, route to the care team today."
+  },
+  {
+   "audience": "survivor",
+   "text": "Rest is OK this week. Short walks around the house count."
+  }
+ ],
+ "charts": {
+  "baseline": {
+   "steps": 2124.4,
+   "sleep_minutes": 351.3,
+   "resting_heart_rate": 72.3,
+   "daily_feeling_1_to_5": 3.2
+  },
+  "days": [
+   {
+    "date": "2024-06-27",
+    "steps": 1931.0,
+    "sleep": 286.0,
+    "rhr": 71.6,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-06-28",
+    "steps": 3087.0,
+    "sleep": 331.0,
+    "rhr": 70.8,
+    "feeling": 4.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-06-29",
+    "steps": 2521.0,
+    "sleep": 300.0,
+    "rhr": 71.2,
+    "feeling": 5.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-06-30",
+    "steps": 2139.0,
+    "sleep": 406.0,
+    "rhr": 71.3,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-01",
+    "steps": 1557.0,
+    "sleep": 375.0,
+    "rhr": 74.7,
+    "feeling": 2.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-02",
+    "steps": 2604.0,
+    "sleep": 306.0,
+    "rhr": 73.4,
+    "feeling": 4.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-03",
+    "steps": 2579.0,
+    "sleep": 428.0,
+    "rhr": 73.7,
+    "feeling": 4.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-04",
+    "steps": 3206.0,
+    "sleep": 310.0,
+    "rhr": 73.5,
+    "feeling": 4.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-07-05",
+    "steps": 1728.0,
+    "sleep": 341.0,
+    "rhr": 69.8,
+    "feeling": 3.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-07-06",
+    "steps": 1878.0,
+    "sleep": 375.0,
+    "rhr": 71.8,
+    "feeling": 4.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-07",
+    "steps": 2212.0,
+    "sleep": 400.0,
+    "rhr": 73.7,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-08",
+    "steps": 1677.0,
+    "sleep": 377.0,
+    "rhr": 72.1,
+    "feeling": 3.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-09",
+    "steps": 2084.0,
+    "sleep": 325.0,
+    "rhr": 71.2,
+    "feeling": 3.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-10",
+    "steps": 1863.0,
+    "sleep": 298.0,
+    "rhr": 71.8,
+    "feeling": 2.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-11",
+    "steps": 2822.0,
+    "sleep": 380.0,
+    "rhr": 71.9,
+    "feeling": 3.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-07-12",
+    "steps": 2139.0,
+    "sleep": 369.0,
+    "rhr": 70.9,
+    "feeling": 2.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-07-13",
+    "steps": 2364.0,
+    "sleep": 352.0,
+    "rhr": 72.1,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-14",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-15",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-16",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-17",
+    "steps": 1876.0,
+    "sleep": 380.0,
+    "rhr": 74.9,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-18",
+    "steps": 1129.0,
+    "sleep": 374.0,
+    "rhr": 73.3,
+    "feeling": 3.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-07-19",
+    "steps": 1652.0,
+    "sleep": 321.0,
+    "rhr": 73.9,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-07-20",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-21",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": 2.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-22",
+    "steps": 1567.0,
+    "sleep": 311.0,
+    "rhr": 75.1,
+    "feeling": 1.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-23",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-07-24",
+    "steps": 820.0,
+    "sleep": 286.0,
+    "rhr": 75.5,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   }
+  ]
+ },
+ "hindsight": [
+  "treatment completed",
+  "ER visit; admitted to hospital",
+  "discharged home"
+ ]
+}

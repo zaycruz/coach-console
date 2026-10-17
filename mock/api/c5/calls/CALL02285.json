@@ -1,0 +1,488 @@
+{
+ "callId": "CALL02285",
+ "survivorId": "P0407",
+ "coach": {
+  "id": "C12",
+  "name": "Jorge",
+  "role": "exercise coach"
+ },
+ "date": "2025-03-19",
+ "start": "15:30",
+ "language": "Spanish",
+ "goalTopic": "fasting",
+ "callNumber": 5,
+ "week": 8,
+ "durationMin": 4.7,
+ "score": 58,
+ "scoreParts": {
+  "reflectionsPerQuestion": {
+   "value": 0.1,
+   "target": 2,
+   "points": 2,
+   "max": 30
+  },
+  "complexReflectionPct": {
+   "value": 100,
+   "target": 40,
+   "points": 20,
+   "max": 20
+  },
+  "openQuestionPct": {
+   "value": 40,
+   "target": 50,
+   "points": 16,
+   "max": 20
+  },
+  "miConsistent": {
+   "value": "6 vs 3",
+   "target": "0 persuade/confront",
+   "points": 20,
+   "max": 30
+  }
+ },
+ "flags": [
+  {
+   "line": 7,
+   "kind": "social",
+   "text": "El dinero está muy apretado. Hay días que no tenemos suficiente comida en la casa.",
+   "t": "00:36"
+  }
+ ],
+ "cues": [
+  {
+   "line": 13,
+   "kind": "missed change talk",
+   "text": "They just said why they want to change. Reflect it back before moving on."
+  },
+  {
+   "line": 20,
+   "kind": "missed change talk",
+   "text": "They just said why they want to change. Reflect it back before moving on."
+  },
+  {
+   "line": 20,
+   "kind": "persuade",
+   "text": "Ask permission before advice, or offer options and let them choose."
+  },
+  {
+   "line": 25,
+   "kind": "persuade",
+   "text": "Ask permission before advice, or offer options and let them choose."
+  },
+  {
+   "line": 32,
+   "kind": "missed change talk",
+   "text": "They just said why they want to change. Reflect it back before moving on."
+  },
+  {
+   "line": 36,
+   "kind": "missed change talk",
+   "text": "They just said why they want to change. Reflect it back before moving on."
+  },
+  {
+   "line": 36,
+   "kind": "persuade",
+   "text": "Ask permission before advice, or offer options and let them choose."
+  }
+ ],
+ "moveCounts": {
+  "other": 7,
+  "seek collaboration": 1,
+  "open question": 4,
+  "closed question": 6,
+  "give information": 2,
+  "persuade": 3,
+  "complex reflection": 1
+ },
+ "talkCounts": {
+  "neutral": 10,
+  "change": 7,
+  "sustain": 4
+ },
+ "lines": [
+  {
+   "n": 1,
+   "t": "00:00",
+   "speaker": "coach",
+   "text": "Hola Osvaldo, soy Jorge. ¿Tiene unos minutos para nuestra llamada?",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 2,
+   "t": "00:07",
+   "speaker": "participant",
+   "text": "Hola, sí, estaba esperando su llamada.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 3,
+   "t": "00:12",
+   "speaker": "coach",
+   "text": "Esto es lo que tenía pensado para hoy, pero dígame si prefiere enfocarse en otra cosa.",
+   "move": "seek collaboration",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 4,
+   "t": "00:24",
+   "speaker": "participant",
+   "text": "Perfecto.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 5,
+   "t": "00:26",
+   "speaker": "coach",
+   "text": "¿Cómo ha estado su energía esta semana?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 6,
+   "t": "00:31",
+   "speaker": "participant",
+   "text": "Bastante bien, la verdad.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 7,
+   "t": "00:36",
+   "speaker": "participant",
+   "text": "El dinero está muy apretado. Hay días que no tenemos suficiente comida en la casa.",
+   "talk": "neutral",
+   "flag": "social"
+  },
+  {
+   "n": 8,
+   "t": "00:47",
+   "speaker": "coach",
+   "text": "Entiendo.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 9,
+   "t": "00:49",
+   "speaker": "coach",
+   "text": "¿Pudo terminar de comer a las 7:30 3 noches?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 10,
+   "t": "00:57",
+   "speaker": "participant",
+   "text": "Mejor de lo que pensé. 3 días.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 11,
+   "t": "01:02",
+   "speaker": "coach",
+   "text": "¿Cómo quiere manejar el ayuno de noche de aquí en adelante?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 12,
+   "t": "01:09",
+   "speaker": "participant",
+   "text": "De verdad quiero volver a sentirme como antes.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 13,
+   "t": "01:16",
+   "speaker": "coach",
+   "text": "Terminar la cena un poco más temprano, como a las 7, hace las 13 horas mucho más fáciles.",
+   "move": "give information",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 14,
+   "t": "01:27",
+   "speaker": "participant",
+   "text": "Me da mucha hambre de noche, si no como algo no puedo dormir.",
+   "talk": "sustain",
+   "flag": "none"
+  },
+  {
+   "n": 15,
+   "t": "01:37",
+   "speaker": "coach",
+   "text": "El café negro, el té o el agua no rompen el ayuno.",
+   "move": "give information",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 16,
+   "t": "01:47",
+   "speaker": "participant",
+   "text": "Ajá.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 17,
+   "t": "01:49",
+   "speaker": "coach",
+   "text": "¿Cree que 5 días es realista?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 18,
+   "t": "01:53",
+   "speaker": "coach",
+   "text": "Entiendo.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 19,
+   "t": "01:55",
+   "speaker": "participant",
+   "text": "Sí. Ya le conté a mi familia de mi meta.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 20,
+   "t": "02:02",
+   "speaker": "coach",
+   "text": "No puede estar comiendo a las 10 de la noche.",
+   "move": "persuade",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 21,
+   "t": "02:08",
+   "speaker": "participant",
+   "text": "Ya sé, ya sé.",
+   "talk": "sustain",
+   "flag": "none"
+  },
+  {
+   "n": 22,
+   "t": "02:11",
+   "speaker": "coach",
+   "text": "¿Su hija le puede ayudar?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 23,
+   "t": "02:15",
+   "speaker": "coach",
+   "text": "Entiendo.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 24,
+   "t": "02:17",
+   "speaker": "participant",
+   "text": "Sí, creo que sí. Fue un fin de semana largo con la familia, usted sabe cómo es.",
+   "talk": "sustain",
+   "flag": "none"
+  },
+  {
+   "n": 25,
+   "t": "02:26",
+   "speaker": "coach",
+   "text": "Los estudios son muy claros, tiene que comer más temprano.",
+   "move": "persuade",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 26,
+   "t": "02:32",
+   "speaker": "participant",
+   "text": "Supongo.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 27,
+   "t": "02:35",
+   "speaker": "coach",
+   "text": "¿Qué le haría más fácil la próxima semana?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 28,
+   "t": "02:42",
+   "speaker": "participant",
+   "text": "Necesito bajar el azúcar.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 29,
+   "t": "02:56",
+   "speaker": "coach",
+   "text": "Esto es más que el ayuno de noche. Se trata de recuperar su vida.",
+   "move": "complex reflection",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 30,
+   "t": "03:06",
+   "speaker": "coach",
+   "text": "Claro.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 31,
+   "t": "03:08",
+   "speaker": "participant",
+   "text": "Tengo que hacer algo, no quiero que vuelva el cáncer. Por lo menos estoy tratando.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 32,
+   "t": "03:17",
+   "speaker": "coach",
+   "text": "¿Lo primero que toma es café con leche?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 33,
+   "t": "03:23",
+   "speaker": "participant",
+   "text": "A veces.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 34,
+   "t": "03:25",
+   "speaker": "coach",
+   "text": "¿Desayuna todos los días?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 35,
+   "t": "03:29",
+   "speaker": "participant",
+   "text": "No, la verdad no. Si lo planifico la noche antes, lo puedo hacer.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 36,
+   "t": "03:37",
+   "speaker": "coach",
+   "text": "La próxima semana quiero que usted pueda terminar de comer a las 7:30 3 noches.",
+   "move": "persuade",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 37,
+   "t": "03:47",
+   "speaker": "participant",
+   "text": "Puede ser.",
+   "talk": "sustain",
+   "flag": "none"
+  },
+  {
+   "n": 38,
+   "t": "03:50",
+   "speaker": "coach",
+   "text": "Del 0 al 10, ¿cuánta confianza tiene en que lo puede lograr?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 39,
+   "t": "03:59",
+   "speaker": "participant",
+   "text": "8. Tal vez 9.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 40,
+   "t": "04:03",
+   "speaker": "coach",
+   "text": "Si las fiestas se mete en el medio otra vez, ¿cuál es su plan B?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 41,
+   "t": "04:13",
+   "speaker": "participant",
+   "text": "Lo hago apenas me levante, antes de cualquier cosa.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 42,
+   "t": "04:20",
+   "speaker": "coach",
+   "text": "Le escribo a mitad de semana para ver cómo va, y hablamos otra vez en dos semanas.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 43,
+   "t": "04:29",
+   "speaker": "participant",
+   "text": "¿Podemos un poquito más tarde? Tengo una cita.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 44,
+   "t": "04:33",
+   "speaker": "coach",
+   "text": "Bueno Osvaldo, que pase buen resto del día.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 45,
+   "t": "04:40",
+   "speaker": "participant",
+   "text": "Bendiciones.",
+   "talk": "neutral",
+   "flag": "none"
+  }
+ ]
+}

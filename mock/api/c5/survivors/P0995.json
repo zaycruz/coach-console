@@ -1,0 +1,61 @@
+{
+ "survivorId": "P0995",
+ "status": "ok",
+ "headline": "Coach score 96/100 · on target",
+ "summary": "71-year-old male, breast cancer. Program focus: movement. Calls in Spanish. Coach Yolanda (health coach).",
+ "profile": {
+  "firstName": "Ernesto",
+  "age": 71,
+  "sex": "male",
+  "language": "Spanish",
+  "cancer": "breast",
+  "focus": "movement",
+  "coach": "Yolanda"
+ },
+ "evidence": [
+  {
+   "kind": "score",
+   "text": "Coach score 96/100 on call 1 (week 1)"
+  },
+  {
+   "kind": "cue",
+   "text": "Line 47: missed change talk"
+  }
+ ],
+ "recommendations": [
+  {
+   "audience": "coach",
+   "text": "Review the cue moments with the coach in supervision."
+  }
+ ],
+ "charts": {
+  "latestCallId": "CALL05537",
+  "score": 96,
+  "scoreParts": {
+   "reflectionsPerQuestion": {
+    "value": 1.75,
+    "target": 2,
+    "points": 26,
+    "max": 30
+   },
+   "complexReflectionPct": {
+    "value": 71,
+    "target": 40,
+    "points": 20,
+    "max": 20
+   },
+   "openQuestionPct": {
+    "value": 75,
+    "target": 50,
+    "points": 20,
+    "max": 20
+   },
+   "miConsistent": {
+    "value": "24 vs 0",
+    "target": "0 persuade/confront",
+    "points": 30,
+    "max": 30
+   }
+  }
+ }
+}

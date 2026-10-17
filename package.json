@@ -1,0 +1,13 @@
+{
+  "name": "coach-console",
+  "private": true,
+  "description": "Coach Console first-draft UI/UX prototype (static, no build step)",
+  "scripts": {
+    "mocks": "python3 -I scripts/build_mocks.py",
+    "e2e": "node e2e/clickthrough.mjs",
+    "artifact": "sh scripts/build_artifact.sh"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

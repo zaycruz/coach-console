@@ -1,0 +1,506 @@
+{
+ "survivorId": "N0767",
+ "status": "ok",
+ "headline": "Dinners after 8 pm rise 10 mg/dL more than earlier dinners",
+ "summary": "Bladder cancer survivor, 3.5 years after treatment. Group: coaching + overnight fast. Start blood sugar: normal. Cuban food background, retired.",
+ "profile": {
+  "age": 71,
+  "sex": "male",
+  "language": "Spanish",
+  "cancer": "bladder",
+  "group": "coaching + overnight fast",
+  "bloodSugarGroup": "normal",
+  "work": "retired",
+  "food": "Cuban"
+ },
+ "evidence": [
+  {
+   "kind": "late-vs-early",
+   "text": "Average 2-hour rise: 42 mg/dL after 10 late dinners vs 32 after 3 earlier dinners"
+  },
+  {
+   "kind": "walk",
+   "text": "Walk of 10+ min after dinner: rise 29 vs 51 mg/dL without"
+  },
+  {
+   "kind": "fast",
+   "text": "Average overnight fast 12.6 h (program goal 13 h)"
+  },
+  {
+   "kind": "range",
+   "text": "1% of sensor readings above 140 mg/dL in weeks 1–2"
+  }
+ ],
+ "recommendations": [
+  {
+   "audience": "survivor",
+   "text": "Try to finish dinner by 7:30 pm on 4 nights this week.",
+   "es": "Intente terminar la cena antes de las 7:30 pm 4 noches esta semana."
+  },
+  {
+   "audience": "survivor",
+   "text": "On nights you eat late, walk 10 minutes right after.",
+   "es": "Las noches que cene tarde, camine 10 minutos justo después."
+  },
+  {
+   "audience": "coach",
+   "text": "Open the next call with the late-dinner pattern; ask what makes early dinners hard (work shift, family)."
+  }
+ ],
+ "caveat": "Pattern in this person’s own data, not proof of cause. Late and early dinners also differ in what was eaten.",
+ "charts": {
+  "day": {
+   "date": "2025-01-16",
+   "curve": [
+    {
+     "t": "04:00",
+     "g": 83
+    },
+    {
+     "t": "04:15",
+     "g": 80
+    },
+    {
+     "t": "04:30",
+     "g": 85
+    },
+    {
+     "t": "04:45",
+     "g": 82
+    },
+    {
+     "t": "05:00",
+     "g": 73
+    },
+    {
+     "t": "05:15",
+     "g": 76
+    },
+    {
+     "t": "05:30",
+     "g": 75
+    },
+    {
+     "t": "05:45",
+     "g": 76
+    },
+    {
+     "t": "06:00",
+     "g": 77
+    },
+    {
+     "t": "06:15",
+     "g": 75
+    },
+    {
+     "t": "06:30",
+     "g": 80
+    },
+    {
+     "t": "06:45",
+     "g": 78
+    },
+    {
+     "t": "07:00",
+     "g": 81
+    },
+    {
+     "t": "07:15",
+     "g": 86
+    },
+    {
+     "t": "07:30",
+     "g": 84
+    },
+    {
+     "t": "07:45",
+     "g": 83
+    },
+    {
+     "t": "08:00",
+     "g": 81
+    },
+    {
+     "t": "08:15",
+     "g": 89
+    },
+    {
+     "t": "08:30",
+     "g": 86
+    },
+    {
+     "t": "08:45",
+     "g": 82
+    },
+    {
+     "t": "09:00",
+     "g": 84
+    },
+    {
+     "t": "09:15",
+     "g": 78
+    },
+    {
+     "t": "09:30",
+     "g": 74
+    },
+    {
+     "t": "09:45",
+     "g": 77
+    },
+    {
+     "t": "10:00",
+     "g": 74
+    },
+    {
+     "t": "10:15",
+     "g": 81
+    },
+    {
+     "t": "10:30",
+     "g": 76
+    },
+    {
+     "t": "10:45",
+     "g": 75
+    },
+    {
+     "t": "11:00",
+     "g": 73
+    },
+    {
+     "t": "11:15",
+     "g": 82
+    },
+    {
+     "t": "11:30",
+     "g": 79
+    },
+    {
+     "t": "11:45",
+     "g": 86
+    },
+    {
+     "t": "12:00",
+     "g": 81
+    },
+    {
+     "t": "12:15",
+     "g": 86
+    },
+    {
+     "t": "12:30",
+     "g": 91
+    },
+    {
+     "t": "12:45",
+     "g": 95
+    },
+    {
+     "t": "13:00",
+     "g": 114
+    },
+    {
+     "t": "13:15",
+     "g": 134
+    },
+    {
+     "t": "13:30",
+     "g": 137
+    },
+    {
+     "t": "13:45",
+     "g": 125
+    },
+    {
+     "t": "14:00",
+     "g": 122
+    },
+    {
+     "t": "14:15",
+     "g": 110
+    },
+    {
+     "t": "14:30",
+     "g": 105
+    },
+    {
+     "t": "14:45",
+     "g": 95
+    },
+    {
+     "t": "15:00",
+     "g": 90
+    },
+    {
+     "t": "15:15",
+     "g": 89
+    },
+    {
+     "t": "15:30",
+     "g": 94
+    },
+    {
+     "t": "15:45",
+     "g": 92
+    },
+    {
+     "t": "16:00",
+     "g": 84
+    },
+    {
+     "t": "16:15",
+     "g": 87
+    },
+    {
+     "t": "16:30",
+     "g": 98
+    },
+    {
+     "t": "16:45",
+     "g": 86
+    },
+    {
+     "t": "17:00",
+     "g": 83
+    },
+    {
+     "t": "17:15",
+     "g": 85
+    },
+    {
+     "t": "17:30",
+     "g": 86
+    },
+    {
+     "t": "17:45",
+     "g": 89
+    },
+    {
+     "t": "18:00",
+     "g": 87
+    },
+    {
+     "t": "18:15",
+     "g": 78
+    },
+    {
+     "t": "18:30",
+     "g": 83
+    },
+    {
+     "t": "18:45",
+     "g": 84
+    },
+    {
+     "t": "19:00",
+     "g": 75
+    },
+    {
+     "t": "19:15",
+     "g": 77
+    },
+    {
+     "t": "19:30",
+     "g": 79
+    },
+    {
+     "t": "19:45",
+     "g": 83
+    },
+    {
+     "t": "20:00",
+     "g": 97
+    },
+    {
+     "t": "20:15",
+     "g": 115
+    },
+    {
+     "t": "20:30",
+     "g": 121
+    },
+    {
+     "t": "20:45",
+     "g": 113
+    },
+    {
+     "t": "21:00",
+     "g": 107
+    },
+    {
+     "t": "21:15",
+     "g": 113
+    },
+    {
+     "t": "21:30",
+     "g": 113
+    },
+    {
+     "t": "21:45",
+     "g": 122
+    },
+    {
+     "t": "22:00",
+     "g": 132
+    },
+    {
+     "t": "22:15",
+     "g": 141
+    },
+    {
+     "t": "22:30",
+     "g": 136
+    },
+    {
+     "t": "22:45",
+     "g": 123
+    },
+    {
+     "t": "23:00",
+     "g": 106
+    },
+    {
+     "t": "23:15",
+     "g": 108
+    },
+    {
+     "t": "23:30",
+     "g": 99
+    },
+    {
+     "t": "23:45",
+     "g": 86
+    },
+    {
+     "t": "00:00",
+     "g": 89
+    },
+    {
+     "t": "00:15",
+     "g": 88
+    },
+    {
+     "t": "00:30",
+     "g": 84
+    },
+    {
+     "t": "00:45",
+     "g": 83
+    },
+    {
+     "t": "01:00",
+     "g": 87
+    },
+    {
+     "t": "01:15",
+     "g": 83
+    },
+    {
+     "t": "01:30",
+     "g": 82
+    },
+    {
+     "t": "01:45",
+     "g": 81
+    },
+    {
+     "t": "02:00",
+     "g": 79
+    },
+    {
+     "t": "02:15",
+     "g": 79
+    },
+    {
+     "t": "02:30",
+     "g": 78
+    },
+    {
+     "t": "02:45",
+     "g": 86
+    },
+    {
+     "t": "03:00",
+     "g": 84
+    },
+    {
+     "t": "03:15",
+     "g": 92
+    },
+    {
+     "t": "03:30",
+     "g": 92
+    },
+    {
+     "t": "03:45",
+     "g": 82
+    }
+   ],
+   "meals": [
+    {
+     "t": "12:34",
+     "type": "drink",
+     "food": "Orange juice",
+     "carbs": 25.4,
+     "walk": 0
+    },
+    {
+     "t": "12:45",
+     "type": "lunch",
+     "food": "Picadillo with white rice and maduros",
+     "carbs": 89.5,
+     "walk": 15
+    },
+    {
+     "t": "19:43",
+     "type": "dinner",
+     "food": "Vaca frita with rice and black beans",
+     "carbs": 70.9,
+     "walk": 30
+    },
+    {
+     "t": "20:57",
+     "type": "drink",
+     "food": "Mojito",
+     "carbs": 22.6,
+     "walk": 0
+    },
+    {
+     "t": "21:41",
+     "type": "late snack",
+     "food": "Pastelito de carne",
+     "carbs": 30.4,
+     "walk": 0
+    }
+   ]
+  },
+  "compare": [
+   {
+    "label": "Dinner before 7:30 pm",
+    "value": 32,
+    "n": 3
+   },
+   {
+    "label": "Dinner after 8 pm",
+    "value": 42,
+    "n": 10
+   },
+   {
+    "label": "Walked 10+ min after",
+    "value": 29,
+    "n": 7
+   }
+  ],
+  "lastAteHistogram": [
+   0,
+   2,
+   10,
+   10,
+   15,
+   2,
+   0,
+   1
+  ]
+ }
+}

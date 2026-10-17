@@ -1,0 +1,585 @@
+{
+ "callId": "CALL01792",
+ "survivorId": "P0319",
+ "coach": {
+  "id": "C05",
+  "name": "Rachel",
+  "role": "dietitian"
+ },
+ "date": "2025-06-04",
+ "start": "10:30",
+ "language": "English",
+ "goalTopic": "walking",
+ "callNumber": 5,
+ "week": 8,
+ "durationMin": 6.9,
+ "score": 77,
+ "scoreParts": {
+  "reflectionsPerQuestion": {
+   "value": 0.46,
+   "target": 2,
+   "points": 7,
+   "max": 30
+  },
+  "complexReflectionPct": {
+   "value": 67,
+   "target": 40,
+   "points": 20,
+   "max": 20
+  },
+  "openQuestionPct": {
+   "value": 62,
+   "target": 50,
+   "points": 20,
+   "max": 20
+  },
+  "miConsistent": {
+   "value": "19 vs 0",
+   "target": "0 persuade/confront",
+   "points": 30,
+   "max": 30
+  }
+ },
+ "flags": [],
+ "cues": [
+  {
+   "line": 14,
+   "kind": "missed change talk",
+   "text": "They just said why they want to change. Reflect it back before moving on."
+  },
+  {
+   "line": 16,
+   "kind": "missed change talk",
+   "text": "They just said why they want to change. Reflect it back before moving on."
+  },
+  {
+   "line": 18,
+   "kind": "missed change talk",
+   "text": "They just said why they want to change. Reflect it back before moving on."
+  },
+  {
+   "line": 18,
+   "kind": "3 closed questions",
+   "text": "Try an open question: “What would make this week easier?”"
+  },
+  {
+   "line": 47,
+   "kind": "missed change talk",
+   "text": "They just said why they want to change. Reflect it back before moving on."
+  }
+ ],
+ "moveCounts": {
+  "other": 6,
+  "seek collaboration": 1,
+  "open question": 8,
+  "closed question": 5,
+  "complex reflection": 4,
+  "simple reflection": 2,
+  "affirm": 2,
+  "ask permission": 1,
+  "give information": 1,
+  "emphasize autonomy": 1
+ },
+ "talkCounts": {
+  "neutral": 10,
+  "sustain": 1,
+  "change": 16
+ },
+ "lines": [
+  {
+   "n": 1,
+   "t": "00:00",
+   "speaker": "coach",
+   "text": "Hello Teresa, it's Rachel. Do you have a few minutes for our call?",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 2,
+   "t": "00:08",
+   "speaker": "participant",
+   "text": "Hi! Yes, now's good.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 3,
+   "t": "00:28",
+   "speaker": "coach",
+   "text": "Here's what I had in mind for today, but tell me if you'd rather focus on something else.",
+   "move": "seek collaboration",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 4,
+   "t": "00:39",
+   "speaker": "participant",
+   "text": "That works.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 5,
+   "t": "01:02",
+   "speaker": "coach",
+   "text": "How are you doing, really?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 6,
+   "t": "01:06",
+   "speaker": "participant",
+   "text": "So-so. Up and down.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 7,
+   "t": "01:12",
+   "speaker": "coach",
+   "text": "Mm-hmm.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 8,
+   "t": "01:14",
+   "speaker": "coach",
+   "text": "Did you hit your goal this week?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 9,
+   "t": "01:20",
+   "speaker": "participant",
+   "text": "Yeah, only 1 days. My knees have been bothering me.",
+   "talk": "sustain",
+   "flag": "none"
+  },
+  {
+   "n": 10,
+   "t": "01:26",
+   "speaker": "coach",
+   "text": "You'd rather start small and actually stick with it.",
+   "move": "complex reflection",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 11,
+   "t": "01:33",
+   "speaker": "participant",
+   "text": "If I plan it the night before, I can do it.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 12,
+   "t": "01:40",
+   "speaker": "coach",
+   "text": "Once you decide something, you follow through.",
+   "move": "complex reflection",
+   "confidence": 0.24,
+   "reviewed": true
+  },
+  {
+   "n": 13,
+   "t": "01:44",
+   "speaker": "participant",
+   "text": "I want to get my energy back.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 14,
+   "t": "01:49",
+   "speaker": "coach",
+   "text": "Is that something you can do?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 15,
+   "t": "01:54",
+   "speaker": "participant",
+   "text": "Yes. Okay, this week I'll really do it.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 16,
+   "t": "02:01",
+   "speaker": "coach",
+   "text": "Is your daughter able to help?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 17,
+   "t": "02:07",
+   "speaker": "participant",
+   "text": "Not yet. I already told my family about my goal.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 18,
+   "t": "02:15",
+   "speaker": "coach",
+   "text": "Did you try the mall?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 19,
+   "t": "02:21",
+   "speaker": "participant",
+   "text": "Sometimes.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 20,
+   "t": "02:24",
+   "speaker": "coach",
+   "text": "What did you notice on the days it went well?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 21,
+   "t": "02:33",
+   "speaker": "participant",
+   "text": "Getting back to work is why I'm doing this.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 22,
+   "t": "02:41",
+   "speaker": "coach",
+   "text": "Your family is a big part of why.",
+   "move": "simple reflection",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 23,
+   "t": "03:10",
+   "speaker": "participant",
+   "text": "Mm-hmm.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 24,
+   "t": "03:13",
+   "speaker": "coach",
+   "text": "That's real progress.",
+   "move": "affirm",
+   "confidence": 0.24,
+   "reviewed": true
+  },
+  {
+   "n": 25,
+   "t": "03:17",
+   "speaker": "participant",
+   "text": "I already bought new sneakers. I didn't think I'd like it, but I do.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 26,
+   "t": "03:27",
+   "speaker": "coach",
+   "text": "Do you mind if I tell you what some people do?",
+   "move": "ask permission",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 27,
+   "t": "03:35",
+   "speaker": "participant",
+   "text": "Sure.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 28,
+   "t": "03:37",
+   "speaker": "coach",
+   "text": "Three 10-minute walks count the same as one 30-minute walk.",
+   "move": "give information",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 29,
+   "t": "03:45",
+   "speaker": "participant",
+   "text": "So, I put a reminder on the fridge. Some days are better than others.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 30,
+   "t": "03:56",
+   "speaker": "coach",
+   "text": "Part of you is already moving, and you want to keep that going.",
+   "move": "complex reflection",
+   "confidence": 0.24,
+   "reviewed": true
+  },
+  {
+   "n": 31,
+   "t": "04:03",
+   "speaker": "participant",
+   "text": "I think I can do 20 minutes if it's early. My doctor said the same thing.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 32,
+   "t": "04:13",
+   "speaker": "coach",
+   "text": "What would make it easier next week?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 33,
+   "t": "04:17",
+   "speaker": "coach",
+   "text": "Right.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 34,
+   "t": "04:20",
+   "speaker": "participant",
+   "text": "I know I can do it, I did it before.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 35,
+   "t": "04:27",
+   "speaker": "coach",
+   "text": "You're really honest with yourself, and that helps.",
+   "move": "affirm",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 36,
+   "t": "04:35",
+   "speaker": "participant",
+   "text": "I'll set an alarm on my phone.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 37,
+   "t": "04:40",
+   "speaker": "coach",
+   "text": "It's completely your call.",
+   "move": "emphasize autonomy",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 38,
+   "t": "04:43",
+   "speaker": "coach",
+   "text": "You've picked your days.",
+   "move": "simple reflection",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 39,
+   "t": "04:47",
+   "speaker": "participant",
+   "text": "I feel better about myself when I stick to it. At least I'm trying.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 40,
+   "t": "04:56",
+   "speaker": "coach",
+   "text": "What's worked for you before?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 41,
+   "t": "05:01",
+   "speaker": "coach",
+   "text": "Got it.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 42,
+   "t": "05:06",
+   "speaker": "participant",
+   "text": "I can probably manage three days.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 43,
+   "t": "05:11",
+   "speaker": "coach",
+   "text": "What would make it easier next week?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 44,
+   "t": "05:17",
+   "speaker": "participant",
+   "text": "Good question.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 45,
+   "t": "05:22",
+   "speaker": "coach",
+   "text": "What feels doable for next week?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 46,
+   "t": "05:26",
+   "speaker": "participant",
+   "text": "Let's say I walk 15 minutes on 3 days.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 47,
+   "t": "05:32",
+   "speaker": "coach",
+   "text": "On a scale of 0 to 10, how confident are you that you can do that?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 48,
+   "t": "05:43",
+   "speaker": "participant",
+   "text": "8. Maybe 9.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 49,
+   "t": "05:45",
+   "speaker": "coach",
+   "text": "Why a 8 and not a 5?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 50,
+   "t": "05:50",
+   "speaker": "participant",
+   "text": "So, when I walk I sleep better, I noticed that.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 51,
+   "t": "05:57",
+   "speaker": "coach",
+   "text": "What might get in the way?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 52,
+   "t": "06:02",
+   "speaker": "participant",
+   "text": "I'll ask my son to come with me.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 53,
+   "t": "06:09",
+   "speaker": "coach",
+   "text": "So, to sum up: the pain made this week harder, you still got 1 days in, and your plan is to walk 15 minutes on 3 days. Sound right?",
+   "move": "complex reflection",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 54,
+   "t": "06:26",
+   "speaker": "participant",
+   "text": "Yeah, and I'll really try this time.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 55,
+   "t": "06:30",
+   "speaker": "coach",
+   "text": "I'll text you midweek to see how it's going, and we'll talk again in two weeks.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 56,
+   "t": "06:41",
+   "speaker": "participant",
+   "text": "That works.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 57,
+   "t": "06:45",
+   "speaker": "coach",
+   "text": "Take care, Teresa. You're doing great.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 58,
+   "t": "06:51",
+   "speaker": "participant",
+   "text": "Thank you, Rachel. Bye!",
+   "talk": "neutral",
+   "flag": "none"
+  }
+ ]
+}

@@ -1,0 +1,296 @@
+{
+ "survivorId": "P00044",
+ "status": "ok",
+ "headline": "Within usual range on every signal",
+ "summary": "Breast cancer, stage III, radiation, weekdays for 5 weeks. Treatment phase: after treatment. Last 3 days compared with this person’s own previous 28 days.",
+ "profile": {
+  "age": 61,
+  "sex": "female",
+  "language": "English",
+  "cancer": "breast",
+  "stage": "III",
+  "treatment": "Radiation, weekdays for 5 weeks",
+  "livesAlone": "yes",
+  "milesToClinic": 8,
+  "device": "Fitbit tracker"
+ },
+ "evidence": [
+  {
+   "kind": "diary",
+   "text": "Diary 2024-02-24: “Radiation, 17 down”"
+  },
+  {
+   "kind": "diary",
+   "text": "Diary 2024-03-13: “Walked to the park with my husband.”"
+  }
+ ],
+ "recommendations": [
+  {
+   "audience": "coach",
+   "text": "No action. Keep the regular call schedule."
+  }
+ ],
+ "charts": {
+  "baseline": {
+   "steps": 3910.1,
+   "sleep_minutes": 561.9,
+   "resting_heart_rate": 75.4,
+   "daily_feeling_1_to_5": 3.5
+  },
+  "days": [
+   {
+    "date": "2024-02-21",
+    "steps": 3194.0,
+    "sleep": 591.0,
+    "rhr": 76.8,
+    "feeling": 4.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-02-22",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": 3.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-02-23",
+    "steps": 3141.0,
+    "sleep": 521.0,
+    "rhr": 74.0,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-02-24",
+    "steps": 4006.0,
+    "sleep": 508.0,
+    "rhr": 75.7,
+    "feeling": 4.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-02-25",
+    "steps": 3616.0,
+    "sleep": 516.0,
+    "rhr": 74.7,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-02-26",
+    "steps": 3006.0,
+    "sleep": 528.0,
+    "rhr": 72.8,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-02-27",
+    "steps": 2809.0,
+    "sleep": 554.0,
+    "rhr": 75.5,
+    "feeling": 3.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-02-28",
+    "steps": 4055.0,
+    "sleep": 560.0,
+    "rhr": 77.0,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-02-29",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": 3.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-01",
+    "steps": 4579.0,
+    "sleep": 550.0,
+    "rhr": 75.3,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-03-02",
+    "steps": 5344.0,
+    "sleep": 586.0,
+    "rhr": 75.7,
+    "feeling": 4.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-03-03",
+    "steps": 2719.0,
+    "sleep": 599.0,
+    "rhr": 77.3,
+    "feeling": 4.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-03-04",
+    "steps": 4498.0,
+    "sleep": 548.0,
+    "rhr": 73.8,
+    "feeling": 3.0,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-03-05",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": null,
+    "treatment": 1,
+    "event": null
+   },
+   {
+    "date": "2024-03-06",
+    "steps": 5438.0,
+    "sleep": 481.0,
+    "rhr": 77.5,
+    "feeling": null,
+    "treatment": 0,
+    "event": "treatment completed"
+   },
+   {
+    "date": "2024-03-07",
+    "steps": 5736.0,
+    "sleep": 553.0,
+    "rhr": 77.3,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-08",
+    "steps": 5958.0,
+    "sleep": 629.0,
+    "rhr": 72.5,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-09",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": 3.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-10",
+    "steps": 2699.0,
+    "sleep": 536.0,
+    "rhr": 75.8,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-11",
+    "steps": 2928.0,
+    "sleep": 574.0,
+    "rhr": 74.2,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-12",
+    "steps": 3787.0,
+    "sleep": 565.0,
+    "rhr": 75.5,
+    "feeling": 3.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-13",
+    "steps": 2629.0,
+    "sleep": 579.0,
+    "rhr": 76.2,
+    "feeling": 4.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-14",
+    "steps": 2822.0,
+    "sleep": 625.0,
+    "rhr": 76.5,
+    "feeling": 3.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-15",
+    "steps": 4330.0,
+    "sleep": 575.0,
+    "rhr": 77.4,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-16",
+    "steps": 2633.0,
+    "sleep": 596.0,
+    "rhr": 75.7,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-17",
+    "steps": 3065.0,
+    "sleep": 521.0,
+    "rhr": 75.9,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-18",
+    "steps": null,
+    "sleep": null,
+    "rhr": null,
+    "feeling": 3.0,
+    "treatment": 0,
+    "event": null
+   },
+   {
+    "date": "2024-03-19",
+    "steps": 6981.0,
+    "sleep": 553.0,
+    "rhr": 71.2,
+    "feeling": null,
+    "treatment": 0,
+    "event": null
+   }
+  ]
+ },
+ "hindsight": []
+}

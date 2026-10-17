@@ -1,0 +1,77 @@
+{
+ "survivorId": "P0407",
+ "status": "alert",
+ "headline": "Social flag at 00:36: act today",
+ "summary": "65-year-old male, endometrial cancer. Program focus: eating. Calls in Spanish. Coach Jorge (exercise coach).",
+ "profile": {
+  "firstName": "Osvaldo",
+  "age": 65,
+  "sex": "male",
+  "language": "Spanish",
+  "cancer": "endometrial",
+  "focus": "eating",
+  "coach": "Jorge"
+ },
+ "evidence": [
+  {
+   "kind": "flag-social",
+   "text": "00:36 “El dinero está muy apretado. Hay días que no tenemos suficiente comida en la casa.”"
+  },
+  {
+   "kind": "score",
+   "text": "Coach score 58/100 on call 5 (week 8)"
+  },
+  {
+   "kind": "cue",
+   "text": "Line 13: missed change talk"
+  },
+  {
+   "kind": "cue",
+   "text": "Line 20: missed change talk"
+  },
+  {
+   "kind": "cue",
+   "text": "Line 20: persuade"
+  }
+ ],
+ "recommendations": [
+  {
+   "audience": "coach",
+   "text": "Connect with the social worker today about food support."
+  },
+  {
+   "audience": "coach",
+   "text": "Review the cue moments with the coach in supervision."
+  }
+ ],
+ "charts": {
+  "latestCallId": "CALL02285",
+  "score": 58,
+  "scoreParts": {
+   "reflectionsPerQuestion": {
+    "value": 0.1,
+    "target": 2,
+    "points": 2,
+    "max": 30
+   },
+   "complexReflectionPct": {
+    "value": 100,
+    "target": 40,
+    "points": 20,
+    "max": 20
+   },
+   "openQuestionPct": {
+    "value": 40,
+    "target": 50,
+    "points": 16,
+    "max": 20
+   },
+   "miConsistent": {
+    "value": "6 vs 3",
+    "target": "0 persuade/confront",
+    "points": 20,
+    "max": 30
+   }
+  }
+ }
+}

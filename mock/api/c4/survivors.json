@@ -1,0 +1,51 @@
+[
+ {
+  "survivorId": "N0214",
+  "displayName": "N0214 · M, 82",
+  "status": "watch",
+  "headline": "Dinners after 8 pm rise 25 mg/dL more than earlier dinners",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "N0731",
+  "displayName": "N0731 · F, 44",
+  "status": "watch",
+  "headline": "Dinners after 8 pm rise 16 mg/dL more than earlier dinners",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "N0767",
+  "displayName": "N0767 · M, 71",
+  "status": "ok",
+  "headline": "Dinners after 8 pm rise 10 mg/dL more than earlier dinners",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "N0906",
+  "displayName": "N0906 · F, 53",
+  "status": "ok",
+  "headline": "Blood sugar back to range within 2 h after most meals",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "N0072",
+  "displayName": "N0072 · F, 61",
+  "status": "alert",
+  "headline": "75% of readings above 140 mg/dL",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "N0766",
+  "displayName": "N0766 · F, 52",
+  "status": "ok",
+  "headline": "Blood sugar back to range within 2 h after most meals",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "N1434",
+  "displayName": "N1434 · M, 78",
+  "status": "watch",
+  "headline": "15% of readings above 140 mg/dL",
+  "updatedAt": "2026-10-17T07:30:00"
+ }
+]

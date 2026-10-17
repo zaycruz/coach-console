@@ -1,0 +1,434 @@
+{
+ "callId": "CALL05236",
+ "survivorId": "P0941",
+ "coach": {
+  "id": "C09",
+  "name": "Jean",
+  "role": "health coach"
+ },
+ "date": "2025-08-06",
+ "start": "15:00",
+ "language": "English",
+ "goalTopic": "alcohol",
+ "callNumber": 3,
+ "week": 4,
+ "durationMin": 4.0,
+ "score": 43,
+ "scoreParts": {
+  "reflectionsPerQuestion": {
+   "value": 0.12,
+   "target": 2,
+   "points": 2,
+   "max": 30
+  },
+  "complexReflectionPct": {
+   "value": 0,
+   "target": 40,
+   "points": 0,
+   "max": 20
+  },
+  "openQuestionPct": {
+   "value": 62,
+   "target": 50,
+   "points": 20,
+   "max": 20
+  },
+  "miConsistent": {
+   "value": "9 vs 4",
+   "target": "0 persuade/confront",
+   "points": 21,
+   "max": 30
+  }
+ },
+ "flags": [],
+ "cues": [
+  {
+   "line": 15,
+   "kind": "missed change talk",
+   "text": "They just said why they want to change. Reflect it back before moving on."
+  },
+  {
+   "line": 15,
+   "kind": "persuade",
+   "text": "Ask permission before advice, or offer options and let them choose."
+  },
+  {
+   "line": 20,
+   "kind": "missed change talk",
+   "text": "They just said why they want to change. Reflect it back before moving on."
+  },
+  {
+   "line": 25,
+   "kind": "persuade",
+   "text": "Ask permission before advice, or offer options and let them choose."
+  },
+  {
+   "line": 27,
+   "kind": "persuade",
+   "text": "Ask permission before advice, or offer options and let them choose."
+  },
+  {
+   "line": 31,
+   "kind": "persuade",
+   "text": "Ask permission before advice, or offer options and let them choose."
+  }
+ ],
+ "moveCounts": {
+  "other": 6,
+  "seek collaboration": 1,
+  "open question": 5,
+  "closed question": 3,
+  "affirm": 2,
+  "persuade": 4,
+  "simple reflection": 1
+ },
+ "talkCounts": {
+  "neutral": 8,
+  "change": 5,
+  "sustain": 5
+ },
+ "lines": [
+  {
+   "n": 1,
+   "t": "00:00",
+   "speaker": "coach",
+   "text": "Hey Patricia, Jean here. How's your Wednesday going?",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 2,
+   "t": "00:05",
+   "speaker": "participant",
+   "text": "Hi, sorry, I'm in the car but I can talk.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 3,
+   "t": "00:11",
+   "speaker": "coach",
+   "text": "Here's what I had in mind for today, but tell me if you'd rather focus on something else.",
+   "move": "seek collaboration",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 4,
+   "t": "00:21",
+   "speaker": "participant",
+   "text": "That works.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 5,
+   "t": "00:24",
+   "speaker": "coach",
+   "text": "How have you been feeling since we last talked?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 6,
+   "t": "00:30",
+   "speaker": "participant",
+   "text": "I've had more energy, I noticed that.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 7,
+   "t": "00:34",
+   "speaker": "coach",
+   "text": "That's great to hear.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 8,
+   "t": "00:38",
+   "speaker": "coach",
+   "text": "So did you manage to keep it to 2 drinks on the weekend?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 9,
+   "t": "00:47",
+   "speaker": "participant",
+   "text": "It went really well, I actually did it 2 times.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 10,
+   "t": "00:53",
+   "speaker": "coach",
+   "text": "Good for you for planning ahead.",
+   "move": "affirm",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 11,
+   "t": "00:59",
+   "speaker": "coach",
+   "text": "Do you think 5 days is realistic?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 12,
+   "t": "01:04",
+   "speaker": "participant",
+   "text": "Yeah, I think so. It was a long weekend with family, you know how it is.",
+   "talk": "sustain",
+   "flag": "none"
+  },
+  {
+   "n": 13,
+   "t": "01:14",
+   "speaker": "coach",
+   "text": "You kept going even on a hard week. That says a lot about you.",
+   "move": "affirm",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 14,
+   "t": "01:25",
+   "speaker": "participant",
+   "text": "I'll set an alarm on my phone.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 15,
+   "t": "01:30",
+   "speaker": "coach",
+   "text": "You really shouldn't be drinking at all after cancer.",
+   "move": "persuade",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 16,
+   "t": "01:36",
+   "speaker": "participant",
+   "text": "Mm-hmm.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 17,
+   "t": "01:40",
+   "speaker": "coach",
+   "text": "What would your family say about these changes?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 18,
+   "t": "01:46",
+   "speaker": "coach",
+   "text": "Got it.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 19,
+   "t": "01:49",
+   "speaker": "participant",
+   "text": "I feel so much better on Sunday when I don't overdo it.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 20,
+   "t": "01:56",
+   "speaker": "coach",
+   "text": "Is it mostly beer?",
+   "move": "closed question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 21,
+   "t": "02:02",
+   "speaker": "coach",
+   "text": "Got it.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 22,
+   "t": "02:06",
+   "speaker": "participant",
+   "text": "No, not really. I just didn't feel like it.",
+   "talk": "sustain",
+   "flag": "none"
+  },
+  {
+   "n": 23,
+   "t": "02:11",
+   "speaker": "coach",
+   "text": "You just weren't feeling it.",
+   "move": "simple reflection",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 24,
+   "t": "02:16",
+   "speaker": "participant",
+   "text": "I guess.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 25,
+   "t": "02:21",
+   "speaker": "coach",
+   "text": "If you don't do this, your health is going to suffer.",
+   "move": "persuade",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 26,
+   "t": "02:29",
+   "speaker": "participant",
+   "text": "Maybe after the summer.",
+   "talk": "sustain",
+   "flag": "none"
+  },
+  {
+   "n": 27,
+   "t": "02:33",
+   "speaker": "coach",
+   "text": "You have to make this a priority.",
+   "move": "persuade",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 28,
+   "t": "02:39",
+   "speaker": "participant",
+   "text": "Yeah, but you don't know my schedule.",
+   "talk": "sustain",
+   "flag": "none"
+  },
+  {
+   "n": 29,
+   "t": "02:46",
+   "speaker": "coach",
+   "text": "What do you think the next step should be?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 30,
+   "t": "02:51",
+   "speaker": "participant",
+   "text": "I'm not sure.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 31,
+   "t": "02:55",
+   "speaker": "coach",
+   "text": "You really shouldn't be drinking at all after cancer.",
+   "move": "persuade",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 32,
+   "t": "03:00",
+   "speaker": "participant",
+   "text": "Easy for you to say.",
+   "talk": "sustain",
+   "flag": "none"
+  },
+  {
+   "n": 33,
+   "t": "03:04",
+   "speaker": "coach",
+   "text": "What feels doable for next week?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 34,
+   "t": "03:09",
+   "speaker": "participant",
+   "text": "So, let's say I keep it to 2 drinks on the weekend.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 35,
+   "t": "03:17",
+   "speaker": "coach",
+   "text": "If the parties gets in the way again, what's your backup plan?",
+   "move": "open question",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 36,
+   "t": "03:25",
+   "speaker": "participant",
+   "text": "I'll ask my son to come with me.",
+   "talk": "change",
+   "flag": "none"
+  },
+  {
+   "n": 37,
+   "t": "03:32",
+   "speaker": "coach",
+   "text": "I'll text you midweek to see how it's going, and we'll talk again in two weeks.",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 38,
+   "t": "03:43",
+   "speaker": "participant",
+   "text": "Can we do a little later? I have an appointment.",
+   "talk": "neutral",
+   "flag": "none"
+  },
+  {
+   "n": 39,
+   "t": "03:49",
+   "speaker": "coach",
+   "text": "Talk soon!",
+   "move": "other",
+   "confidence": 0.86,
+   "reviewed": false
+  },
+  {
+   "n": 40,
+   "t": "03:52",
+   "speaker": "participant",
+   "text": "Thanks, bye bye.",
+   "talk": "neutral",
+   "flag": "none"
+  }
+ ]
+}

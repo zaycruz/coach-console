@@ -1,0 +1,69 @@
+{
+ "survivorId": "P0374",
+ "status": "watch",
+ "headline": "Coach score 42/100 · 6 coaching cues",
+ "summary": "57-year-old female, lung cancer. Program focus: movement. Calls in English. Coach Tanya (health coach).",
+ "profile": {
+  "firstName": "Barbara",
+  "age": 57,
+  "sex": "female",
+  "language": "English",
+  "cancer": "lung",
+  "focus": "movement",
+  "coach": "Tanya"
+ },
+ "evidence": [
+  {
+   "kind": "score",
+   "text": "Coach score 42/100 on call 3 (week 4)"
+  },
+  {
+   "kind": "cue",
+   "text": "Line 10: missed change talk"
+  },
+  {
+   "kind": "cue",
+   "text": "Line 23: confront"
+  },
+  {
+   "kind": "cue",
+   "text": "Line 25: persuade"
+  }
+ ],
+ "recommendations": [
+  {
+   "audience": "coach",
+   "text": "Review the cue moments with the coach in supervision."
+  }
+ ],
+ "charts": {
+  "latestCallId": "CALL02095",
+  "score": 42,
+  "scoreParts": {
+   "reflectionsPerQuestion": {
+    "value": 0.14,
+    "target": 2,
+    "points": 2,
+    "max": 30
+   },
+   "complexReflectionPct": {
+    "value": 0,
+    "target": 40,
+    "points": 0,
+    "max": 20
+   },
+   "openQuestionPct": {
+    "value": 71,
+    "target": 50,
+    "points": 20,
+    "max": 20
+   },
+   "miConsistent": {
+    "value": "10 vs 5",
+    "target": "0 persuade/confront",
+    "points": 20,
+    "max": 30
+   }
+  }
+ }
+}

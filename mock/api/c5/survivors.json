@@ -1,0 +1,51 @@
+[
+ {
+  "survivorId": "P0975",
+  "displayName": "Donna · P0975",
+  "status": "alert",
+  "headline": "Medical flag at 05:12: act today",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "P0407",
+  "displayName": "Osvaldo · P0407",
+  "status": "alert",
+  "headline": "Social flag at 00:36: act today",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "P0374",
+  "displayName": "Barbara · P0374",
+  "status": "watch",
+  "headline": "Coach score 42/100 · 6 coaching cues",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "P0941",
+  "displayName": "Patricia · P0941",
+  "status": "watch",
+  "headline": "Coach score 43/100 · 6 coaching cues",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "P0319",
+  "displayName": "Teresa · P0319",
+  "status": "ok",
+  "headline": "Coach score 77/100 · on target",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "P0995",
+  "displayName": "Ernesto · P0995",
+  "status": "ok",
+  "headline": "Coach score 96/100 · on target",
+  "updatedAt": "2026-10-17T07:30:00"
+ },
+ {
+  "survivorId": "P0322",
+  "displayName": "Chris · P0322",
+  "status": "ok",
+  "headline": "Coach score 100/100 · on target",
+  "updatedAt": "2026-10-17T07:30:00"
+ }
+]
