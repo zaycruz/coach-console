@@ -134,7 +134,9 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
   ok("Today page: interpreter chip names the language", /Interpreter · (Spanish|Kreyòl)/.test(await page.locator(".queue .chip-lang.need").first().innerText().catch(() => "")));
   ok("Today page: the cohort note is a ? popover, not a banner", /Four programs, four separate cohorts/.test(await page.locator(".pill-synthetic").getAttribute("title")) && (await page.locator(".cohorts").count()) === 0);
   ok("Today page: one count line, no KPI boxes", (await page.locator(".counts").count()) === 1 && (await page.locator(".stat-strip, .summary").count()) === 0);
-  ok("Today page: every row has a numbered position, an owner chip and two actions", (await page.locator(".q-row .q-n").count()) === todayRows && (await page.locator(".q-row .chip-own").count()) === todayRows && (await page.locator(".q-row .btn.primary").count()) === todayRows && (await page.locator(".q-row [data-log]").count()) === todayRows);
+  // One primary per region: Start call is filled only on Call today rows; every row still has Start call and Log outcome.
+  const todayNow = await page.locator("#today-now .q-row").count();
+  ok("Today page: every row is numbered with an owner chip and two actions; the primary button sits only on Call today", (await page.locator(".q-row .q-n").count()) === todayRows && (await page.locator(".q-row .chip-own").count()) === todayRows && (await page.locator(".q-row a.btn").count()) === todayRows && (await page.locator(".q-row [data-log]").count()) === todayRows && (await page.locator(".q-row .btn.primary").count()) === todayNow && todayNow > 0, `${todayNow} primary of ${todayRows}`);
   const domWhy = await page.locator(".queue .q-row .q-why").allInnerTexts();
   ok("Today page: no reason truncated with \"…\" (rows wrap)", domWhy.length > 0 && !domWhy.some((t) => /…/.test(t)), domWhy.find((t) => /…/.test(t)) || `${domWhy.length} reasons`);
   await shot(page, "today_1280.png");
