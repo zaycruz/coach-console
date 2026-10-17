@@ -400,7 +400,7 @@
   // C4 safety: care-team-today banner and the low-sugar card (glyph + words, translation when the patient reads it).
   function c4Safety(p, lang) {
     let h = "";
-    if (p.careFlag) h += `<div class="banner alert c4-flag" role="alert"><span class="b-ico">●</span><div class="b-body"><b>Send to the care team today.</b> ${esc(p.careFlag.reasons.join("; "))}.${p.careFlag.rule ? `<span class="small" style="display:block">${esc(p.careFlag.rule)}</span>` : ""}</div></div>`;
+    if (p.careFlag) h += `<div class="banner alert c4-flag" role="alert"><span class="b-ico">●</span><div class="b-body"><b>Send to the care team ${p.careFlag.week ? "this week" : "today"}.</b> ${esc(p.careFlag.reasons.join("; "))}.${p.careFlag.rule ? `<span class="small" style="display:block">${esc(p.careFlag.rule)}</span>` : ""}</div></div>`;
     if (p.hypo) {
       const code = /span/i.test(lang || "") ? "es" : /creole|kreyòl|kreyol|haitian/i.test(lang || "") ? "ht" : "";
       h += `<section class="hypo-card" role="alert"><p class="hypo-t"><span class="g" aria-hidden="true">▲</span>Low blood sugar risk: frequent readings below 70 mg/dL</p><p>${esc(p.hypo.text)}</p>${code && p.hypo.tr[code] ? `<p class="hypo-tr" lang="${code}"><b>${code === "es" ? "Español" : "Kreyòl"}:</b> ${esc(p.hypo.tr[code])}</p>` : ""}</section>`;

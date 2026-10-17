@@ -503,7 +503,9 @@
     const last = Date.parse(d.updatedAt || ""), staleDays = isNaN(last) ? null : Math.floor((Date.now() - last) / 864e5);
     const stale = staleDays != null && staleDays > 60 ? `No data for ${Math.round(staleDays / 30.4)} months` : null;
     tags = [...severe.map((x) => ({ label: `Severe: ${x.split(" (")[0]}`, tone: "risk" })), stale && { label: stale, tone: "warn" }, ...tags].filter(Boolean);
-    const ctf = d.careTeamFlag && d.careTeamFlag.today ? { reasons: (d.careTeamFlag.reasons || []).map((x) => x.reason).filter(Boolean), rule: d.careTeamFlag.rule || "" } : null;
+    const ctf = d.careTeamFlag && (d.careTeamFlag.today || d.careTeamFlag.urgency) ? { reasons: (d.careTeamFlag.reasons || []).map((x) => x.reason).filter(Boolean), rule: d.careTeamFlag.rule || "", urgent: d.careTeamFlag.urgency === "today", week: d.careTeamFlag.urgency === "this-week" } : null;
+    // careTeamFlag.urgency from C4: "today" (level 2 lows) is same-day; anything else, or no field yet, is this week.
+    const c4Todo = ctf && ctf.urgent ? "Send these readings to the care team today and ask about symptoms. The coach does not change medication." : "Send these readings to the care team this week and ask about symptoms on the next call. The coach does not change medication.";
     const hypo = d.hypoglycaemiaWarning && d.hypoglycaemiaWarning.text ? { level: d.hypoglycaemiaWarning.level, text: d.hypoglycaemiaWarning.text, tr: d.hypoglycaemiaWarning.translations || {} } : null;
     const window_ = ((evById.tir && evById.tir.label) || "").match(/\(([^)]+)\)/);
     const dp = c.dailyProfile && Array.isArray(c.dailyProfile.series) ? [...c.dailyProfile.series].reverse().find((x) => Array.isArray(x.values) && x.values.some(isNum)) : null;
@@ -516,18 +518,18 @@
       compare: trigTarget ? trigTarget.charAt(0).toUpperCase() + trigTarget.slice(1) : "Over the care-team line",
       reason: isNum(tir) ? `Time in range ${num(tir)}%, same weeks` : "",
       means: isNum(tir) ? `${num(tir)} of every 100 readings were in the target band${isNum(tbr) && tbr > 0 ? `, ${num(tbr, 1)} below 70` : ", none below 70"}${isNum(tar180) && tar180 > 0 ? `, ${num(tar180, 1)} above 180` : ", none above 180"}.` : "No readings in this window.",
-      todo: "Send these readings to the care team this week and ask about symptoms on the next call. The coach does not change medication.",
+      todo: c4Todo,
       top: null,
       bar: isNum(tir) ? [["Below 70", tbr, "red"], ["70–180", tir, "green"], ["181–250", isNum(tar180) && isNum(tar250) ? Math.max(0, tar180 - tar250) : null, "amber"], ["Above 250", tar250, "red"]].filter(([, v]) => isNum(v)).map(([label, v, tone]) => ({ label, v, tone })) : null,
       spark: dp ? { values: dp.values, band: (c.dailyProfile.targetRange || [70, 180]), note: `Blood sugar by hour of day, ${String(dp.label || "")} · band = 70–180` } : null,
       source: "Synthetic CGM data (Crane Lab set), this person's readings.",
     } : {
-      label: "Time in range (70–180 mg/dL, the target band)", tileLabel: "Time in range (70–180 mg/dL)", why: ctf ? `Send to the care team today: ${ctf.reasons.join("; ") || "glucose over the care-team line"}.` : "", value: isNum(tir) ? `${num(tir)}%` : NR,
+      label: "Time in range (70–180 mg/dL, the target band)", tileLabel: "Time in range (70–180 mg/dL)", why: ctf ? `Send to the care team ${ctf.week ? "this week" : "today"}: ${ctf.reasons.join("; ") || "glucose over the care-team line"}.` : "", value: isNum(tir) ? `${num(tir)}%` : NR,
       st: ctf ? ST.amber(isNum(tbr) && tbr >= 4 ? "Watch · lows" : "Watch · care-team flag") : !isNum(tir) ? ST.none() : tir < 10 ? ST.redW("Far off target") : tir >= 70 ? ST.green(tir >= 90 ? "At ideal" : "On target") : ST.amber("Below target"),
       compare: ctf ? `${(ctf.reasons[0] || "Glucose over the care-team line").replace(/\.$/, "")}${window_ ? ` · ${window_[1]}` : ""}` : `Target over 70%, ideal 90%+${window_ ? ` · ${window_[1]}` : ""}`,
       means: isNum(tir) ? `${num(tir)} of every 100 readings were in the target band${isNum(tbr) && tbr > 0 ? `, ${num(tbr, 1)} below 70` : ", none below 70"}${isNum(tar180) && tar180 > 0 ? `, ${num(tar180, 1)} above 180` : ", none above 180"}.` : "No readings in this window.",
-      todo: ctf ? "Send these readings to the care team this week and ask about symptoms on the next call. The coach does not change medication." : ((d.recommendations || [])[0] || {}).action || ((d.recommendations || [])[0] || {}).title || "No action from this program right now.",
-      top: ctf ? { tone: "red", text: `Send to the care team today: ${ctf.reasons.join("; ") || "glucose over the care-team line"}.` } : null,
+      todo: ctf ? c4Todo : ((d.recommendations || [])[0] || {}).action || ((d.recommendations || [])[0] || {}).title || "No action from this program right now.",
+      top: ctf ? { tone: "red", text: `Send to the care team ${ctf.week ? "this week" : "today"}: ${ctf.reasons.join("; ") || "glucose over the care-team line"}.` } : null,
       bar: isNum(tir) ? [["Below 70", tbr, "red"], ["70–180", tir, "green"], ["181–250", isNum(tar180) && isNum(tar250) ? Math.max(0, tar180 - tar250) : null, "amber"], ["Above 250", tar250, "red"]].filter(([, v]) => isNum(v)).map(([label, v, tone]) => ({ label, v, tone })) : null,
       spark: dp ? { values: dp.values, band: (c.dailyProfile.targetRange || [70, 180]), note: `Blood sugar by hour of day, ${String(dp.label || "").replace(/^weeks/i, "weeks")} · band = 70–180` } : null,
       source: "Synthetic CGM data (Crane Lab set), this person's readings. Program-wide and real-data (CGMacros, NHANES) checks sit under For scientists.",
