@@ -432,7 +432,7 @@
       top: null,
       spark: c.risk ? { values: lastN(c.risk, 14), ref: isNum(th.alert) ? { y: th.alert, label: "alert" } : null, pct: true, note: "Last 14 days · dashed = alert line" } : null,
       gauge: isNum(d.risk) ? { value: d.risk, max: Math.max(d.risk, isNum(th.alert) ? th.alert : 0) * 1.3, pct: true, marks: [isNum(th.watch) && { v: th.watch, label: "watch" }, isNum(th.alert) && { v: th.alert, label: "alert line" }].filter(Boolean) } : null,
-      cmp: [isNum(th.alert) && `alert line ${pct(th.alert)}`, isNum(d.scheduleRisk) && `calendar alone ${pct(d.scheduleRisk)}`].filter(Boolean).join(" · "),
+      cmp: [isNum(th.watch) && `watch from ${pct(th.watch)}`, isNum(th.alert) && `alert line ${pct(th.alert)}`].filter(Boolean).join(" · "),
       sure: c3Sure(m, false), age: c3Age(c),
       source: "Synthetic wearable cohort. Accuracy measured on a held-out test split (25% of patients kept back from training).",
     };

@@ -143,8 +143,8 @@ for (const [w, h] of [[1280, 900], [390, 844]]) {
 
   await page.goto(`${B}/#p-${ids.c4}`); await settle(page);
   await page.locator(".pill", { hasText: "Glucose" }).click(); await settle(page);
-  ok("pill click opens the program view", (await page.evaluate(() => location.hash)) === `#p-${ids.c4}.c4` && (await page.locator(".do").count()) > 0, await page.evaluate(() => location.hash));
-  ok("advice sits beside its chart", (await page.locator(".do .do-visual svg.chart").count()) >= 2);
+  ok("pill click opens the program view (hero, charts, How sure; no actions)", (await page.evaluate(() => location.hash)) === `#p-${ids.c4}.c4` && (await page.locator(".hero-card").count()) === 1 && (await page.locator("#sure").count()) === 1 && (await page.locator(".do, .plan-list, .next-acts").count()) === 0, await page.evaluate(() => location.hash));
+  ok("the tab shows the full charts, each with its lead sentence", (await page.locator("#view .card svg.chart").count()) >= 2 && (await page.locator(".tile, .gauge").count()) === 0);
   ok("program view ends in the full raw response", (await page.locator("details#raw summary").innerText()).includes("Everything this program sent"));
   await page.goto(`${B}/#p-${ids.c4}`); await settle(page);
   await page.locator("a.tile").first().click(); await settle(page);
