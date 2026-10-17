@@ -12,7 +12,9 @@
 //   npx wrangler deploy
 //   echo "<any long random string>" | npx wrangler secret put RUN_TOKEN
 //   RUN_TOKEN=<same string> URL=https://p360-reproduce.<your-subdomain>.workers.dev sh run.sh
-//   npx wrangler delete p360-reproduce   # then check `npx wrangler containers list`
+//   npx wrangler delete p360-reproduce
+//   npx wrangler containers list; npx wrangler containers delete <id of p360-reproduce-reproducer>
+//     (deleting the Worker can leave the container application, with a live instance, behind)
 //
 // HTTP API (all need header `authorization: Bearer $RUN_TOKEN`):
 //   POST /run      start the container and the job (idempotent while a job is running)
@@ -56,8 +58,9 @@ const sh = async (c, cmd) => {
   return { code: o.exitCode, out: d.decode(o.stdout), err: d.decode(o.stderr) };
 };
 
-// Without an inactivity timeout Cloudflare stops the container shortly after the Durable Object goes idle
-// (first attempt died ~80 s in, between two 20 s status polls). The job takes ~5-10 min.
+// Cloudflare stops the container soon after the Durable Object goes idle. Attempts polled every 20 s
+// died mid-job (one of them already had this timeout set), so run.sh polls every 5 s. That interval is
+// what kept the completed runs alive. The timeout is kept as an extra guard. The job takes about 3 min.
 const KEEP_MS = 45 * 60 * 1000;
 
 export class Reproducer extends DurableObject {
