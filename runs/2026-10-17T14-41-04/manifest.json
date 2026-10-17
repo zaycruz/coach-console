@@ -1,0 +1,490 @@
+{
+  "base": "https://patient-360.raava.dev",
+  "ts": "2026-10-17T14-41-04",
+  "total": 136,
+  "ids": {
+    "c3": "c3-P02185",
+    "c4": "c4-N0072",
+    "c5": "c5-P0002"
+  },
+  "call": "CALL00646",
+  "shots": [
+    "today_1280_light.png",
+    "p-c3-P02185_1280_light.png",
+    "p-c3-P02185.c3_1280_light.png",
+    "p-c4-N0072_1280_light.png",
+    "p-c4-N0072.c4_1280_light.png",
+    "p-c5-P0002_1280_light.png",
+    "p-c5-P0002.c5_1280_light.png",
+    "p-c4-N0072.c3_1280_light.png",
+    "p-c4-N0072.c1_1280_light.png",
+    "calls_1280_light.png",
+    "call-CALL00646_1280_light.png",
+    "app-c4-N0072_1280_light.png",
+    "app-c3-P02185_1280_light.png",
+    "care_1280_light.png",
+    "research_1280_light.png",
+    "today~error_1280_light.png",
+    "today~empty_1280_light.png",
+    "today~loading_1280_light.png",
+    "call-live-copilot_1280.png",
+    "today_390_light.png",
+    "p-c3-P02185_390_light.png",
+    "p-c3-P02185.c3_390_light.png",
+    "p-c4-N0072_390_light.png",
+    "p-c4-N0072.c4_390_light.png",
+    "p-c5-P0002_390_light.png",
+    "p-c5-P0002.c5_390_light.png",
+    "p-c4-N0072.c3_390_light.png",
+    "p-c4-N0072.c1_390_light.png",
+    "calls_390_light.png",
+    "call-CALL00646_390_light.png",
+    "app-c4-N0072_390_light.png",
+    "app-c3-P02185_390_light.png",
+    "care_390_light.png",
+    "research_390_light.png",
+    "today~error_390_light.png",
+    "today~empty_390_light.png",
+    "today~loading_390_light.png",
+    "today_1280_dark.png",
+    "p-c3-P02185_1280_dark.png",
+    "p-c3-P02185.c3_1280_dark.png",
+    "p-c4-N0072_1280_dark.png",
+    "p-c4-N0072.c4_1280_dark.png",
+    "p-c5-P0002_1280_dark.png",
+    "p-c5-P0002.c5_1280_dark.png",
+    "p-c4-N0072.c3_1280_dark.png",
+    "p-c4-N0072.c1_1280_dark.png",
+    "calls_1280_dark.png",
+    "call-CALL00646_1280_dark.png",
+    "app-c4-N0072_1280_dark.png",
+    "app-c3-P02185_1280_dark.png",
+    "care_1280_dark.png",
+    "research_1280_dark.png",
+    "today_390_dark.png",
+    "p-c3-P02185_390_dark.png",
+    "p-c3-P02185.c3_390_dark.png",
+    "p-c4-N0072_390_dark.png",
+    "p-c4-N0072.c4_390_dark.png",
+    "p-c5-P0002_390_dark.png",
+    "p-c5-P0002.c5_390_dark.png",
+    "p-c4-N0072.c3_390_dark.png",
+    "p-c4-N0072.c1_390_dark.png",
+    "calls_390_dark.png",
+    "call-CALL00646_390_dark.png",
+    "app-c4-N0072_390_dark.png",
+    "app-c3-P02185_390_dark.png",
+    "care_390_dark.png",
+    "research_390_dark.png",
+    "fallback-c3-down_today.png",
+    "fallback-c3-down_patient.png"
+  ],
+  "copilot": {
+    "liveTags": 4,
+    "agree": "95% coach moves (22 lines)\n91% participant talk (22)\n100% needs-a-person calls (22)"
+  },
+  "checks": [
+    {
+      "name": "list endpoints answer",
+      "pass": true,
+      "detail": "c3 60, c4 50, c5 26"
+    },
+    {
+      "name": "today @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P02185 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P02185.c3 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c4 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002.c5 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c3 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c1 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calls @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "call-CALL00646 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "app-c4-N0072 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "app-c3-P02185 @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "care @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "research @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~error @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~empty @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~loading @1280 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "roster count = c3 + c4 + c5 list endpoints",
+      "pass": true,
+      "detail": "136 vs 136"
+    },
+    {
+      "name": "C3, C4, C5 chips say live",
+      "pass": true,
+      "detail": "src s-live | src s-live | src s-live | src s-off"
+    },
+    {
+      "name": "C3 and C4 rows carry tags",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "pill click opens the program view",
+      "pass": true,
+      "detail": "#p-c4-N0072.c4"
+    },
+    {
+      "name": "advice sits beside its chart",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "live Copilot tags arrive from /api/c5/turn",
+      "pass": true,
+      "detail": "4 tagged lines"
+    },
+    {
+      "name": "agreement with supervisor computed",
+      "pass": true,
+      "detail": "95% coach moves (22 lines) 91% participant talk (22) 100% needs-a-person calls (22)"
+    },
+    {
+      "name": "today @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P02185 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P02185.c3 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c4 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002.c5 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c3 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c1 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calls @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "call-CALL00646 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "app-c4-N0072 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "app-c3-P02185 @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "care @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "research @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~error @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~empty @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today~loading @390 light",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P02185 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P02185.c3 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c4 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002.c5 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c3 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c1 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calls @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "call-CALL00646 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "app-c4-N0072 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "app-c3-P02185 @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "care @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "research @1280 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "today @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P02185 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c3-P02185.c3 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c4 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c5-P0002.c5 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c3 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "p-c4-N0072.c1 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "calls @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "call-CALL00646 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "app-c4-N0072 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "app-c3-P02185 @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "care @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "research @390 dark",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "C3 down: roster still complete from the saved copy",
+      "pass": true,
+      "detail": "136 vs 136"
+    },
+    {
+      "name": "C3 down: banner says saved copy",
+      "pass": true,
+      "detail": "! C3 Rough weeks isn’t answering (Failed to fetch). Showing the saved copy from Oct 17, 2026."
+    },
+    {
+      "name": "C3 down: status chip turns amber",
+      "pass": true,
+      "detail": "src s-fallback"
+    },
+    {
+      "name": "C3 down: patient page renders from the saved copy",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "C3 down: C4 pages stay live",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "C3 down: no page errors",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "passed": 80,
+  "failed": 0
+}

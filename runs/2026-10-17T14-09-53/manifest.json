@@ -1,0 +1,1240 @@
+{
+  "run": "2026-10-17T14-09-53",
+  "page": "prototype/index.html",
+  "total": 70,
+  "failed": 0,
+  "flow": [
+    {
+      "label": "Today shows an Act today group",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "label": "Open first Act today survivor",
+      "ok": true,
+      "note": "/s/c5/P0975"
+    },
+    {
+      "label": "Survivor page shows flag banner and escalate",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "label": "Open call review",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "label": "Jump to flagged line",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "label": "Filter roster to C4",
+      "ok": true,
+      "note": "8 rows"
+    },
+    {
+      "label": "Survivor app switches to Spanish",
+      "ok": true,
+      "note": ""
+    },
+    {
+      "label": "No console errors during flow",
+      "ok": true,
+      "note": ""
+    }
+  ],
+  "results": [
+    {
+      "screen": "today",
+      "hash": "#/today",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "today--ready--desktop--light.png"
+    },
+    {
+      "screen": "today",
+      "hash": "#/today",
+      "state": "loading",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "today--loading--desktop--light.png"
+    },
+    {
+      "screen": "today",
+      "hash": "#/today",
+      "state": "empty",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "today--empty--desktop--light.png"
+    },
+    {
+      "screen": "today",
+      "hash": "#/today",
+      "state": "error",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "today--error--desktop--light.png"
+    },
+    {
+      "screen": "survivor-demo",
+      "hash": "#/s/demo",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-demo--ready--desktop--light.png"
+    },
+    {
+      "screen": "survivor-demo",
+      "hash": "#/s/demo",
+      "state": "loading",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-demo--loading--desktop--light.png"
+    },
+    {
+      "screen": "survivor-demo",
+      "hash": "#/s/demo",
+      "state": "empty",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-demo--empty--desktop--light.png"
+    },
+    {
+      "screen": "survivor-demo",
+      "hash": "#/s/demo",
+      "state": "error",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-demo--error--desktop--light.png"
+    },
+    {
+      "screen": "survivor-c3",
+      "hash": "#/s/c3/P00809",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c3--ready--desktop--light.png"
+    },
+    {
+      "screen": "survivor-c4",
+      "hash": "#/s/c4/N0214",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c4--ready--desktop--light.png"
+    },
+    {
+      "screen": "survivor-c5",
+      "hash": "#/s/c5/P0975",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c5--ready--desktop--light.png"
+    },
+    {
+      "screen": "calls",
+      "hash": "#/calls",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "calls--ready--desktop--light.png"
+    },
+    {
+      "screen": "calls",
+      "hash": "#/calls",
+      "state": "loading",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "calls--loading--desktop--light.png"
+    },
+    {
+      "screen": "calls",
+      "hash": "#/calls",
+      "state": "empty",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "calls--empty--desktop--light.png"
+    },
+    {
+      "screen": "calls",
+      "hash": "#/calls",
+      "state": "error",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "calls--error--desktop--light.png"
+    },
+    {
+      "screen": "call-review",
+      "hash": "#/call/CALL05423",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "call-review--ready--desktop--light.png"
+    },
+    {
+      "screen": "call-review",
+      "hash": "#/call/CALL05423",
+      "state": "loading",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "call-review--loading--desktop--light.png"
+    },
+    {
+      "screen": "call-review",
+      "hash": "#/call/CALL05423",
+      "state": "empty",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "call-review--empty--desktop--light.png"
+    },
+    {
+      "screen": "call-review",
+      "hash": "#/call/CALL05423",
+      "state": "error",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "call-review--error--desktop--light.png"
+    },
+    {
+      "screen": "patient-demo",
+      "hash": "#/patient/demo",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "patient-demo--ready--desktop--light.png"
+    },
+    {
+      "screen": "patient-demo",
+      "hash": "#/patient/demo",
+      "state": "loading",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "patient-demo--loading--desktop--light.png"
+    },
+    {
+      "screen": "patient-demo",
+      "hash": "#/patient/demo",
+      "state": "empty",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "patient-demo--empty--desktop--light.png"
+    },
+    {
+      "screen": "patient-demo",
+      "hash": "#/patient/demo",
+      "state": "error",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "patient-demo--error--desktop--light.png"
+    },
+    {
+      "screen": "care-team-c1",
+      "hash": "#/care-team",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "care-team-c1--ready--desktop--light.png"
+    },
+    {
+      "screen": "research",
+      "hash": "#/research",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "research--ready--desktop--light.png"
+    },
+    {
+      "screen": "today",
+      "hash": "#/today",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "today--ready--desktop--dark.png"
+    },
+    {
+      "screen": "survivor-demo",
+      "hash": "#/s/demo",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-demo--ready--desktop--dark.png"
+    },
+    {
+      "screen": "survivor-c3",
+      "hash": "#/s/c3/P00809",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c3--ready--desktop--dark.png"
+    },
+    {
+      "screen": "survivor-c4",
+      "hash": "#/s/c4/N0214",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c4--ready--desktop--dark.png"
+    },
+    {
+      "screen": "survivor-c5",
+      "hash": "#/s/c5/P0975",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c5--ready--desktop--dark.png"
+    },
+    {
+      "screen": "calls",
+      "hash": "#/calls",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "calls--ready--desktop--dark.png"
+    },
+    {
+      "screen": "call-review",
+      "hash": "#/call/CALL05423",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "call-review--ready--desktop--dark.png"
+    },
+    {
+      "screen": "patient-demo",
+      "hash": "#/patient/demo",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "patient-demo--ready--desktop--dark.png"
+    },
+    {
+      "screen": "care-team-c1",
+      "hash": "#/care-team",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "care-team-c1--ready--desktop--dark.png"
+    },
+    {
+      "screen": "research",
+      "hash": "#/research",
+      "state": "ready",
+      "viewport": "desktop",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "research--ready--desktop--dark.png"
+    },
+    {
+      "screen": "today",
+      "hash": "#/today",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "today--ready--phone--light.png"
+    },
+    {
+      "screen": "today",
+      "hash": "#/today",
+      "state": "loading",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "today--loading--phone--light.png"
+    },
+    {
+      "screen": "today",
+      "hash": "#/today",
+      "state": "empty",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "today--empty--phone--light.png"
+    },
+    {
+      "screen": "today",
+      "hash": "#/today",
+      "state": "error",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "today--error--phone--light.png"
+    },
+    {
+      "screen": "survivor-demo",
+      "hash": "#/s/demo",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-demo--ready--phone--light.png"
+    },
+    {
+      "screen": "survivor-demo",
+      "hash": "#/s/demo",
+      "state": "loading",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-demo--loading--phone--light.png"
+    },
+    {
+      "screen": "survivor-demo",
+      "hash": "#/s/demo",
+      "state": "empty",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-demo--empty--phone--light.png"
+    },
+    {
+      "screen": "survivor-demo",
+      "hash": "#/s/demo",
+      "state": "error",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-demo--error--phone--light.png"
+    },
+    {
+      "screen": "survivor-c3",
+      "hash": "#/s/c3/P00809",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c3--ready--phone--light.png"
+    },
+    {
+      "screen": "survivor-c4",
+      "hash": "#/s/c4/N0214",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c4--ready--phone--light.png"
+    },
+    {
+      "screen": "survivor-c5",
+      "hash": "#/s/c5/P0975",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c5--ready--phone--light.png"
+    },
+    {
+      "screen": "calls",
+      "hash": "#/calls",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "calls--ready--phone--light.png"
+    },
+    {
+      "screen": "calls",
+      "hash": "#/calls",
+      "state": "loading",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "calls--loading--phone--light.png"
+    },
+    {
+      "screen": "calls",
+      "hash": "#/calls",
+      "state": "empty",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "calls--empty--phone--light.png"
+    },
+    {
+      "screen": "calls",
+      "hash": "#/calls",
+      "state": "error",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "calls--error--phone--light.png"
+    },
+    {
+      "screen": "call-review",
+      "hash": "#/call/CALL05423",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "call-review--ready--phone--light.png"
+    },
+    {
+      "screen": "call-review",
+      "hash": "#/call/CALL05423",
+      "state": "loading",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "call-review--loading--phone--light.png"
+    },
+    {
+      "screen": "call-review",
+      "hash": "#/call/CALL05423",
+      "state": "empty",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "call-review--empty--phone--light.png"
+    },
+    {
+      "screen": "call-review",
+      "hash": "#/call/CALL05423",
+      "state": "error",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "call-review--error--phone--light.png"
+    },
+    {
+      "screen": "patient-demo",
+      "hash": "#/patient/demo",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "patient-demo--ready--phone--light.png"
+    },
+    {
+      "screen": "patient-demo",
+      "hash": "#/patient/demo",
+      "state": "loading",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "patient-demo--loading--phone--light.png"
+    },
+    {
+      "screen": "patient-demo",
+      "hash": "#/patient/demo",
+      "state": "empty",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "patient-demo--empty--phone--light.png"
+    },
+    {
+      "screen": "patient-demo",
+      "hash": "#/patient/demo",
+      "state": "error",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "patient-demo--error--phone--light.png"
+    },
+    {
+      "screen": "care-team-c1",
+      "hash": "#/care-team",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "care-team-c1--ready--phone--light.png"
+    },
+    {
+      "screen": "research",
+      "hash": "#/research",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "light",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "research--ready--phone--light.png"
+    },
+    {
+      "screen": "today",
+      "hash": "#/today",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "today--ready--phone--dark.png"
+    },
+    {
+      "screen": "survivor-demo",
+      "hash": "#/s/demo",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-demo--ready--phone--dark.png"
+    },
+    {
+      "screen": "survivor-c3",
+      "hash": "#/s/c3/P00809",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c3--ready--phone--dark.png"
+    },
+    {
+      "screen": "survivor-c4",
+      "hash": "#/s/c4/N0214",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c4--ready--phone--dark.png"
+    },
+    {
+      "screen": "survivor-c5",
+      "hash": "#/s/c5/P0975",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "survivor-c5--ready--phone--dark.png"
+    },
+    {
+      "screen": "calls",
+      "hash": "#/calls",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "calls--ready--phone--dark.png"
+    },
+    {
+      "screen": "call-review",
+      "hash": "#/call/CALL05423",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "call-review--ready--phone--dark.png"
+    },
+    {
+      "screen": "patient-demo",
+      "hash": "#/patient/demo",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "patient-demo--ready--phone--dark.png"
+    },
+    {
+      "screen": "care-team-c1",
+      "hash": "#/care-team",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "care-team-c1--ready--phone--dark.png"
+    },
+    {
+      "screen": "research",
+      "hash": "#/research",
+      "state": "ready",
+      "viewport": "phone",
+      "theme": "dark",
+      "ok": true,
+      "checks": {
+        "expectedText": true,
+        "noHorizontalScroll": true,
+        "noConsoleErrors": true,
+        "stateRendered": true
+      },
+      "overflowPx": 0,
+      "errors": [],
+      "screenshot": "research--ready--phone--dark.png"
+    }
+  ]
+}

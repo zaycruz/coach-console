@@ -1,0 +1,16 @@
+import { chromium } from "playwright";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+const errs = [];
+p.on("console", m => { if (m.type()==="error") errs.push(m.text()); });
+p.on("pageerror", e => errs.push("PAGEERR "+e.message));
+await p.goto("https://patient-360.raava.dev", { waitUntil: "networkidle", timeout: 60000 });
+await p.locator("text=Open").first().click();
+await p.waitForTimeout(2000);
+console.log("URL", p.url());
+await p.screenshot({ path: "03-phone-maria.png" });
+await p.screenshot({ path: "04-phone-maria-full.png", fullPage: true });
+console.log((await p.innerText("main").catch(()=>p.innerText("body"))).slice(0, 6000));
+console.log("SCROLLW", await p.evaluate(()=>document.documentElement.scrollWidth));
+console.log("ERRS", errs.join("\n"));
+await b.close();

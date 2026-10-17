@@ -263,9 +263,8 @@ await browser.close();
 
 // 5. the mic: Chromium's fake mic plays a spoken wav; Whisper must turn it into a line
 {
-  const { execSync } = await import("node:child_process");
-  const wav = dir + "mic.wav";
-  execSync(`say -o "${dir}mic.aiff" "Hi, how have you been feeling since our last call?" && afconvert -f WAVE -d LEI16@16000 "${dir}mic.aiff" "${wav}"`);
+  // A fixed clip (macOS `say`: "Hi, how have you been feeling since our last call?", 16 kHz mono WAV), so this runs on any OS.
+  const wav = new URL("./fixtures/mic.wav", import.meta.url).pathname;
   const mb = await chromium.launch({ args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", `--use-file-for-fake-audio-capture=${wav}`] });
   const ctx = await mb.newContext({ viewport: { width: 1280, height: 900 }, permissions: ["microphone"] });
   const page = await ctx.newPage();

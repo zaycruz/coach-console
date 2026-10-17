@@ -1,8 +1,12 @@
 node_modules/
 .DS_Store
 scripts/__pycache__/
-runs/*
-!runs/2026-10-17T15-06-22/
+# Run artifacts: keep what reproduces or cites a result (E2E manifests, feedback reports, probe scripts); skip screenshots and audio.
+runs/**/*.png
+runs/**/*.aiff
+runs/**/*.wav
+runs/**/*.webm
+!runs/2026-10-17T15-06-22/*.png
 .wrangler/
 
 # Beads / Dolt files (added by bd init)

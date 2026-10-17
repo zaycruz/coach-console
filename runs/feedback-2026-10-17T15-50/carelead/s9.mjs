@@ -1,0 +1,13 @@
+import { chromium } from "playwright";
+const D = "/Users/master/projects/emerge-hackathon/coach-console/runs/feedback-2026-10-17T15-50/carelead";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+await p.goto(`https://patient-360.raava.dev/`, { waitUntil: "networkidle" });
+await p.waitForTimeout(1200);
+await p.getByText("Ask Ellie").first().click(); await p.waitForTimeout(800);
+await p.getByText("Who is most at risk of the hospital?").first().click();
+await p.waitForTimeout(15000);
+await p.screenshot({ path: `${D}/08-ellie-most-at-risk.png` });
+const t = await p.innerText("body"); const i = t.lastIndexOf("Who is most at risk");
+console.log("=== ELLIE\n", t.slice(i, i+2500));
+await b.close();

@@ -1,0 +1,11 @@
+import { chromium } from "playwright";
+const D = "/Users/master/projects/emerge-hackathon/coach-console/runs/feedback-2026-10-17T15-50/carelead";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+await p.goto(`https://patient-360.raava.dev/`, { waitUntil: "networkidle" });
+await p.getByText("Patients", { exact: true }).first().click(); await p.waitForTimeout(2000);
+console.log(p.url());
+await p.screenshot({ path: `${D}/12-patients-list.png` });
+const t = await p.innerText("body"); const i=t.indexOf("Patients\n", 30); console.log(t.slice(0, 2500));
+console.log(await p.evaluate(()=>[...document.querySelectorAll('input,select,button')].map(e=>(e.tagName+':'+(e.placeholder||e.innerText||'')).slice(0,60)).join(" | ")));
+await b.close();

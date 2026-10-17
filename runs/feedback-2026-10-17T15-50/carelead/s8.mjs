@@ -1,0 +1,10 @@
+import { chromium } from "playwright";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+await p.goto(`https://patient-360.raava.dev/#care`, { waitUntil: "networkidle" });
+await p.waitForTimeout(1200);
+await p.getByText("Everything the model card holds").first().click(); await p.waitForTimeout(600);
+const t2 = await p.innerText("body"); const i=t2.indexOf("Everything the model card holds");
+const mc = t2.slice(i).split("\n");
+console.log(mc.filter(l=>/nested|0\.66|0\.67|outer|headline/i.test(l)).slice(0,40).join("\n").slice(0,4000));
+await b.close();

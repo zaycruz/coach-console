@@ -1,0 +1,23 @@
+import { chromium } from "playwright";
+const D = "/Users/master/projects/emerge-hackathon/coach-console/runs/feedback-2026-10-17T15-50/carelead";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+await p.goto(`https://patient-360.raava.dev/#care`, { waitUntil: "networkidle" });
+await p.waitForTimeout(1200);
+await p.getByText("Ask Ellie").first().click(); await p.waitForTimeout(800);
+const box = p.locator("#ellie-q");
+await box.fill("How well does the hospital risk model work for Black patients? The fairness table shows AUROC 0.48. Should I trust an Alert for them?");
+await p.getByText("Send", { exact: true }).click();
+await p.waitForTimeout(20000);
+await p.screenshot({ path: `${D}/09-ellie-fairness-question.png` });
+const t = await p.innerText("body"); const i = t.lastIndexOf("How well does the hospital");
+console.log("=== ELLIE\n", t.slice(i, i+2500));
+// coaching patient from Today
+await p.goto(`https://patient-360.raava.dev/`, { waitUntil: "networkidle" }); await p.waitForTimeout(1200);
+await p.getByText("Open", { exact: true }).first().click(); await p.waitForTimeout(2000);
+console.log("URL", p.url());
+await p.screenshot({ path: `${D}/10-coaching-patient-health-chart.png`, fullPage: true });
+let h = await p.innerText("body"); let k=h.indexOf("← Patients"); console.log("=== MARIA\n", h.slice(k, k+3000));
+await p.getByText("Hospital risk", { exact: true }).last().click(); await p.waitForTimeout(1500);
+h = await p.innerText("body"); k=h.indexOf("Coaching calls\n"); console.log("=== MARIA HOSP\n", p.url(), h.slice(k, k+600));
+await b.close();

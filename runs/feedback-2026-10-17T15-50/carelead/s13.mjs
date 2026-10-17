@@ -1,0 +1,12 @@
+import { chromium } from "playwright";
+const D = "/Users/master/projects/emerge-hackathon/coach-console/runs/feedback-2026-10-17T15-50/carelead";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+await p.goto(`https://patient-360.raava.dev/#patients`, { waitUntil: "networkidle" }); await p.waitForTimeout(1500);
+await p.fill('input[placeholder="Search name, ID or signal"]', "hospital"); await p.waitForTimeout(1200);
+await p.screenshot({ path: `${D}/13-patients-search-hospital.png` });
+let t = await p.innerText("body"); let i=t.indexOf(" of 335"); console.log(t.slice(i-10, i+1800));
+await p.fill('input[placeholder="Search name, ID or signal"]', ""); 
+await p.getByRole("button", { name: /Hospital risk/ }).first().click(); await p.waitForTimeout(1200);
+t = await p.innerText("body"); i=t.indexOf(" of 335"); console.log("=== C1 filter\n", t.slice(i-10, i+800));
+await b.close();

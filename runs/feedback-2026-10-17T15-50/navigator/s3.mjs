@@ -1,0 +1,10 @@
+import { chromium } from "playwright";
+import { ask, panelText } from "./lib.mjs";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport:{width:1440,height:900}});
+await p.goto("https://patient-360.raava.dev", {waitUntil:"networkidle"});
+await ask(p, "who is most at risk", "04-most-at-risk.png");
+await ask(p, "open the first one", "05-open-first.png");
+await ask(p, "start a call with them", "06-start-call.png");
+console.log("\nFULL PANEL:\n"+await panelText(p));
+await b.close();

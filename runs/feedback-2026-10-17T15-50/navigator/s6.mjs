@@ -1,0 +1,13 @@
+import { chromium } from "playwright";
+import { ask, panelText } from "./lib2.mjs";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport:{width:1440,height:900}});
+await p.waitForTimeout(60000);
+await p.goto("https://patient-360.raava.dev", {waitUntil:"networkidle"});
+const gap = () => p.waitForTimeout(12000);
+await ask(p, "who has the worst glucose control?", "17-worst-glucose.png"); await gap();
+await ask(p, "show me the glucose tab for the first one", "18-glucose-tab.png"); await gap();
+await ask(p, "what's her time in range?", "19-tir.png"); await gap();
+await ask(p, "who needs a call today?", "20-calls-today.png"); await gap();
+await ask(p, "start a call with the second one", "21-call-second.png");
+await b.close();

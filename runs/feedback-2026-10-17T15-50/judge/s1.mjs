@@ -1,0 +1,17 @@
+import { chromium } from "playwright";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+const errs = [];
+p.on("console", m => { if (m.type()==="error") errs.push(m.text()); });
+p.on("pageerror", e => errs.push("PAGEERR "+e.message));
+await p.goto("https://patient-360.raava.dev", { waitUntil: "networkidle", timeout: 60000 });
+await p.screenshot({ path: "01-phone-landing.png" });
+await p.screenshot({ path: "02-phone-landing-full.png", fullPage: true });
+console.log("TITLE", await p.title());
+console.log("URL", p.url());
+console.log((await p.innerText("body")).slice(0, 4000));
+const els = await p.$$eval("a,button,[role=tab],select,input", es => es.map(e => `${e.tagName} ${e.getAttribute("href")||""} | ${(e.innerText||e.value||e.getAttribute("aria-label")||"").trim().slice(0,60)}`));
+console.log(els.join("\n"));
+console.log("SCROLLW", await p.evaluate(()=>document.documentElement.scrollWidth));
+console.log("ERRS", errs.join("\n"));
+await b.close();

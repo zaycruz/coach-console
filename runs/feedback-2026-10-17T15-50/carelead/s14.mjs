@@ -1,0 +1,13 @@
+import { chromium } from "playwright";
+const D = "/Users/master/projects/emerge-hackathon/coach-console/runs/feedback-2026-10-17T15-50/carelead";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+await p.goto(`https://patient-360.raava.dev/#p-c1-S9C1421D3.c1`, { waitUntil: "networkidle" }); await p.waitForTimeout(1500);
+await p.getByText("Ask Ellie").first().click(); await p.waitForTimeout(800);
+await p.fill("#ellie-q", "This patient is NH other/multiple, where the fairness table shows AUROC 0.21. Why is she still an Alert, and why is health spending her top driver when the headline says ER visits?");
+await p.getByText("Send", { exact: true }).click();
+await p.waitForFunction(()=>!document.body.innerText.includes("Thinking…"),null,{timeout:90000}).catch(()=>console.log("STILL THINKING at 90s"));
+await p.screenshot({ path: `${D}/14-ellie-on-S9C1421D3.png` });
+const t = await p.innerText("body"); const i = t.lastIndexOf("This patient is NH");
+console.log(t.slice(i, i+2500));
+await b.close();

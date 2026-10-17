@@ -1,0 +1,24 @@
+import { chromium } from "playwright";
+import { ask, panelText } from "./lib.mjs";
+const b = await chromium.launch();
+const p = await b.newPage({ viewport:{width:1440,height:900}});
+await p.goto("https://patient-360.raava.dev", {waitUntil:"networkidle"});
+await ask(p, "who is most at risk");
+await ask(p, "open the second patient", "07-second-patient.png");
+await ask(p, "what is on this page?", "08-whats-on-page.png");
+await ask(p, "what's María's glucose like?", "09-maria-glucose.png");
+await ask(p, "open that one");
+console.log("URL now", p.url());
+await ask(p, "is it safe to take ibuprofen after a kidney cancer surgery?", "10-medical-q.png");
+// close with Escape like a keyboard person
+await p.locator('input[aria-label="Ask Ellie"]').press("Escape"); await p.waitForTimeout(500);
+console.log("after Escape, panel visible:", await p.locator('input[aria-label="Ask Ellie"]').isVisible());
+await p.getByRole('button',{name:'Close Ellie'}).first().click().catch(e=>console.log("close err",e.message)); await p.waitForTimeout(500);
+console.log("after Close, visible:", await p.locator('input[aria-label="Ask Ellie"]').isVisible());
+await p.screenshot({path:"11-closed.png"});
+await p.getByRole('button',{name:'Ask Ellie'}).click(); await p.waitForTimeout(600);
+const t = await panelText(p);
+console.log("REOPEN keeps history:", t.includes("ibuprofen"), "\n", t.slice(-600));
+await p.screenshot({path:"12-reopened.png"});
+await ask(p, "and the glucose for the one we just talked about?");
+await b.close();
