@@ -14,9 +14,10 @@
 
   const fab = document.createElement("button");
   fab.className = "assistant-fab"; fab.id = "assistant-fab"; fab.type = "button"; fab.setAttribute("aria-controls", "assistant"); fab.setAttribute("aria-expanded", "false");
-  const FAB_OPEN = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>AI assistant`;
-  const FAB_CLOSE = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2"/></svg>Close`;
-  fab.innerHTML = FAB_OPEN;
+  // A 44-px icon button, docked in reserved space, so it never covers content.
+  const FAB_OPEN = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span class="sr">AI assistant</span>`;
+  const FAB_CLOSE = `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2"/></svg><span class="sr">Close the AI assistant</span>`;
+  fab.innerHTML = FAB_OPEN; fab.title = "AI assistant"; fab.setAttribute("aria-label", "AI assistant");
   const box = document.createElement("section");
   box.className = "assistant"; box.id = "assistant"; box.hidden = true; box.setAttribute("aria-label", "AI assistant");
   box.innerHTML = `<header><b>AI assistant</b><span class="small" style="opacity:.75">for the care team</span><button type="button" id="assistant-close" aria-label="Close the AI assistant">Close</button></header>
@@ -172,8 +173,9 @@
     return { headline: p.headline || "No summary from this program yet.", bullets: [], fallback: true };
   }
   function paintInsight(el, x) {
-    const top = x.fallback ? `<span class="ei-src">From the program’s own summary</span>` : `<span class="ai-label">AI · check before acting</span>`;
-    el.innerHTML = `<div class="ei-top"><b>AI Insight</b>${top}</div><p class="ei-line">${esc(x.headline)}</p>`; // headline only: numbers live on the tiles, actions in Do next
+    // The brief: one headline on why now. The steps live in the Plan below it, so no bullets here (one fact, one place).
+    const top = x.fallback ? `<span class="ei-src">from the program’s own summary</span>` : `<span class="ei-src">AI summary of this page’s data</span>`;
+    el.innerHTML = `<div class="ei-top"><b>Why now</b>${top}</div><p class="ei-line">${esc(x.headline)}</p>`;
   }
   // One request per patient+data version, shared by the chart and the prefetch below.
   const inflight = new Map();
@@ -207,7 +209,7 @@
   async function fillInsight(el) {
     const pid = el.dataset.pid;
     el.dataset.state = "loading";
-    el.innerHTML = `<div class="ei-top"><b>AI Insight</b><span class="ei-src">reading the chart…</span></div><div class="ei-skel" aria-hidden="true"><i></i><i></i><i></i></div>`;
+    el.innerHTML = `<div class="ei-top"><b>Why now</b><span class="ei-src">summarising…</span></div><div class="ei-skel" aria-hidden="true"><i></i></div>`;
     let p = null;
     try { const cur = P.current(); p = cur && cur.id === pid ? cur : await once("p:" + pid, () => A.patient(pid)); }
     catch (e) { el.dataset.state = "error"; el.innerHTML = ""; return; }

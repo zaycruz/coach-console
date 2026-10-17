@@ -6,7 +6,7 @@
 <title>Patient 360</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400&display=swap">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -29,10 +29,11 @@
   </nav>
   <div class="main">
     <header class="topbar">
-      <span class="pill-synthetic" title="Hospital risk: real MEPS 2017 survey respondents (IDs reassigned). Rough weeks, glucose and coaching calls: synthetic hackathon data.">Real (MEPS) + synthetic data</span>
+      <span class="pill-synthetic" title="Hospital risk: real MEPS 2017 survey respondents (IDs reassigned). Rough weeks, glucose and coaching calls: synthetic hackathon data. Four programs, four separate cohorts; the 5 linked demo records join one record from each.">Real (MEPS) + synthetic data<span class="q" aria-hidden="true">?</span></span>
       <span class="mode" id="mode"></span>
     </header>
     <main id="view" tabindex="-1"></main>
+    <footer class="foot"><span>Prototype built for the eMerge Hackathon · Sylvester Comprehensive Cancer Center track · not an official UM product.</span><span>Hospital risk: real MEPS 2017 survey respondents (IDs reassigned). Rough weeks, glucose and coaching calls: synthetic cohorts. Simulated users reviewed every screen.</span></footer>
   </div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>

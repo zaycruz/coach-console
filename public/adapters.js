@@ -330,6 +330,11 @@
       todo: careTeam ? careTeam.text : "No action from this program right now.",
       caveat: d.caveat || "",
       top: rf && rf.careTeamToday ? { tone: "red", text: rf.banner || "Call the care team today." } : caution && !caution.soft ? { tone: "amber", text: `${caution.label}. ${caution.text}.` } : null,
+      // Glance (overview tile): one bullet gauge, numbers-only comparison, the accuracy figure and the data window.
+      gauge: isNum(rv) ? { value: rv, max: Math.max(rv, isNum(alertAt) ? alertAt : 0, isNum(r.baseRate) ? r.baseRate : 0, 0.5) * 1.15, pct: true, marks: [isNum(r.baseRate) && { v: r.baseRate, label: "avg" }, isNum(alertAt) && { v: alertAt, label: "high tier" }].filter(Boolean) } : null,
+      cmp: [isNum(r.baseRate) && `avg ${pct(r.baseRate)}`, isNum(alertAt) && `high tier from ${pct(alertAt)}`].filter(Boolean).join(" · "),
+      sure: fm && fm.auroc ? `AUROC ${num(fm.auroc.value, 2)} (${num(fm.auroc.ci95[0], 2)}–${num(fm.auroc.ci95[1], 2)}), held out${dev ? `, ${dev} pts` : ""}` : "held-out AUROC not loaded",
+      age: "2017 survey → next-year risk",
       source: `Real survivor (MEPS 2017 survey), scored by the deployed model as an unseen patient${fm && fm.auroc ? `. Model AUROC ${num(fm.auroc.value, 2)} (how well it ranks who ends up in hospital; 0.5 = chance, 1 = perfect), 95% CI ${num(fm.auroc.ci95[0], 2)}–${num(fm.auroc.ci95[1], 2)} (the range the true value likely sits in), cross-validated${dev ? ` on ${dev} patients` : ""}` : ""}.`,
     };
     const fit = caution && !caution.soft ? { tone: "amber", text: `Less reliable for ${caution.groups.join(", ")}: check this score by hand. ${caution.text}.` }
@@ -368,6 +373,14 @@
   }
   // Coaches do not assess symptoms: a step that asks about fever or fluids goes to the nurse.
   const nurseScope = (t) => (/\bfever\b/i.test(t || "") ? `Hand off to the nurse today: ask about fever, fluids and anything new. The coach checks in, does not assess, and tells them the nurse will call today.` : t);
+  // How sure, in one line: the held-out figure the model card gives for this forecast.
+  function c3Sure(m, urgent) {
+    const u = m && m.urgent && m.urgent.methods && m.urgent.methods.urgent, f = m && m.fairness, n = m && m.counts && m.counts.test_patients;
+    if (urgent && u && isNum(u.er_recall_2to7d)) return `catches ${pct(u.er_recall_2to7d)} of ER visits 2–7 days ahead, held out${n ? `, ${num(n)} pts` : ""}`;
+    if (f && isNum(f.overallRecall)) return `catches ${pct(f.overallRecall)} of rough weeks, held out${n ? `, ${num(n)} pts` : ""}`;
+    return n ? `held-out test, ${num(n)} patients` : "held-out test split";
+  }
+  const c3Age = (c) => { const last = (c.dates || []).filter(Boolean).slice(-1)[0]; return last ? `data to ${new Date(String(last).slice(0, 10) + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""; };
   function c3View(d, m) {
     const c = d.charts || {}, ev = d.evidence || [], recs = (d.recommendations || []).map((r) => ({ title: nurseScope(r.action), text: r.why, tag: r.urgency, tone: r.urgency === "today" ? "risk" : r.urgency === "within 2 days" ? "warn" : "info" }));
     const x = (c.dates || []).map((t) => String(t).slice(5));
@@ -405,6 +418,9 @@
       todo: firstRec ? nurseScope(firstRec.action) : "Hand off to the nurse today.",
       top: null,
       spark: c.urgentRisk ? { values: lastN(c.urgentRisk, 14), ref: isNum(th.urgent) ? { y: th.urgent, label: "urgent" } : null, pct: true, note: "Last 14 days · dashed = urgent line" } : null,
+      gauge: isNum(d.urgentRisk) ? { value: d.urgentRisk, max: Math.max(d.urgentRisk, isNum(th.urgent) ? th.urgent : 0) * 1.3, pct: true, d: 1, marks: [isNum(th.urgent) && { v: th.urgent, label: "urgent line" }].filter(Boolean) } : null,
+      cmp: [isNum(th.urgent) && `urgent line ${pct(th.urgent, 1)}`, times && `${times}× usual`].filter(Boolean).join(" · "),
+      sure: c3Sure(m, true), age: c3Age(c),
       source: "Synthetic wearable cohort. Accuracy measured on a held-out test split (25% of patients kept back from training).",
     } : {
       label: "Rough week, next 7 days", tileLabel: "7-day rough-week risk", value: isNum(d.risk) ? pct(d.risk) : NR,
@@ -414,6 +430,9 @@
       todo: firstRec ? firstRec.action + (firstRec.urgency && !new RegExp(firstRec.urgency.replace(/^this /i, ""), "i").test(firstRec.action) ? ` (${firstRec.urgency})` : "") : "No action from this program right now.",
       top: null,
       spark: c.risk ? { values: lastN(c.risk, 14), ref: isNum(th.alert) ? { y: th.alert, label: "alert" } : null, pct: true, note: "Last 14 days · dashed = alert line" } : null,
+      gauge: isNum(d.risk) ? { value: d.risk, max: Math.max(d.risk, isNum(th.alert) ? th.alert : 0) * 1.3, pct: true, marks: [isNum(th.watch) && { v: th.watch, label: "watch" }, isNum(th.alert) && { v: th.alert, label: "alert line" }].filter(Boolean) } : null,
+      cmp: [isNum(th.alert) && `alert line ${pct(th.alert)}`, isNum(d.scheduleRisk) && `calendar alone ${pct(d.scheduleRisk)}`].filter(Boolean).join(" · "),
+      sure: c3Sure(m, false), age: c3Age(c),
       source: "Synthetic wearable cohort. Accuracy measured on a held-out test split (25% of patients kept back from training).",
     };
     // Health-monitor rows: each signal against the patient's own usual range (middle 80% of the days before the last week).
@@ -522,6 +541,10 @@
       top: null,
       bar: isNum(tir) ? [["Below 70", tbr, "red"], ["70–180", tir, "green"], ["181–250", isNum(tar180) && isNum(tar250) ? Math.max(0, tar180 - tar250) : null, "amber"], ["Above 250", tar250, "red"]].filter(([, v]) => isNum(v)).map(([label, v, tone]) => ({ label, v, tone })) : null,
       spark: dp ? { values: dp.values, band: (c.dailyProfile.targetRange || [70, 180]), note: `Blood sugar by hour of day, ${String(dp.label || "")} · band = 70–180` } : null,
+      gauge: (() => { const t = parseFloat((String(trigTarget || "").match(/(\d+(?:\.\d+)?)\s*%/) || [])[1]); return { value: trig.value, max: Math.max(trig.value, isNum(t) ? t : 0) * 1.4 || 10, unit: "%", d: 1, marks: isNum(t) ? [{ v: t, label: "target" }] : [] }; })(),
+      cmp: [trigTarget && trigTarget.replace(/^target /i, "target "), isNum(tir) && `time in range ${num(tir)}%`].filter(Boolean).join(" · "),
+      sure: trig.n ? `${num(trig.n)} sensor readings, this person` : "this person's sensor readings",
+      age: window_ ? window_[1] + (d.updatedAt ? `, to ${new Date(d.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "") : "",
       source: "Synthetic CGM data (Crane Lab set), this person's readings.",
     } : {
       label: "Time in range (70–180 mg/dL, the target band)", tileLabel: "Time in range (70–180 mg/dL)", why: ctf ? `Send to the care team ${ctf.week ? "this week" : "today"}: ${ctf.reasons.join("; ") || "glucose over the care-team line"}.` : "", value: isNum(tir) ? `${num(tir)}%` : NR,
@@ -532,6 +555,10 @@
       top: ctf ? { tone: "red", text: `Send to the care team ${ctf.week ? "this week" : "today"}: ${ctf.reasons.join("; ") || "glucose over the care-team line"}.` } : null,
       bar: isNum(tir) ? [["Below 70", tbr, "red"], ["70–180", tir, "green"], ["181–250", isNum(tar180) && isNum(tar250) ? Math.max(0, tar180 - tar250) : null, "amber"], ["Above 250", tar250, "red"]].filter(([, v]) => isNum(v)).map(([label, v, tone]) => ({ label, v, tone })) : null,
       spark: dp ? { values: dp.values, band: (c.dailyProfile.targetRange || [70, 180]), note: `Blood sugar by hour of day, ${String(dp.label || "").replace(/^weeks/i, "weeks")} · band = 70–180` } : null,
+      gauge: isNum(tir) ? { value: tir, max: 100, unit: "%", marks: [{ v: 70, label: "target" }, { v: 90, label: "ideal" }] } : null,
+      cmp: [`target 70%+`, `ideal 90%+`, isNum(tbr) && tbr > 0 && `${num(tbr, 1)}% below 70`, isNum(tar250) && tar250 > 0 && `${num(tar250, 1)}% above 250`].filter(Boolean).join(" · "),
+      sure: evById.tir && evById.tir.n ? `${num(evById.tir.n)} sensor readings, this person` : "this person's sensor readings",
+      age: window_ ? window_[1] + (d.updatedAt ? `, to ${new Date(d.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : "") : "",
       source: "Synthetic CGM data (Crane Lab set), this person's readings. Program-wide and real-data (CGMacros, NHANES) checks sit under For scientists.",
     };
     const pv = d.patientView && typeof d.patientView === "object" ? ["en", "es", "ht"].filter((k) => d.patientView[k]).map((k) => ({ lang: k, name: { en: "English", es: "Español", ht: "Kreyòl" }[k], ...d.patientView[k] })) : [];
@@ -544,6 +571,10 @@
   }
 
   // ---- C5 Coach's Clef
+  // Glance for coaching calls: one dot per call, oldest first, flagged calls red.
+  const c5Dots = (calls) => [...calls].sort((a, b) => (a.callNumber || 0) - (b.callNumber || 0)).map((c) => ({ n: c.callNumber, flagged: !!(c.flags && c.flags.length), date: c.date }));
+  const c5Cmp = (cf, days) => (cf ? `call ${cf.callNumber}${days != null ? ` · ${days < 1 ? "today" : days < 60 ? `${days} days ago` : `${Math.round(days / 30.4)} months ago`}` : ""}` : "");
+  const c5Age = (calls) => { const d = calls.map((c) => c.date).filter(Boolean).sort().pop(); return d ? `last call ${new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""; };
   function c5View(d) {
     const calls = (d.charts && d.charts.calls) || [];
     const flagLines = calls.reduce((s, c) => s + (c.flags ? c.flags.length : 0), 0);
@@ -568,6 +599,7 @@
       reason: !flagToday && flagDays != null ? "Close the loop: confirm the hand-off" : "",
       top: callFlag ? { tone: flagToday ? "red" : "amber", text: `Call ${callFlag.callNumber} at ${callFlag.flags[0].t}: “${String(callFlag.flags[0].text).replace(/^(oh,?\s+)?before you go,?\s*/i, "")}”` } : { tone: flagToday ? "red" : "amber", text: fl.text },
       spark: scored.length > 1 ? { values: scored.map((c) => c.score), ref: { y: 60, label: "target" }, d: 0, note: "Coach score by call, oldest first · dashed = target 60" } : null,
+      dots: c5Dots(calls), cmp: c5Cmp(callFlag, flagDays), sure: `supervisor-labelled, ${calls.length} call${calls.length === 1 ? "" : "s"}`, age: c5Age(calls),
       source: "Synthetic coaching calls, supervisor-labelled.",
     } : {
       label: "Coach score, latest call", tileLabel: "Last call score", value: isNum(lastScore) ? String(lastScore) : NR, unit: isNum(lastScore) ? "/100" : "",
@@ -577,6 +609,7 @@
       todo: recs[0] ? recs[0].title : "No action from this program right now.",
       top: callFlag ? { tone: d.status === "alert" ? "red" : "amber", text: `Flagged line, call ${callFlag.callNumber} at ${callFlag.flags[0].t}: “${String(callFlag.flags[0].text).replace(/^(oh,?\s+)?before you go,?\s*/i, "")}”${d.status === "alert" ? " Tell the care team today." : ""}` } : fl ? { tone: "red", text: fl.text } : null,
       spark: scored.length > 1 ? { values: scored.map((c) => c.score), ref: { y: 60, label: "target" }, d: 0, note: "Score by call, oldest first · dashed = target 60" } : null,
+      dots: c5Dots(calls), cmp: `target 60+${scored.length > 1 ? ` · ${scored.length} scored` : ""}`, sure: `supervisor-labelled, ${calls.length} call${calls.length === 1 ? "" : "s"}`, age: c5Age(calls),
       source: "Synthetic coaching calls, supervisor-labelled.",
     };
     return {
